@@ -138,7 +138,7 @@ do
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if spell.name == objectToAdd.spellName then
 					-- add the object
-					hiddenObjects.addObject(objectToAdd, spell.end, true)
+					hiddenObjects.addObject(objectToAdd, spell["end"], true)
 				end
 			end
 		end

@@ -14,6 +14,7 @@ do
 	local missChat = {
 		HK = 96,			-- key 0 on keypad
 	}
+	if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."libs\\" end
 	if championLane == nil then dofile(LIB_PATH.."championLane.lua") end
 	if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
 	function missChat.sendLaneState()
