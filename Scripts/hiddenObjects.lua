@@ -210,7 +210,7 @@ do
 	function OnLoad()
 		start.OnLoad()
 		if hiddenObjects.showOnMiniMap then
-			miniMap.load()
+			miniMap.OnLoad()
 			if hiddenObjects.useSprites then
 				for i,sprite in pairs(hiddenObjects.sprites) do	hiddenObjects.sprites[i].sprite = hiddenObjects.returnSprite("hiddenObjects/"..sprite.spriteFile..".dds") end
 			end
