@@ -64,5 +64,3 @@ function predictMovement.OnTick()
 	predictMovement.tick = tick
 	predictMovement.updatePositions()
 end
-
-BoL:addTickHandler(predictMovement.tickHandler)
