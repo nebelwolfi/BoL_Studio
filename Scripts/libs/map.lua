@@ -2,7 +2,7 @@
 	Libray: Map Name v0.2
 	Author: SurfaceS
 	
-	required libs : 		none
+	required libs : 		-
 	exposed variables : 	map
 	
 	UPDATES :
@@ -26,6 +26,7 @@
 if map ~= nil and map.index ~= 0 then return end
 map = {index = 0, name = "unknown", shortName = "unknown", min = {x = 0, y = 0,}, max = {x = 0, y = 0}, x = 0, y = 0, }
 function map.OnLoad()
+	if map.index ~= 0 then return end
 	for i = 1, objManager.maxObjects do
 		local object = objManager:getObject(i)
 		if object ~= nil then

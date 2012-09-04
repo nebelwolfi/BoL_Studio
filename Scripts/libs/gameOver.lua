@@ -28,7 +28,7 @@ gameOver = {
 	looser = 0,
 	winner = 0,
 	objectFounded = 0,
-	lastUpdate = 0,
+	nextUpdate = 0,
 	tickUpdate = 500,		-- update each 0.5 sec
 }
 
@@ -49,8 +49,8 @@ end
 function gameOver.OnTick()
 	if gameOver.objectFounded ~= 0 then
 		local tick = GetTickCount()
-		if gameOver.lastUpdate > tick then return end
-		gameOver.lastUpdate = tick + gameOver.tickUpdate
+		if gameOver.nextUpdate > tick then return end
+		gameOver.nextUpdate = tick + gameOver.tickUpdate
 		for i, objectCheck in pairs(gameOver.objects) do
 			if objectCheck.object == nil or objectCheck.object.dead or objectCheck.object.health == 0 then
 				gameOver.isOver = true
