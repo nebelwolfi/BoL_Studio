@@ -21,7 +21,7 @@ if player == nil then player = GetMyHero() end
 if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
 if map == nil then dofile(LIB_PATH.."map.lua") end
 
-minionArray = {}
+minionArray = {	team_ally ="##", team_ennemy ="##", }
 
 function minionArray.OnLoad()
 	map.OnLoad()
@@ -39,7 +39,6 @@ function minionArray.OnLoad()
 		minionArray.team_ally = (player.team == TEAM_BLUE and "Blue" or "Red")
 		minionArray.team_ennemy = (player.team == TEAM_BLUE and "Red" or "Blue")
 	end
-
 end
 
 function minionArray.OnCreateObj(object)

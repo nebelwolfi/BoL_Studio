@@ -29,7 +29,7 @@ do
 	if inventory == nil then dofile(LIB_PATH.."inventory.lua") end
 	function healthPotion.checkHealthPotion()
 		-- check Health Potion precence each seconds
-		healthPotion.slot = inventory.SlotItem(healthPotion.itemID)
+		healthPotion.slot = inventory.slotItem(healthPotion.itemID)
 	end
 	function healthPotion.heroNeedPotion()
 		if (player.health / player.maxHealth) > healthPotion.minHpPercent then return false end
@@ -53,7 +53,7 @@ do
 			healthPotion.checkHealthPotion()
 		end
 		if healthPotion.slot ~= nil and healthPotion.useTimer <= tick then
-			if healthPotion.heroNeedPotion() and inventory.UseItem(healthPotion.itemID) then
+			if healthPotion.heroNeedPotion() and inventory.useItem(healthPotion.itemID) then
 				healthPotion.useTimer = tick + healthPotion.tickUpdate
 			end
 		end
