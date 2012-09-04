@@ -70,6 +70,9 @@ spellList = {
 	MissileBarrageMissile2 = {charName = "Corki", range = 1225, spellType = 1, size = 100, duration = 1000, speed = 2.0, delay = 300, spellKey = _R, spammable = true},
 	CarpetBomb = {charName = "Corki", range = 800, spellType = 2, size = 150, duration = 1000},
 
+	-- Diana
+	DianaArc = {charName = "Diana", range = 900, spellType = 3, size = 205, duration = 1000},
+
 	-- Draven
 	DravenDoubleShot = {charName = "Draven", range = 1050, spellType = 1, size = 125, duration = 1000},
 	DravenRCast = {charName = "Draven", range = 20000, spellType = 1, size = 100, duration = 6000},
@@ -296,4 +299,9 @@ spellList = {
 	ZiggsW = {charName = "Ziggs", range = 1000, spellType = 3, size = 225, duration = 1000, spellKey = _W},
 	ZiggsE = {charName = "Ziggs", range = 900, spellType = 3, size = 250, duration = 1000, spellKey = _E},
 	ZiggsR = {charName = "Ziggs", range = 5300, spellType = 3, size = 550, duration = 3000, spellKey = _R},
+	
+	-- Zyra
+	ZyraQFissure = {charName = "Zyra", range = 825, spellType = 3, size = 275, duration = 1500, spellKey = _Q},
+	ZyraGraspingRoots = {charName = "Zyra", range = 1100, spellType = 1, size = 90, duration = 1500, spellKey = _E},
+		
 }
