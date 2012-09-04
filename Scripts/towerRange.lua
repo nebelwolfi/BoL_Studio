@@ -61,7 +61,7 @@ do
 		end
 	end
 	function OnDeleteObj(object)
-		if object ~= nil and obj.type == "obj_AI_Turret" then
+		if object ~= nil and object.type == "obj_AI_Turret" then
 			for name, turret in pairs(towerRange.turrets) do
 				if name == object.name then
 					towerRange.turrets[name] = nil
@@ -73,26 +73,26 @@ do
 	function OnLoad()
 		gameOver.OnLoad()
 		for i = 1, objManager.maxObjects do
-			local obj = objManager:getObject(i)
-			if obj ~= nil and obj.type == "obj_AI_Turret" then
-				towerRange.turrets[obj.name] = {
-					object = obj,
-					team = obj.team,
-					color = (obj.team == player.team and towerRange.allyTurretColor or towerRange.enemyTurretColor),
+			local object = objManager:getObject(i)
+			if object ~= nil and object.type == "obj_AI_Turret" then
+				towerRange.turrets[object.name] = {
+					object = object,
+					team = object.team,
+					color = (object.team == player.team and towerRange.allyTurretColor or towerRange.enemyTurretColor),
 					range = towerRange.turretRange,
-					x = obj.x,
-					y = obj.y,
-					z = obj.z,
+					x = object.x,
+					y = object.y,
+					z = object.z,
 				}
-				if obj.name == "Turret_OrderTurretShrine_A" or obj.name == "Turret_ChaosTurretShrine_A" then
-					towerRange.turrets[obj.name].range = towerRange.fountainRange
+				if object.name == "Turret_OrderTurretShrine_A" or object.name == "Turret_ChaosTurretShrine_A" then
+					towerRange.turrets[object.name].range = towerRange.fountainRange
 					for j = 1, objManager.maxObjects do
-						local objSP = objManager:getObject(j)
-						if objSP ~= nil and objSP.type == "obj_SpawnPoint" and GetDistance2D(obj, objSP) < 1000 then
-							towerRange.turrets[obj.name].x = objSP.x
-							towerRange.turrets[obj.name].z = objSP.z
-						elseif objSP ~= nil and objSP.type == "obj_HQ" and objSP.team == obj.team then
-							towerRange.turrets[obj.name].y = objSP.y
+						local object2 = objManager:getObject(j)
+						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance2D(object, object2) < 1000 then
+							towerRange.turrets[object.name].x = object2.x
+							towerRange.turrets[object.name].z = object2.z
+						elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then
+							towerRange.turrets[object.name].y = object2.y
 						end
 					end
 				end
