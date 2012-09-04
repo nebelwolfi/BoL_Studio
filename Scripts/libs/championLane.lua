@@ -47,7 +47,7 @@ function championLane.OnLoad()
 		if hero ~= nil then
 			table.insert(championLane.heros, hero)
 			local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name..hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
-			table.insert(championLane[(hero.team == player.team and "ally" or "ennemy"].champions, {hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler})
+			table.insert(championLane[(hero.team == player.team and "ally" or "ennemy")].champions, {hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler})
 		end
 	end
 	if map.index == 1 or map.index == 2 then
