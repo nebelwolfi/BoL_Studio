@@ -22,14 +22,14 @@ function inventory.slotItem( itemID )
 	return nil
 end
 function inventory.haveItem( itemID )
-    local slot = inventory.SlotItem( itemID ) 
+    local slot = inventory.slotItem( itemID ) 
 	return (slot ~= nil)
 end
 function inventory.slotIsEmpty( slot )
     return (player:getInventorySlot(slot) == 0)
 end
 function inventory.itemIsCastable( itemID )
-	local slot = inventory.SlotItem( itemID )
+	local slot = inventory.slotItem( itemID )
 	if slot == nil then return false end
 	return (player:CanUseSpell(slot) == READY)
 end
@@ -37,7 +37,7 @@ end
 -- inventory.castItem(itemID, var1) -> Cast item on hero = var1
 -- inventory.castItem(itemID, var1, var2) -> Cast item on posX = var1, pasZ = var2
 function inventory.castItem( itemID, var1, var2 )
-	local slot = inventory.SlotItem( itemID )
+	local slot = inventory.slotItem( itemID )
 	if slot == nil then return false end
 	if (player:CanUseSpell(slot) == READY) then
 		if (var2 ~= nil) then CastSpell(slot, var1, var2)
