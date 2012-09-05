@@ -1,5 +1,5 @@
 --[[
-        Libray: MiniMap Lib
+        Libray: MiniMap Lib v2.0
 		Author: Weee
 		Porter: Kilua
 		
@@ -10,6 +10,7 @@
 		v1.1					initial release / port by Kilua
 		v1.2					added support for all maps / reworked
 		v1.2b					reworked clean
+		v2.0					BoL Studio Version
 ]]
 
 if miniMap == nil then return end
@@ -25,9 +26,8 @@ miniMap.wizard = {
 
 PrintChat(" >> MiniMap Wizard Setup: Hai! Follow the steps printed on your screen.")
 
-savedOnTick = OnTick
-savedOnDraw = OnDraw
-savedOnWndMsg = OnWndMsg
+local savedOnTick = OnTick
+local savedOnDraw = OnDraw
 
 function miniMap.wizard.cursorIsUnder(x, y, sizeX, sizeY)
 	local posX, posY = GetCursorPos().x, GetCursorPos().y
@@ -53,12 +53,22 @@ function miniMap.wizard.writeConfig()
 		PrintChat(" >> MiniMap Marks Wizard Setup: Config saved. Bye-bye! Thanks for using!")
 		OnTick = savedOnTick
 		OnDraw = savedOnDraw
-		OnWndMsg = savedOnWndMsg
 	end
 end
 
 function OnTick()
 	if miniMap.state ~= 2 then return end
+	-- walkaround OnWndMsg bug
+	ennemyControl.shiftKeyPressed = IsKeyDown(16)
+	if IsKeyPressed(1) then
+		if miniMap.wizard.botLeft.moveUnder then miniMap.wizard.botLeft.move = true
+		elseif miniMap.wizard.topRight.moveUnder then miniMap.wizard.topRight.move = true
+		elseif miniMap.wizard.saveUnder then miniMap.wizard.writeConfig()
+		end
+	end
+	if miniMap.wizard.botLeft.move then miniMap.wizard.botLeft.move = IsKeyDown(1) end
+	if miniMap.wizard.topRight.move then miniMap.wizard.topRight.move = IsKeyDown(1) end
+	
 	local tick = GetTickCount()
 	if miniMap.wizard.pingTick < tick then
 		miniMap.wizard.pingTick = tick + 3000
@@ -97,20 +107,4 @@ function OnDraw()
 	DrawText("t",14,miniMap.offsets.x1-1,miniMap.offsets.y1-4,0xFFFFFF00)
 	DrawText("o",31,miniMap.offsets.x2-7,miniMap.offsets.y2-13,0xFF000000)
 	DrawText("b",14,miniMap.offsets.x2-2,miniMap.offsets.y2-4,0xFFFF0000)
-end
-
-function OnWndMsg(msg, key)
-	if miniMap.state ~= 2 then return end
-	if key == 16 then
-		miniMap.wizard.shiftKeyPressed = (msg == KEY_DOWN)
-	elseif msg == WM_LBUTTONDOWN then
-		if miniMap.wizard.botLeft.moveUnder then miniMap.wizard.botLeft.move = true
-		elseif miniMap.wizard.topRight.moveUnder then miniMap.wizard.topRight.move = true
-		elseif miniMap.wizard.saveUnder then miniMap.wizard.writeConfig()
-		end
-	elseif msg == WM_LBUTTONUP then
-		if miniMap.wizard.botLeft.move then miniMap.wizard.botLeft.move = false
-		elseif miniMap.wizard.topRight.move then miniMap.wizard.topRight.move = false
-		end
-	end
 end

@@ -372,11 +372,13 @@ do
 						camp.object = object
 						return
 					end
-					for k,creepPack in ipairs(camp.creeps) do
-						for l,creep in ipairs(creepPack) do
-							if object.name == creep.name then
-								creep.object = object
-								return
+					if object.type == "obj_AI_Minion" then
+						for k,creepPack in ipairs(camp.creeps) do
+							for l,creep in ipairs(creepPack) do
+								if object.name == creep.name then
+									creep.object = object
+									return
+								end
 							end
 						end
 					end
@@ -386,7 +388,7 @@ do
 	end
 
 	function jungle.removeCreep(object)
-		if object ~= nil and object.name ~= nil then
+		if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil then
 			for i,monster in pairs(jungle.monsters[map.shortName]) do
 				for j,camp in pairs(monster.camps) do
 					for k,creepPack in ipairs(camp.creeps) do
@@ -406,19 +408,9 @@ do
 		start.OnLoad()
 		gameOver.OnLoad()
 		map.OnLoad()
-		if jungle.monsters[map.shortName] ~= nil then
-			function OnCreateObj(object)
-				if object ~= nil then
-					jungle.addCampAndCreep(object)
-				end
-			end
-	
-			function OnDeleteObj(object)
-				if object ~= nil then
-					jungle.removeCreep(object)
-				end
-			end
-	
+		if jungle.monsters[map.shortName] == nil then
+			jungle = nil
+		else
 			if jungle.useSprites and jungle.useMiniMapVersion == false then
 				-- load icons drawing sprites
 				for i,icon in pairs(jungle.icon) do
@@ -440,10 +432,10 @@ do
 					camp.drawColor = 0xFF00FF00
 				end
 			end
-			for i = 1, objManager.maxObjects, 1 do
+			for i = 1, objManager.maxObjects do
 				local object = objManager:getObject(i)
 				if object ~= nil then 
-					OnCreateObj(object)
+					jungle.addCampAndCreep(object)
 				end
 			end
 			
@@ -456,12 +448,16 @@ do
 							for j,camp in pairs(monster.camps) do
 								if camp.status == 2 then
 									DrawText("X",16,camp.minimap.x - 4, camp.minimap.y - 5, camp.drawColor)
+									PrintChat("X")
 								elseif camp.status == 4 then
 									DrawText(camp.drawText,16,camp.minimap.x - 9, camp.minimap.y - 5, camp.drawColor)
+									PrintChat("C")
 								end
 							end
 						end
 					end
+																
+
 				end
 			elseif jungle.useSprites then
 				function OnDraw()
@@ -500,6 +496,18 @@ do
 							monsterCount = monsterCount + 1
 						end
 					end
+				end
+			end
+			
+			function OnCreateObj(object)
+				if object ~= nil then
+					jungle.addCampAndCreep(object)
+				end
+			end
+	
+			function OnDeleteObj(object)
+				if object ~= nil then
+					jungle.removeCreep(object)
 				end
 			end
 			
@@ -666,8 +674,6 @@ do
 					end
 				end
 			end
-		else
-			jungle = nil
 		end
 	end
 end

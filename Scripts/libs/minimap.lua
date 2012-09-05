@@ -1,5 +1,5 @@
 --[[
-	Libray: MiniMap Lib
+	Libray: MiniMap Lib v2.0
 	Author: Weee
 	Porter: Kilua
 	
@@ -10,7 +10,7 @@
 	v1.0				initial release / port by Kilua
 	v1.1				added support for all maps / reworked
 	v1.1b				reworked wizard handle
-	v1.2				BoL Studio Version
+	v2.0				BoL Studio Version
 	
 	USAGE :
 	Load the libray from your script
