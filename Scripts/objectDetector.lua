@@ -1,6 +1,6 @@
 --[[
 	Script: objectDetector v0.2
-	Author: ...
+	Author: xMirai
 
 	required libs : 		GetDistance2D
 	required sprites : 		-
