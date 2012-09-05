@@ -448,16 +448,12 @@ do
 							for j,camp in pairs(monster.camps) do
 								if camp.status == 2 then
 									DrawText("X",16,camp.minimap.x - 4, camp.minimap.y - 5, camp.drawColor)
-									PrintChat("X")
 								elseif camp.status == 4 then
 									DrawText(camp.drawText,16,camp.minimap.x - 9, camp.minimap.y - 5, camp.drawColor)
-									PrintChat("C")
 								end
 							end
 						end
 					end
-																
-
 				end
 			elseif jungle.useSprites then
 				function OnDraw()
