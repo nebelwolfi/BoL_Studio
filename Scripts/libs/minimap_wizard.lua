@@ -59,7 +59,7 @@ end
 function OnTick()
 	if miniMap.state ~= 2 then return end
 	-- walkaround OnWndMsg bug
-	ennemyControl.shiftKeyPressed = IsKeyDown(16)
+	miniMap.wizard.shiftKeyPressed = IsKeyDown(16)
 	if IsKeyPressed(1) then
 		if miniMap.wizard.botLeft.moveUnder then miniMap.wizard.botLeft.move = true
 		elseif miniMap.wizard.topRight.moveUnder then miniMap.wizard.topRight.move = true
