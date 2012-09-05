@@ -37,9 +37,7 @@ do
 			end
 		end
 	end
-	function OnWndMsg(msg,keycode)
-		if keycode == missChat.HK and msg == KEY_DOWN then
-			missChat.sendLaneState()
-		end
+	function OnTick()
+		if IsKeyPressed(missChat.HK) then missChat.sendLaneState() end
 	end
 end

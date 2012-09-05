@@ -45,7 +45,7 @@ do
 		end
 		return true
 	end
-	function healthPotion.tickHandler()
+	function OnTick()
 		if player.dead == true then return end
 		local tick = GetTickCount()
 		if tick > healthPotion.nextUpdate then

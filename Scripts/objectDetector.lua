@@ -1,6 +1,6 @@
 --[[
 	Script: objectDetector v0.2
-	Author: xMirai
+	Author: ...
 
 	required libs : 		GetDistance2D
 	required sprites : 		-
@@ -32,14 +32,8 @@ do
 			end
 		end
 	end
-
-	function OnWndMsg(msg,wParam)
-		if msg == KEY_DOWN then
-			if wParam == objectDetector.addKey then
-				objectDetector.radius = objectDetector.radius + 100
-			elseif wParam == objectDetector.subKey then
-				objectDetector.radius = math.max(0,objectDetector.radius - 100)
-			end
-		end
+	function OnTick()
+		if IsKeyPressed(objectDetector.addKey) then objectDetector.radius = objectDetector.radius + 100 end
+		if IsKeyPressed(objectDetector.subKey) then objectDetector.radius = math.max(0,objectDetector.radius - 100) end
 	end
 end

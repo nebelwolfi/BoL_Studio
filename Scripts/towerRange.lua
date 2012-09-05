@@ -54,8 +54,8 @@ do
 			end
 		end
 	end
-	function OnWndMsg(msg, key)
-		if key == towerRange.toggleKey and msg == KEY_UP then
+	function OnTick()
+		if IsKeyPressed(towerRange.toggleKey) then
 			towerRange.activeType = (towerRange.activeType < 4 and towerRange.activeType + 1 or 0)
 			PrintChat("Turret range display is "..towerRange.typeText[towerRange.activeType + 1])
 		end

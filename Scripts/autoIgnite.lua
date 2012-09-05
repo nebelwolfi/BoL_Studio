@@ -82,28 +82,23 @@ do
 		end
 		return nil
 	end
-	
-	function OnWndMsg(msg,key)
-		if msg == KEY_DOWN then
-			if key == autoIgnite.toggleKey then
-				autoIgnite.toggled = not autoIgnite.toggled
-				autoIgnite.active = autoIgnite.toggled
-				if autoIgnite.haveDisplay == false then PrintChat(" >> Auto ignite : "..(autoIgnite.active and "ON" or "OFF")) end
-			elseif key == autoIgnite.forceIgniteKey then
-				autoIgnite.forced = true
-				autoIgnite.forcedTick = GetTickCount() + 1000
-				if autoIgnite.haveDisplay == false then PrintChat(" >> Auto ignite forced") end
-			elseif key == autoIgnite.activeKey then
-				autoIgnite.active = true
-			end
-		elseif key == autoIgnite.activeKey and autoIgnite.toggled == false then
-			autoIgnite.active = false
-		end
-	end
 
 	function OnTick()
+		local tick = GetTickCount()
+		-- walkaround OnWndMsg error
+		if IsKeyPressed(autoIgnite.toggleKey) then
+			autoIgnite.toggled = not autoIgnite.toggled
+			autoIgnite.active = autoIgnite.toggled
+			if autoIgnite.haveDisplay == false then PrintChat(" >> Auto ignite : "..(autoIgnite.active and "ON" or "OFF")) end
+		end
+		if IsKeyPressed(autoIgnite.forceIgniteKey) then
+			autoIgnite.forced = true
+			autoIgnite.forcedTick = tick + 1000
+			if autoIgnite.haveDisplay == false then PrintChat(" >> Auto ignite forced") end
+		end
+		if autoIgnite.toggled == false then autoIgnite.active = IsKeyDown(autoIgnite.activeKey) end
 		if autoIgnite.forced then
-			if autoIgnite.forcedTick > GetTickCount() then
+			if autoIgnite.forcedTick > tick then
 				if autoIgnite.autoIgniteLowestHealth() ~= nil then autoIgnite.forced = false end
 			else
 				autoIgnite.forced = false

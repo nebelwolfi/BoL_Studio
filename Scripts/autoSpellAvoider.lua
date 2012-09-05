@@ -247,6 +247,7 @@ do
 			end
 			
 			function OnTick()
+				if IsKeyPressed(spellAvoider.dodgeSkillShotHK) then spellAvoider.setDodgeSkillShot(not spellAvoider.dodgeSkillShot) end
 				local tick = GetTickCount()
 				for i, spell in pairs(spellAvoider.spellArray) do
 					if spell.shot and spell.lastshot < tick - spell.duration then
@@ -256,13 +257,6 @@ do
 					end
 				end
 			end
-			
-			function OnWndMsg(msg, keycode)
-				if keycode == spellAvoider.dodgeSkillShotHK and msg == KEY_UP then -- J
-					spellAvoider.setDodgeSkillShot(not spellAvoider.dodgeSkillShot)
-				end
-			end
-			
 		end
 	end
 end

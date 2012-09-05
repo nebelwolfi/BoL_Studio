@@ -503,20 +503,21 @@ do
 				end
 			end
 			
-			function OnWndMsg(msg, key)
-				if key == 16 then 
-					jungle.shiftKeyPressed = (msg == KEY_DOWN)
-				elseif jungle.useMiniMapVersion == false and jungle.display.moveUnder and msg == WM_LBUTTONDOWN then
+			function OnTick()
+				if gameOver.gameIsOver() then return end
+				-- walkaround OnWndMsg bug
+				jungle.shiftKeyPressed = IsKeyDown(16)
+				if jungle.useMiniMapVersion == false and jungle.display.moveUnder and IsKeyDown(1) then
 					jungle.display.move = true
-				elseif jungle.useMiniMapVersion == false and jungle.display.move and msg == WM_LBUTTONUP then
+				elseif jungle.useMiniMapVersion == false and jungle.display.move and IsKeyDown(1) == false then
 					jungle.display.move = false
 					jungle.display.moveUnder = false
 					jungle.display.cursorShift = nil
 					jungle.writeConfigs()
-				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and msg == WM_LBUTTONDOWN then
+				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and IsKeyDown(1) then
 					jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
 					jungle.writeConfigs()
-				elseif jungle.shiftKeyPressed and msg == WM_LBUTTONDOWN then
+				elseif jungle.shiftKeyPressed and IsKeyDown(1) then
 					for i,monster in pairs(jungle.monsters[map.shortName]) do
 						if monster.isSeen == true then
 							if monster.iconUnder then
@@ -533,10 +534,6 @@ do
 						end
 					end
 				end
-			end
-			
-			function OnTick()
-				if gameOver.gameIsOver() then return end
 				local tick = GetTickCount()
 				local monsterCount = 0
 				for i,monster in pairs(jungle.monsters[map.shortName]) do
@@ -669,7 +666,6 @@ do
 					end
 				end
 			end
-
 		else
 			jungle = nil
 		end

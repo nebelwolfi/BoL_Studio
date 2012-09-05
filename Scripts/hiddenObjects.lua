@@ -46,7 +46,6 @@ do
 			greyPoint = { spriteFile = "PingMarkerGrey_8", },
 		},
 		objects = {},
-		shiftKeyPressed = false,
 	}
 
 	--[[      CONFIG      ]]
@@ -158,10 +157,11 @@ do
 
 	function OnDraw()
 		if gameOver.gameIsOver() then return end
+		local shiftKeyPressed = IsKeyDown(16)
 		for i,obj in pairs(hiddenObjects.objects) do
 			if obj.visible == true then
 				DrawCircle(obj.pos.x, obj.pos.y, obj.pos.z, 100, obj.color)
-				DrawCircle(obj.pos.x, obj.pos.y, obj.pos.z, (hiddenObjects.shiftKeyPressed and obj.range or 200), obj.color)
+				DrawCircle(obj.pos.x, obj.pos.y, obj.pos.z, (shiftKeyPressed and obj.range or 200), obj.color)
 				--minimap
 				if hiddenObjects.showOnMiniMap == true then
 					if hiddenObjects.useSprites then
@@ -201,10 +201,6 @@ do
 				hiddenObjects.objects[i] = nil
 			end
 		end
-	end
-
-	function OnWndMsg(msg, key)
-		if key == 16 then hiddenObjects.shiftKeyPressed = (msg == KEY_DOWN) end
 	end
 
 	function OnLoad()

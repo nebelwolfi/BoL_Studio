@@ -251,30 +251,6 @@ do
 		end
 	end
 
-	function OnWndMsg(msg,keycode)
-		if keycode == 16 then ennemyControl.shiftKeyPressed = (msg == KEY_DOWN) end
-		if ennemyControl.shiftKeyPressed and msg == WM_LBUTTONDOWN then
-			if ennemyControl.cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
-				ennemyControl.display.move = true
-			elseif ennemyControl.cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
-				ennemyControl.display.rotation = ennemyControl.display.rotation + 1
-				if ennemyControl.display.rotation > 3 then ennemyControl.display.rotation = 0 end
-				ennemyControl.writeConfigs()
-			else
-				for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
-					if ennemyControl.cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
-						ennemyHero.extended = (ennemyHero.extended == false)
-						break
-					end
-				end
-			end
-		elseif ennemyControl.display.move and msg == WM_LBUTTONUP then
-			ennemyControl.display.move = false
-			ennemyControl.writeConfigs()
-			ennemyControl.display.cursorShift = nil
-		end
-	end
-
 	function OnDraw()
 		if gameOver.gameIsOver() == true then return end
 		for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
@@ -347,6 +323,29 @@ do
 
 	function OnTick()
 		if gameOver.gameIsOver() == true then return end
+		-- walkaround OnWndMsg bug
+		ennemyControl.shiftKeyPressed = IsKeyDown(16)
+		if ennemyControl.shiftKeyPressed and IsKeyDown(1) then
+			if ennemyControl.cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
+				ennemyControl.display.move = true
+			elseif ennemyControl.cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
+				ennemyControl.display.rotation = ennemyControl.display.rotation + 1
+				if ennemyControl.display.rotation > 3 then ennemyControl.display.rotation = 0 end
+				ennemyControl.writeConfigs()
+			else
+				for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
+					if ennemyControl.cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
+						ennemyHero.extended = (ennemyHero.extended == false)
+						break
+					end
+				end
+			end
+		elseif ennemyControl.display.move and IsKeyDown(1) == false then
+			ennemyControl.display.move = false
+			ennemyControl.writeConfigs()
+			ennemyControl.display.cursorShift = nil
+		end
+		
 		-- move display
 		if ennemyControl.display.move == true then
 			if ennemyControl.display.cursorShift == nil or ennemyControl.display.cursorShift.x == nil or ennemyControl.display.cursorShift.y == nil then
