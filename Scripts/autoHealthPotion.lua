@@ -15,12 +15,12 @@ if player == nil then player = GetMyHero() end
 do
 	--[[         Globals       ]]
 	local healthPotion = {
-			useTimer = 0,
-			nextUpdate = 0,
-			slot = nil,
-			tickUpdate = 1000,		-- update potion slot each 1 sec
-			minHpPercent = 0.25,	-- Minimum HP ratio for taking a pot
-			itemID	= 2003,			-- item ID of health potion (2003)
+		useTimer = 0,
+		nextUpdate = 0,
+		slot = nil,
+		tickUpdate = 1000,		-- update potion slot each 1 sec
+		minHpPercent = 0.25,	-- Minimum HP ratio for taking a pot
+		itemID	= 2003,			-- item ID of health potion (2003)
 	}
 	
 	--[[         Code          ]]
@@ -53,7 +53,7 @@ do
 			healthPotion.checkHealthPotion()
 		end
 		if healthPotion.slot ~= nil and healthPotion.useTimer <= tick then
-			if healthPotion.heroNeedPotion() and inventory.useItem(healthPotion.itemID) then
+			if healthPotion.heroNeedPotion() and inventory.castItem(healthPotion.itemID) then
 				healthPotion.useTimer = tick + healthPotion.tickUpdate
 			end
 		end
