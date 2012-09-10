@@ -2,7 +2,7 @@
 	Script: Tower Range v0.2
 	Author: SurfaceS
 
-	required libs : 		gameOver, GetDistance2D
+	required libs : 		gameOver, common
 	required sprites : 		-
 	exposed variables : 	only libs variables
 
@@ -20,6 +20,8 @@
 ]]
 
 do
+	require "common"
+	require "gameOver"
 	--[[         Globals        ]]
 	local towerRange = {
 		turrets = {},
@@ -31,19 +33,35 @@ do
 		allyTurretColor = 0x80FF00, 		-- Green color
 		enemyTurretColor = 0xFF0000, 		-- Red color
 		activeType = 1,						-- Default type (see usage)
+		tickUpdate = 1000,
+		nextUpdate = 0,
 	}
 
 	--[[         Code           ]]
-	if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."libs\\" end
-	if player == nil then player = GetMyHero() end
-	if gameOver == nil then dofile(LIB_PATH.."gameOver.lua") end
-	if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
-
+	function towerRange.checkTurretState()
+		if towerRange.activeType > 0 then
+			for name, turret in pairs(towerRange.turrets) do
+				turret.active = false
+			end
+			for i = 1, objManager.maxObjects do
+				local object = objManager:getObject(i)
+				if object ~= nil and object.type == "obj_AI_Turret" then
+					local name = object.name
+					if towerRange.turrets[name] ~= nil then towerRange.turrets[name].active = true end
+				end
+			end
+			for name, turret in pairs(towerRange.turrets) do
+				if turret.active == false then towerRange.turrets[name] = nil end
+			end
+		end
+	end
+	
 	function OnDraw()
 		if gameOver.gameIsOver() then return end
 		if towerRange.activeType > 0 then
 			for name, turret in pairs(towerRange.turrets) do
-				if turret ~= nil and turret.object ~= nil and turret.object.type == "obj_AI_Turret" then
+				--if turret ~= nil and turret.object ~= nil and turret.object.type == "obj_AI_Turret" then
+				if turret ~= nil then
 					if (towerRange.activeType == 1 and turret.team ~= player.team and player.dead == false and GetDistance2D(player, turret) < 2000)
 					or (towerRange.activeType == 2 and turret.team ~= player.team)
 					or (towerRange.activeType == 3)
@@ -58,6 +76,11 @@ do
 		if IsKeyPressed(towerRange.toggleKey) then
 			towerRange.activeType = (towerRange.activeType < 4 and towerRange.activeType + 1 or 0)
 			PrintChat("Turret range display is "..towerRange.typeText[towerRange.activeType + 1])
+		end
+		local tick = GetTickCount()
+		if tick > towerRange.nextUpdate then
+			towerRange.nextUpdate = tick + towerRange.tickUpdate
+			towerRange.checkTurretState()
 		end
 	end
 	function OnDeleteObj(object)
@@ -75,7 +98,8 @@ do
 		for i = 1, objManager.maxObjects do
 			local object = objManager:getObject(i)
 			if object ~= nil and object.type == "obj_AI_Turret" then
-				towerRange.turrets[object.name] = {
+				local turretName = object.name
+				towerRange.turrets[turretName] = {
 					object = object,
 					team = object.team,
 					color = (object.team == player.team and towerRange.allyTurretColor or towerRange.enemyTurretColor),
@@ -83,16 +107,17 @@ do
 					x = object.x,
 					y = object.y,
 					z = object.z,
+					active = false,
 				}
-				if object.name == "Turret_OrderTurretShrine_A" or object.name == "Turret_ChaosTurretShrine_A" then
-					towerRange.turrets[object.name].range = towerRange.fountainRange
+				if turretName == "Turret_OrderTurretShrine_A" or turretName == "Turret_ChaosTurretShrine_A" then
+					towerRange.turrets[turretName].range = towerRange.fountainRange
 					for j = 1, objManager.maxObjects do
 						local object2 = objManager:getObject(j)
 						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance2D(object, object2) < 1000 then
-							towerRange.turrets[object.name].x = object2.x
-							towerRange.turrets[object.name].z = object2.z
+							towerRange.turrets[turretName].x = object2.x
+							towerRange.turrets[turretName].z = object2.z
 						elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then
-							towerRange.turrets[object.name].y = object2.y
+							towerRange.turrets[turretName].y = object2.y
 						end
 					end
 				end

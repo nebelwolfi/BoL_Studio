@@ -31,8 +31,7 @@ do
 			end
 		end
 		if #cloneRevealer.heros > 0 then
-			if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."libs\\" end
-			if gameOver == nil then dofile(LIB_PATH.."gameOver.lua") end
+			require "gameOver"
 			gameOver.OnLoad()
 			function OnDraw()
 				if gameOver.gameIsOver() == true then return end

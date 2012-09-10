@@ -11,6 +11,7 @@
 	Automatically take an health potion if your champ health drop under configurated percent
 ]]
 if player == nil then player = GetMyHero() end
+require "inventory"
 
 do
 	--[[         Globals       ]]
@@ -24,9 +25,6 @@ do
 	}
 	
 	--[[         Code          ]]
-	-- Load inventory lib if needed
-	if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."Libs\\" end
-	if inventory == nil then dofile(LIB_PATH.."inventory.lua") end
 	function healthPotion.checkHealthPotion()
 		-- check Health Potion precence each seconds
 		healthPotion.slot = inventory.slotItem(healthPotion.itemID)

@@ -3,7 +3,7 @@
     Author: SurfaceS
 	Goal : send SS to chat on your lane by pressing "0"
 	
-	Required libs : 		championLane, GetDistance2D
+	Required libs : 		common, championLane
 	Exposed variables : 	-
 
 	v0.1				initial release
@@ -11,12 +11,11 @@
 ]]
 
 do
+	require "common"
+	require "championLane"
 	local missChat = {
 		HK = 96,			-- key 0 on keypad
 	}
-	if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."libs\\" end
-	if championLane == nil then dofile(LIB_PATH.."championLane.lua") end
-	if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
 	function missChat.sendLaneState()
 		if championLane.myLane ~= "unknow" then
 			local heroCount = #championLane.ennemy[championLane.myLane]
@@ -39,5 +38,9 @@ do
 	end
 	function OnTick()
 		if IsKeyPressed(missChat.HK) then missChat.sendLaneState() end
+		championLane.OnTick()
+	end
+	function OnLoad()
+		championLane.OnLoad()
 	end
 end

@@ -2,7 +2,7 @@
 	Script: Hidden Objects Display v0.2
 	Author: SurfaceS
 	
-	required libs : 		gameOver, start, minimap (if used)
+	required libs : 		common, gameOver, start, minimap (if used)
 	required sprites : 		Hidden Objects Sprites (if used)
 	exposed variables : 	file_exists
 	
@@ -17,16 +17,17 @@
 	Hold shift key to see the hidden object's range.
 ]]
 
---[[      GLOBAL      ]]
-do
-	if SCRIPT_PATH == nil then SCRIPT_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2) end
-	if LIB_PATH == nil then LIB_PATH = SCRIPT_PATH.."libs/" end
-	if SPRITE_PATH == nil then SPRITE_PATH = SCRIPT_PATH:gsub("\\", "/"):gsub("/Scripts", "").."Sprites/" end
-	if player == nil then player = GetMyHero() end
-	if gameOver == nil then dofile(LIB_PATH.."gameOver.lua") end
-	if start == nil then dofile(LIB_PATH.."start.lua") end
 
+do
+	require "common"
+	require "gameOver"
+	require "start"
+	
 	local hiddenObjects = {
+		--[[      CONFIG      ]]
+		showOnMiniMap = true,			-- show objects on minimap
+		useSprites = true,				-- show sprite on minimap
+		--[[      GLOBAL      ]]
 		objectsToAdd = {
 			{ name = "VisionWard", objectType = "wards", spellName = "VisionWard", color = 0x00FF00FF, range = 1450, duration = 180000, sprite = "yellowPoint"},
 			{ name = "SightWard", objectType = "wards", spellName = "SightWard", color = 0x0000FF00, range = 1450, duration = 180000, sprite = "greenPoint"},
@@ -48,38 +49,7 @@ do
 		objects = {},
 	}
 
-	--[[      CONFIG      ]]
-	hiddenObjects.showOnMiniMap = true			-- show objects on minimap
-	hiddenObjects.useSprites = true				-- show sprite on minimap
-
 	--[[      CODE      ]]
-	if hiddenObjects.showOnMiniMap and miniMap == nil then dofile(LIB_PATH.."minimap.lua") end
-	if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
-
-	function file_exists(name)
-	   local f=io.open(name,"r")
-	   if f~=nil then io.close(f) return true else return false end
-	end
-
-	function hiddenObjects.returnSprite(file)
-		if file_exists(SPRITE_PATH..file) == true then
-			return createSprite(file)
-		end
-		PrintChat(file.." not found (sprites installed ?)")
-		return createSprite("empty.dds")
-	end
-
-	function hiddenObjects.timerText(seconds)
-		local minutes = seconds / 60
-		if minutes >= 60 then
-			return string.format("%i:%02i:%02i", minutes / 60, minutes, seconds % 60)
-		elseif minutes >= 1 then
-			return string.format("%i:%02i", minutes, seconds % 60)
-		else
-			return string.format(":%02i", seconds % 60)
-		end
-	end
-
 	function hiddenObjects.objectExist(objectType, pos)
 		for i,obj in pairs(hiddenObjects.objects) do
 			if obj.object == nil and obj.objectType == objectType and GetDistance2D(obj.pos, pos) < 100 then
@@ -92,7 +62,6 @@ do
 	function hiddenObjects.addObject(objectToAdd, pos, fromSpell, object)
 		-- add the object
 		local objId = objectToAdd.objectType..(math.floor(pos.x) + math.floor(pos.z))
-		local tick = GetTickCount()
 		--check if exist
 		local objectExist = hiddenObjects.objectExist(objectToAdd.objectType, {x = pos.x, z = pos.z,})
 		if objectExist ~= nil then
@@ -101,6 +70,7 @@ do
 		end
 		if hiddenObjects.objects[objId] == nil then
 			hiddenObjects.objects[objId] = {
+				local tick = GetTickCount()
 				object = object,
 				color = objectToAdd.color,
 				range = objectToAdd.range,
@@ -182,33 +152,36 @@ do
 		local tick = GetTickCount()
 		local cursor = GetCursorPos()
 		for i,obj in pairs(hiddenObjects.objects) do
-			if obj.object == nil or (obj.object ~= nil and obj.object.team == start.teamEnnemy and obj.object.dead == false) then
-				obj.visible = true
-			else
-				obj.visible = false
-			end
-			-- cursor pos
-			if hiddenObjects.showOnMiniMap and obj.visible and GetDistance2D(obj.minimap, cursor) < 15 then
-				obj.display.color = (obj.fromSpell and 0xFF00FF00 or 0xFFFF0000)
-				obj.display.text = hiddenObjects.timerText((obj.endTick-tick)/1000)
-				obj.display.x = cursor.x + 10
-				obj.display.y = cursor.y
-				obj.display.visible = true
-			else
-				obj.display.visible = false
-			end
 			if tick > obj.endTick or (obj.object ~= nil and obj.object.team == player.team) then
 				hiddenObjects.objects[i] = nil
+			else
+				if obj.object == nil or (obj.object ~= nil and obj.object.team == start.teamEnnemy and obj.object.dead == false) then
+					obj.visible = true
+				else
+					obj.visible = false
+				end
+				-- cursor pos
+				if hiddenObjects.showOnMiniMap and obj.visible and GetDistance2D(obj.minimap, cursor) < 15 then
+					obj.display.color = (obj.fromSpell and 0xFF00FF00 or 0xFFFF0000)
+					obj.display.text = timerText((obj.endTick-tick)/1000)
+					obj.display.x = cursor.x + 10
+					obj.display.y = cursor.y
+					obj.display.visible = true
+				else
+					obj.display.visible = false
+				end
 			end
 		end
 	end
 
 	function OnLoad()
 		start.OnLoad()
+		gameOver.OnLoad()
 		if hiddenObjects.showOnMiniMap then
+			require "minimap"
 			miniMap.OnLoad()
 			if hiddenObjects.useSprites then
-				for i,sprite in pairs(hiddenObjects.sprites) do	hiddenObjects.sprites[i].sprite = hiddenObjects.returnSprite("hiddenObjects/"..sprite.spriteFile..".dds") end
+				for i,sprite in pairs(hiddenObjects.sprites) do	hiddenObjects.sprites[i].sprite = returnSprite("hiddenObjects/"..sprite.spriteFile..".dds") end
 			end
 		end
 		for i = 1, objManager.maxObjects do

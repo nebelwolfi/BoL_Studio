@@ -6,8 +6,8 @@
 	Kilua -> Kilia UI, minimap Hack
 	Manciuszz -> Low Awareness SCRIPT
 
-	required libs : 		gameOver, GetDistance2D, minimap (if minimapHack)
-	exposed variables : 	file_exists, GetDistance2D
+	required libs : 		common, gameOver, minimap (if minimapHack)
+	exposed variables : 	-
 
 	UPDATES :
 	v0.1				initial release
@@ -15,17 +15,13 @@
 ]]
 
 do
-	if SCRIPT_PATH == nil then SCRIPT_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2) end
-	if LIB_PATH == nil then LIB_PATH = SCRIPT_PATH.."Libs/" end
-	if SPRITE_PATH == nil then SPRITE_PATH = SCRIPT_PATH:gsub("\\", "/"):gsub("/Scripts", "").."Sprites/" end
-	if player == nil then player = GetMyHero() end
-	if gameOver == nil then dofile(LIB_PATH.."gameOver.lua") end
-	
+	require "common"
+	require "gameOver"
 	local ennemyControl = {}
 	ennemyControl.alert = {}
 
 	--[[      CONFIG      ]]
-	ennemyControl.minimapHack = true					-- Show last position of enemy champions hidden.
+	ennemyControl.minimapHack = false					-- Show last position of enemy champions hidden. (not more needed, included in BoL Studio)
 
 	ennemyControl.alert.active = true					-- Draw cricle on approching enemy champions hidden for defined time.
 	ennemyControl.alert.range = 2500 					-- Distance that the script will consider worthy of alerting you of incoming enemy champions.
@@ -45,65 +41,7 @@ do
 	ennemyControl.display = {x = 300, y = 200, rotation = 0, move = false}
 	ennemyControl.case_gap = 86 --70
 
-	--[[      EXTERNAL FUNCTION THAT SHOULD BE IN LIBRARY      ]]
-
-	if file_exists == nil then
-		function file_exists(name)
-		   local f=io.open(name,"r")
-		   if f~=nil then io.close(f) return true else return false end
-		end
-	end
-
 	--[[      CODE      ]]
-	if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
-	if ennemyControl.minimapHack and minimap == nil then dofile(LIB_PATH.."minimap.lua") end
-	if file_exists(ennemyControl.configFile) then ennemyControl.display = assert(loadfile(ennemyControl.configFile))() end
-	--[[      EXTERNAL FUNCTION THAT SHOULD BE IN LIBRARY      ]]
-	function ennemyControl.timerText(seconds, len)
-		local minutes = seconds / 60
-		local returnText
-		if minutes >= 60 then
-			returnText = string.format("%i:%02i:%02i", minutes / 60, minutes, seconds % 60)
-		elseif minutes >= 1 then
-			returnText = string.format("%i:%02i", minutes, seconds % 60)
-		else
-			returnText = string.format(":%02i", seconds % 60)
-		end
-		if len ~= nil then
-			while string.len(returnText) < len do
-				returnText = " "..returnText.." "
-			end
-		end
-		return returnText
-	end
-	--[[      EXTERNAL FUNCTION THAT SHOULD BE IN LIBRARY      ]]
-	function ennemyControl.cursorIsUnder(x, y, sizeX, sizeY)
-		local posX, posY = GetCursorPos().x, GetCursorPos().y
-		if sizeY == nil then sizeY = sizeX end
-		if sizeX < 0 then
-			x = x + sizeX
-			sizeX = - sizeX
-		end
-		if sizeY < 0 then
-			y = y + sizeY
-			sizeY = - sizeY
-		end
-		return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
-	end
-	--[[      EXTERNAL FUNCTION THAT SHOULD BE IN LIBRARY      ]]
-	function ennemyControl.returnSprite(file, file2)
-		if file_exists(SPRITE_PATH..file) == true then
-			return createSprite(file)
-		else
-			if file2 ~= nil and file_exists(SPRITE_PATH..file2) == true then
-				return createSprite(file2)
-			else
-				PrintChat(file.." not found (sprites installed ?)")
-				return createSprite("empty.dds")
-			end
-		end
-	end
-
 	function ennemyControl.writeConfigs()
 		local file = io.open(ennemyControl.configFile, "w")
 		if file then
@@ -152,7 +90,7 @@ do
 				ennemyHero.deathStart = tick
 			end
 			ennemyHero.deathTimer = math.ceil(ennemyHero.hero.deathTimer - ((tick - ennemyHero.deathStart) / 1000))
-			ennemyHero.deathTimerText = ennemyControl.timerText(ennemyHero.deathTimer, 4)
+			ennemyHero.deathTimerText = timerText(ennemyHero.deathTimer, 4)
 			ennemyHero.missTimer = nil
 			ennemyHero.missStart = nil
 			ennemyHero.drawAlertCircle = false
@@ -171,7 +109,7 @@ do
 				if ennemyControl.alert.active and ennemyHero.missTimer > ennemyControl.alert.missTime then
 					ennemyHero.alertActive = true
 				end
-				ennemyHero.missTimerText = ennemyControl.timerText(ennemyHero.missTimer / 1000, 4)
+				ennemyHero.missTimerText = timerText(ennemyHero.missTimer / 1000, 4)
 			else
 				ennemyHero.missing = false
 				ennemyHero.missStart = nil
@@ -326,15 +264,15 @@ do
 		-- walkaround OnWndMsg bug
 		ennemyControl.shiftKeyPressed = IsKeyDown(16)
 		if ennemyControl.shiftKeyPressed and IsKeyDown(1) then
-			if ennemyControl.cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
+			if cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
 				ennemyControl.display.move = true
-			elseif ennemyControl.cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
+			elseif cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
 				ennemyControl.display.rotation = ennemyControl.display.rotation + 1
 				if ennemyControl.display.rotation > 3 then ennemyControl.display.rotation = 0 end
 				ennemyControl.writeConfigs()
 			else
 				for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
-					if ennemyControl.cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
+					if cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
 						ennemyHero.extended = (ennemyHero.extended == false)
 						break
 					end
@@ -363,6 +301,12 @@ do
 	end
 	
 	function OnLoad()
+		gameOver.OnLoad()
+		if ennemyControl.minimapHack and minimap == nil then
+			require "minimap"
+			miniMap.OnLoad()
+		end
+		if file_exists(ennemyControl.configFile) then ennemyControl.display = assert(loadfile(ennemyControl.configFile))() end
 		local ennemyHerosCount = 0
 		for i = 1, heroManager.iCount, 1 do
 			local hero = heroManager:getHero(i) 
@@ -382,9 +326,9 @@ do
 				if hero.isAI then
 					ennemyControl.ennemyHeros[ennemyHerosCount].spellLearned = {false, false, false, false}
 				end
-				ennemyControl.herosSprite[hero.charName] = ennemyControl.returnSprite("Characters/"..hero.charName.."_Square_40.dds", "empty_Square_40.dds")
+				ennemyControl.herosSprite[hero.charName] = returnSprite("Characters/"..hero.charName.."_Square_40.dds", "empty_Square_40.dds")
 				if ennemyControl.minimapHack then
-					ennemyControl.minimapSprite[hero.charName] = ennemyControl.returnSprite("Characters/"..hero.charName.."_Square_16.dds", "empty_Square_16.dds")
+					ennemyControl.minimapSprite[hero.charName] = returnSprite("Characters/"..hero.charName.."_Square_16.dds", "empty_Square_16.dds")
 				end
 			
 				-- SPELL SUMMONERS SPRITES
@@ -393,16 +337,16 @@ do
 					local summonerSpellName = hero:GetSpellData(ennemyControl.summoners[j]).name
 					ennemyControl.ennemyHeros[ennemyHerosCount].summonerSpellName[j] = summonerSpellName
 					if ennemyControl.summonerSprite[summonerSpellName] == nil then
-						ennemyControl.summonerSprite[summonerSpellName] = ennemyControl.returnSprite("Spells/"..summonerSpellName.."_20.dds", "empty_Square_20.dds")
+						ennemyControl.summonerSprite[summonerSpellName] = returnSprite("Spells/"..summonerSpellName.."_20.dds", "empty_Square_20.dds")
 					end
 				end
 				ennemyControl.refreshDrawPositions(ennemyHerosCount)
 				ennemyControl.updateEnnemyData(ennemyHerosCount)
 			end
 		end
-		ennemyControl.teamFrame = ennemyControl.returnSprite("ennemyControl/TeamFrame_80.dds")
-		ennemyControl.teamFrameR = ennemyControl.returnSprite("ennemyControl/TeamFrame_80_R.dds")
-		ennemyControl.champInfos = ennemyControl.returnSprite("ennemyControl/Champ_Infos_50.dds")
-		ennemyControl.spriteultiready = ennemyControl.returnSprite("ennemyControl/UltiReady_12.dds")
+		ennemyControl.teamFrame = returnSprite("ennemyControl/TeamFrame_80.dds")
+		ennemyControl.teamFrameR = returnSprite("ennemyControl/TeamFrame_80_R.dds")
+		ennemyControl.champInfos = returnSprite("ennemyControl/Champ_Infos_50.dds")
+		ennemyControl.spriteultiready = returnSprite("ennemyControl/UltiReady_12.dds")
 	end
 end

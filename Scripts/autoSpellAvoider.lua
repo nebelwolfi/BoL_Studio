@@ -2,16 +2,13 @@
 	Script: autoSpellAvoider v0.1
 	Author: SurfaceS Modified - Barasia script based
 	
-	required libs : 		spellList,  GetDistance2D
+	required libs : 		spellList,  common
 	required sprites : 		-
 	exposed variables : 	-
 	
 	v0.1		initial release
 	v0.2		BoL Studio Version
 ]]
-
-if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2).."libs\\" end
-if player == nil then player = GetMyHero() end
 
 do
 	local spellAvoider = {
@@ -30,7 +27,8 @@ do
 	
 	--[[         Code          ]]
 	function OnLoad()
-		if spellList == nil then dofile(LIB_PATH.."spellList.lua") end
+		require "common"
+		require "spellList"
 		for i = 1, heroManager.iCount, 1 do 
 			local hero = heroManager:getHero(i)
 			if hero ~= nil and hero.team ~= player.team then
@@ -53,17 +51,6 @@ do
 			spellAvoider = nil
 		else
 			-- load the script
-			if GetDistance2D == nil then dofile(LIB_PATH.."GetDistance2D.lua") end
-			-- ===========================
-			-- Round a number  (Should be in a lib)
-			-- ===========================
-			if round == nil then
-				function round(num, idp)
-				  local mult = 10^(idp or 0)
-				  return math.floor(num * mult + 0.5) / mult
-				end
-			end
-
 			function spellAvoider.vectorLenght(pos1, pos2)
 				return (math.floor(math.sqrt((pos2.x-pos1.x)^2 + (pos2.z-pos1.z)^2)))
 			end

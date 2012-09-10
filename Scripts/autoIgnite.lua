@@ -21,7 +21,7 @@ do
 		baseDamage = 50,
 		damagePerLevel = 20,
 		castDelay = 0,
-		haveDisplay = false,
+		haveDisplay = true,
 		activeKey = 32,			-- Press key to use autoIgnite mode (space by default)
 		toggleKey = 115,		-- Press key to toggle autoIgnite mode (F4 by default)
 		forceIgniteKey = 84,	-- Press key to force ignite (tTt by default)

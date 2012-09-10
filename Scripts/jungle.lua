@@ -2,9 +2,9 @@
         Script: Jungle Display v0.1d
 		Author: SurfaceS
 		
-		required libs : 		map, start, gameOver, minimap (if jungle.useMiniMapVersion = true)
+		required libs : 		common, map, start, gameOver, minimap (if jungle.useMiniMapVersion = true)
 		required sprites : 		Jungle Sprites (if jungle.useSprites = true)
-		exposed variables : 	jungle, file_exists
+		exposed variables : 	-
 		
 		UPDATES :
 		v0.1					initial release
@@ -36,12 +36,10 @@
 
 do
 	--[[      GLOBAL      ]]
-	if SCRIPT_PATH == nil then SCRIPT_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2) end
-	if LIB_PATH == nil then LIB_PATH = SCRIPT_PATH.."Libs/" end
-	if SPRITE_PATH == nil then SPRITE_PATH = SCRIPT_PATH:gsub("\\", "/"):gsub("/Scripts", "").."Sprites/" end
-	if map == nil then dofile(LIB_PATH.."map.lua") end
-	if start == nil then dofile(LIB_PATH.."start.lua") end
-	if gameOver == nil then dofile(LIB_PATH.."gameOver.lua") end
+	require "common"
+	require "map"
+	require "start"
+	require "gameOver"
 
 	local jungle = {}
 
@@ -282,7 +280,7 @@ do
 	jungle.shiftKeyPressed = false
 
 	if jungle.useMiniMapVersion == true then
-		if minimap == nil then dofile(LIB_PATH.."minimap.lua") end
+		if minimap == nil then require "minimap" end
 	else
 		jungle.configFile = LIB_PATH.."jungle.cfg"
 		jungle.display = {}
