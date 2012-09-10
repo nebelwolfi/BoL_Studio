@@ -16,8 +16,6 @@
 	Load the libray from your script
 ]]
 
--- don't load multiple time
-if miniMap ~= nil then return end
 require "common"
 require "map"
 
@@ -26,16 +24,15 @@ miniMap = {
 	step = {x=0,y=0},
 	offsets = {x1=300,y1=200,x2=300,y2=225},
 	configFile = LIB_PATH.."minimap.cfg",
-	configScript = LIB_PATH.."minimap_wizard.lua",
-	state = 0,
+	state = false,
 }
 
 function miniMap.ToMinimapX(x)
-	if miniMap.state == 1 then return miniMap.offsets.x2 - miniMap.shift.x + miniMap.step.x * x else return -100 end
+	if miniMap.state then return miniMap.offsets.x2 - miniMap.shift.x + miniMap.step.x * x else miniMap.OnLoad() return -100 end
 end
 
 function miniMap.ToMinimapY(y)
-	if miniMap.state == 1 then return miniMap.offsets.y2 - miniMap.shift.y + miniMap.step.y * y else return -100 end
+	if miniMap.state then return miniMap.offsets.y2 - miniMap.shift.y + miniMap.step.y * y else miniMap.OnLoad() return -100 end
 end
 
 function miniMap.ToMinimapPoint(x,y)
@@ -43,27 +40,17 @@ function miniMap.ToMinimapPoint(x,y)
 end
 
 function miniMap.OnLoad()
-	if miniMap.state == 1 then return 1 end
-	map.OnLoad()
-    if file_exists(miniMap.configFile) then
-        dofile(miniMap.configFile)
-        miniMap.step.x = ( miniMap.offsets.x1 - miniMap.offsets.x2 ) / map.x
-        miniMap.step.y = ( miniMap.offsets.y1 - miniMap.offsets.y2 ) / map.y
-		miniMap.shift.x = miniMap.step.x * map.min.x
-		miniMap.shift.y = miniMap.step.y * map.min.y
-        miniMap.state = 1
-    else
-        PrintChat(" >> miniMap Lib: Config not found. Starting wizard to make a new one")
-        if file_exists(miniMap.configScript) then
-        	if miniMap.state ~= 2 then
-				miniMap.state = 2
-				dofile(miniMap.configScript)
-			end
-        else
-            miniMap.state = 3
-            PrintChat(" >> miniMap Lib: [ERROR] Wizard not found. You have to download it and put to libs folder!")
-        end
-    end
+	if not miniMap.state then
+		map.OnLoad()
+		if file_exists(miniMap.configFile) then
+			dofile(miniMap.configFile)
+			miniMap.step.x = ( miniMap.offsets.x1 - miniMap.offsets.x2 ) / map.x
+			miniMap.step.y = ( miniMap.offsets.y1 - miniMap.offsets.y2 ) / map.y
+			miniMap.shift.x = miniMap.step.x * map.min.x
+			miniMap.shift.y = miniMap.step.y * map.min.y
+			miniMap.state = true
+		end
+	end
 	return miniMap.state
 end
 
