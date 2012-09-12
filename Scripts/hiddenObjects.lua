@@ -69,8 +69,8 @@ do
 			hiddenObjects.objects[objectExist] = nil
 		end
 		if hiddenObjects.objects[objId] == nil then
+			local tick = GetTickCount()
 			hiddenObjects.objects[objId] = {
-				local tick = GetTickCount()
 				object = object,
 				color = objectToAdd.color,
 				range = objectToAdd.range,
