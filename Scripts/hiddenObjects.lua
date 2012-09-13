@@ -85,7 +85,7 @@ do
 		elseif hiddenObjects.objects[objId].object == nil and object ~= nil then
 			hiddenObjects.objects[objId].object = object
 		end
-		hiddenObjects.pos = {x = pos.x, y = pos.y, z = pos.z, }
+		hiddenObjects.objects[objId].pos = {x = pos.x, y = pos.y, z = pos.z, }
 		if hiddenObjects.showOnMiniMap == true then
 			hiddenObjects.objects[objId].minimap = miniMap.ToMinimapPoint(pos.x,pos.z)
 		end
