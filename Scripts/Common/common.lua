@@ -53,7 +53,7 @@ end
 
 --return texted version of a timer
 function timerText(seconds, len)
-	if seconds > 100000 then return " ? " end
+	if not tonumber(seconds) or seconds > 100000 or seconds < 0 then return " ? " end
 	local minutes = seconds / 60
 	local returnText
 	if minutes >= 60 then
