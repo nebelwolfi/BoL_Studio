@@ -107,7 +107,7 @@ do
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if spell.name == objectToAdd.spellName then
 					-- add the object
-					hiddenObjects.addObject(objectToAdd, spell["end"], true)
+					hiddenObjects.addObject(objectToAdd, spell.endPos, true)
 				end
 			end
 		end
@@ -150,7 +150,6 @@ do
 	function OnTick()
 		if gameOver.gameIsOver() then return end
 		local tick = GetTickCount()
-		local cursor = GetCursorPos()
 		for i,obj in pairs(hiddenObjects.objects) do
 			if tick > obj.endTick or (obj.object ~= nil and obj.object.team == player.team) then
 				hiddenObjects.objects[i] = nil
@@ -161,11 +160,13 @@ do
 					obj.visible = false
 				end
 				-- cursor pos
-				if hiddenObjects.showOnMiniMap and obj.visible and GetDistance2D(obj.minimap, cursor) < 15 then
+				--if obj.visible and ((hiddenObjects.showOnMiniMap and GetDistance2D(obj.minimap, cursor) < 15) or (GetDistance2D(obj.pos, mousePos) < 150))) then
+				if obj.visible and GetDistance2D(obj.pos, mousePos) < 150 then
+					local cursor = GetCursorPos()
 					obj.display.color = (obj.fromSpell and 0xFF00FF00 or 0xFFFF0000)
 					obj.display.text = timerText((obj.endTick-tick)/1000)
-					obj.display.x = cursor.x + 10
-					obj.display.y = cursor.y
+					obj.display.x = cursor.x - 50
+					obj.display.y = cursor.y - 50
 					obj.display.visible = true
 				else
 					obj.display.visible = false

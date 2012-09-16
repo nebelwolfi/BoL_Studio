@@ -196,22 +196,22 @@ do
 					spellAvoider.spellArray[spell.name].shot = true
 					spellAvoider.spellArray[spell.name].lastshot = GetTickCount()
 					if spellAvoider.spellArray[spell.name].spellType == 1 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.start, spell["end"]} or spellAvoider.calculateLinepass(spell.start, spell["end"], spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range))
-						spellAvoider.dodgeLinePass(spell.start, spell["end"], spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
+						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.startPos, spell.endPos} or spellAvoider.calculateLinepass(spell.startPos, spell.endPos, spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range))
+						spellAvoider.dodgeLinePass(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
 					elseif spellAvoider.spellArray[spell.name].spellType == 2 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepoint(spell.start, spell["end"], spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range)
-						spellAvoider.dodgeLinePoint(spell.start, spell["end"], spellAvoider.spellArray[spell.name].size)
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepoint(spell.startPos, spell.endPos, spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range)
+						spellAvoider.dodgeLinePoint(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size)
 					elseif spellAvoider.spellArray[spell.name].spellType == 3 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe(spell.start, spell["end"], spellAvoider.spellArray[spell.name].range)
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
 						if spell.name ~= "SummonerClairvoyance" then
-							spellAvoider.dodgeAOE(spell.start, spell["end"], spellAvoider.spellArray[spell.name].size)
+							spellAvoider.dodgeAOE(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size)
 						end
 					elseif spellAvoider.spellArray[spell.name].spellType == 4 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.start, spell["end"]} or spellAvoider.calculateLinepass(spell.start, spell["end"], 1000, spellAvoider.spellArray[spell.name].range))
-						spellAvoider.dodgeLinePass(spell.start, spell["end"], spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
+						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.startPos, spell.endPos} or spellAvoider.calculateLinepass(spell.startPos, spell.endPos, 1000, spellAvoider.spellArray[spell.name].range))
+						spellAvoider.dodgeLinePass(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
 					elseif spellAvoider.spellArray[spell.name].spellType == 5 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe2(spell.start, spell["end"], spellAvoider.spellArray[spell.name].range)
-						spellAvoider.dodgeAOE(spell.start, spell["end"], spellAvoider.spellArray[spell.name].size)
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe2(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
+						spellAvoider.dodgeAOE(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size)
 					end
 				end
 			end
