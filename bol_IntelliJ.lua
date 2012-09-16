@@ -76,6 +76,8 @@ function spell.cd() end
 function spell.currentCd() end
 function spell.range() end
 function spell.channelDuration() end
+function spell.startPos() end
+function spell.endPos() end
 
 -- Pos
 local pos = {}
@@ -160,9 +162,11 @@ function LoLPacket.size() end                           -- Return the size of th
 function LoLPacket.Decode1() end      -- Returns 1 byte and increases the read pos by 1
 function LoLPacket.Decode2() end       -- Returns a word and increases the read pos by 2
 function LoLPacket.Decode4() end       -- Return a long and increases the read pos by 4
+function LoLPacket.DecodeF() end       -- Return a float and increases the read pos by 4
 function LoLPacket.Encode1(eByte) end        -- Encode a byte
 function LoLPacket.Encode2(eWord) end        -- Encode a word
 function LoLPacket.Encode4(eLong) end        -- Encode a long
+function LoLPacket.EncodeF(eFloat) end        -- Encode a float
 function LoLPacket.EncodeStr(eStr) end       -- Encode a string
 function LoLPacket.getRemaining() end
 function LoLPacket.skip() end
