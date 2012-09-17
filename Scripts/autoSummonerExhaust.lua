@@ -17,7 +17,7 @@ do
 		active = false,
 		activeTick = 0,
 		range = 550,
-		haveDisplay = true,		-- don't display chat
+		haveDisplay = false,		-- don't display chat
 		activeKey = 84,			-- Press key to use autoSummonerExhaust mode (tTt by default)
 	}
 --[[ 		Code		]]
@@ -34,13 +34,15 @@ do
 				if autoSummonerExhaust.slot ~= nil and autoSummonerExhaust.castDelay < GetTickCount() and player:CanUseSpell(autoSummonerExhaust.slot) == READY then return true end
 				return false
 			end
+			function OnWndMsg(msg,wParam)
+				if msg == KEY_DOWN and wParam == autoSummonerExhaust.activeKey and autoSummonerExhaust.ready() then
+					if autoSummonerExhaust.active == false and autoSummonerExhaust.haveDisplay == false then PrintChat(" >> Auto exhaust forced") end
+					autoSummonerExhaust.active = true
+					autoSummonerExhaust.activeTick = GetTickCount() + 1000
+				end
+			end
 			function OnTick()
 				local tick = GetTickCount()
-				if IsKeyPressed(autoSummonerExhaust.activeKey) then
-					if active == false and autoSummonerExhaust.haveDisplay == false then PrintChat(" >> Auto exhaust forced") end
-					autoSummonerExhaust.active = true
-					autoSummonerExhaust.activeTick = tick + 1000
-				end
 				if autoSummonerExhaust.active then
 					if autoSummonerExhaust.ready() then
 						local maxDPShero = nil
@@ -57,7 +59,7 @@ do
 						end
 						if maxDPShero ~= nil then
 							autoSummonerExhaust.active = false
-							exhaust.castDelay = GetTickCount() + 500
+							autoSummonerExhaust.castDelay = GetTickCount() + 500
 							CastSpell(autoSummonerExhaust.slot, maxDPShero)
 						end
 					end

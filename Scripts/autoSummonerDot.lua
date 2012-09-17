@@ -17,7 +17,7 @@ do
 		baseDamage = 50,
 		damagePerLevel = 20,
 		castDelay = 0,
-		haveDisplay = true,
+		haveDisplay = false,
 		activeKey = 32,			-- Press key to use autoSummonerDot mode (space by default)
 		toggleKey = 114,		-- Press key to toggle autoSummonerDot mode (F3/F4 by default -> slot)
 		forceIgniteKey = 84,	-- Press key to force ignite (tTt by default)
@@ -78,19 +78,21 @@ do
 				end
 				return nil
 			end
+			function OnWndMsg(msg,wParam)
+				if msg == KEY_DOWN then
+					if wParam == autoSummonerDot.forceIgniteKey and autoSummonerDot.ready() then
+						if autoSummonerDot.forced == false and autoSummonerDot.haveDisplay == false then PrintChat(" >> Auto ignite forced") end
+						autoSummonerDot.forced = true
+						autoSummonerDot.forcedTick = GetTickCount() + 1000
+					elseif wParam == autoSummonerDot.toggleKey then
+						autoSummonerDot.toggled = not autoSummonerDot.toggled
+						autoSummonerDot.active = autoSummonerDot.toggled
+						if autoSummonerDot.haveDisplay == false then PrintChat(" >> Auto ignite : "..(autoSummonerDot.active and "ON" or "OFF")) end
+					end
+				end
+			end
 			function OnTick()
 				local tick = GetTickCount()
-				-- walkaround OnWndMsg error
-				if IsKeyPressed(autoSummonerDot.toggleKey) then
-					autoSummonerDot.toggled = not autoSummonerDot.toggled
-					autoSummonerDot.active = autoSummonerDot.toggled
-					if autoSummonerDot.haveDisplay == false then PrintChat(" >> Auto ignite : "..(autoSummonerDot.active and "ON" or "OFF")) end
-				end
-				if IsKeyPressed(autoSummonerDot.forceIgniteKey) then
-					if autoSummonerDot.forced == false and autoSummonerDot.haveDisplay == false then PrintChat(" >> Auto ignite forced") end
-					autoSummonerDot.forced = true
-					autoSummonerDot.forcedTick = tick + 1000
-				end
 				if autoSummonerDot.toggled == false then autoSummonerDot.active = IsKeyDown(autoSummonerDot.activeKey) end
 				if autoSummonerDot.forced then
 					if autoSummonerDot.forcedTick > tick then
