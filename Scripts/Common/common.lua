@@ -53,15 +53,16 @@ end
 
 --return texted version of a timer
 function timerText(seconds, len)
-	if not tonumber(seconds) or seconds > 100000 or seconds < 0 then return " ? " end
-	local minutes = seconds / 60
+	local secondsNumber = tonumber(seconds)
+	if secondsNumber == nil or secondsNumber > 100000 or secondsNumber < 0 then return " ? " end
+	local minutes = secondsNumber / 60
 	local returnText
 	if minutes >= 60 then
-		returnText = string.format("%i:%02i:%02i", minutes / 60, minutes, seconds % 60)
+		returnText = string.format("%i:%02i:%02i", minutes / 60, minutes, secondsNumber % 60)
 	elseif minutes >= 1 then
-		returnText = string.format("%i:%02i", minutes, seconds % 60)
+		returnText = string.format("%i:%02i", minutes, secondsNumber % 60)
 	else
-		returnText = string.format(":%02i", seconds % 60)
+		returnText = string.format(":%02i", secondsNumber % 60)
 	end
 	if len ~= nil then
 		while string.len(returnText) < len do
