@@ -36,14 +36,15 @@ do
 				if autoSummonerHeal.slot ~= nil and autoSummonerHeal.castDelay < GetTickCount() and player:CanUseSpell(autoSummonerHeal.slot) == READY then return true end
 				return false
 			end
-			function OnTick()
-				local tick = GetTickCount()
-				-- walkaround OnWndMsg error
-				if IsKeyPressed(autoSummonerHeal.toggleKey) then
+			function OnWndMsg(msg,wParam)
+				if msg == KEY_DOWN and wParam == autoSummonerHeal.toggleKey then
 					autoSummonerHeal.toggled = not autoSummonerHeal.toggled
 					autoSummonerHeal.active = autoSummonerHeal.toggled
 					if autoSummonerHeal.haveDisplay == false then PrintChat(" >> Auto heal : "..(autoSummonerHeal.active and "ON" or "OFF")) end
 				end
+			end
+			function OnTick()
+				local tick = GetTickCount()
 				if autoSummonerHeal.toggled == false then autoSummonerHeal.active = IsKeyDown(autoSummonerHeal.activeKey) end
 				if autoSummonerHeal.active and autoSummonerHeal.ready() and player.maxHealth / player.health < autoSummonerHeal.minValue then
 					CastSpell(autoSummonerHeal.slot)

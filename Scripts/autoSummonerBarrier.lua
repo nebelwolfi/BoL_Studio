@@ -36,14 +36,15 @@ do
 				if autoSummonerBarrier.slot ~= nil and autoSummonerBarrier.castDelay < GetTickCount() and player:CanUseSpell(autoSummonerBarrier.slot) == READY then return true end
 				return false
 			end
-			function OnTick()
-				local tick = GetTickCount()
-				-- walkaround OnWndMsg error
-				if IsKeyPressed(autoSummonerBarrier.toggleKey) then
+			function OnWndMsg(msg,wParam)
+				if msg == KEY_DOWN and wParam == autoSummonerBarrier.toggleKey then
 					autoSummonerBarrier.toggled = not autoSummonerBarrier.toggled
 					autoSummonerBarrier.active = autoSummonerBarrier.toggled
 					if autoSummonerBarrier.haveDisplay == false then PrintChat(" >> Auto Barrier : "..(autoSummonerBarrier.active and "ON" or "OFF")) end
 				end
+			end
+			function OnTick()
+				local tick = GetTickCount()
 				if autoSummonerBarrier.toggled == false then autoSummonerBarrier.active = IsKeyDown(autoSummonerBarrier.activeKey) end
 				if autoSummonerBarrier.active and autoSummonerBarrier.ready() and player.maxHealth / player.health < autoSummonerBarrier.minValue then
 					CastSpell(autoSummonerBarrier.slot)
