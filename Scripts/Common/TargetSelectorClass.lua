@@ -129,7 +129,7 @@ end
 function TargetSelector:targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget) and GetDistance(currentTarget) < 2000 then
+		if ValidTarget(currentTarget) and GetDistance(currentTarget) < 2000 and self.conditional() then
 			self.target = currentTarget
 			return true
 		end
