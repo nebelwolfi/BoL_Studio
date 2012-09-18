@@ -6,8 +6,9 @@ Methods:
 ts = TargetSelector(mode, range, targetSelectedMode (opt), magicDmgBase (opt), physicalDmgBase (opt), trueDmg (opt))
 
 Functions :
-TargetSelector.printPriority()
-TargetSelector.setFocusOnSelected()
+TargetSelector:printPriority() -> global print Priority
+TargetSelector:setFocusOnSelected() -> global set priority to the selected champion (you need to use PRIORITY modes to use it)
+TargetSelector:updateTarget() -> update the instance target
 
 Members:
 ts.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -16,7 +17,7 @@ ts.targetSelectedMode -> true/false
 ts.magicDmgBase -> positive integer
 ts.physicalDmgBase -> positive integer
 ts.trueDmg -> positive integer
-ts.conditional() -> function that return true/false to allow external filter
+ts.conditional(object) -> function that return true/false to allow external filter
 ts.target -> return the target (hero object)
 
 Usage :
@@ -34,10 +35,8 @@ variable.targetSelectedMode -> true/false
 variable.magicDmgBase -> positive integer
 variable.physicalDmgBase -> positive integer
 variable.trueDmg -> positive integer
-variable.conditional() -> function that return true/false to allow external filter
+variable.conditional(object) -> function that return true/false to allow external filter
 
-Values you can change on global :
-TargetSelector.setFocusOnSelected() -> set priority to the selected champion (you need to use PRIORITY modes to use it)
 
 ex :
 function OnLoad()
@@ -54,20 +53,8 @@ end
 
 ]]
 
--- Library related constants
-TARGET_LOW_HP = 1
-TARGET_MOST_AP = 2
-TARGET_PRIORITY = 3
-TARGET_NEAR_MOUSE = 4
-TARGET_LOW_HP_PRIORITY = 5
-TARGET_LESS_CAST = 6
-TARGET_LESS_CAST_PRIORITY = 7
-
-class 'TargetSelector'
-
-player = GetMyHero()
-
 --SHOULD BE ON ANOTHER PLACE (COMMON)
+player = GetMyHero()
 function GetDistance( p1, p2 )
 	if p2 == nil then p2 = player end
     if p1.z == nil or p2.z == nil then return math.sqrt((p1.x-p2.x)^2+(p1.y-p2.y)^2)
@@ -78,17 +65,27 @@ function ValidTarget(object)
 end
 --
 
+-- Class related constants
+TARGET_LOW_HP = 1
+TARGET_MOST_AP = 2
+TARGET_PRIORITY = 3
+TARGET_NEAR_MOUSE = 4
+TARGET_LOW_HP_PRIORITY = 5
+TARGET_LESS_CAST = 6
+TARGET_LESS_CAST_PRIORITY = 7
+
+class 'TargetSelector'
 -- GLOBALS (priority are set for all instances)
 TargetSelector.enemyTargets = {}
 TargetSelector.texted = {"LowHP", "MostAP", "Priority", "NearMouse", "LowHPPriority", "LessCast", "LessCastPriority"}
-function TargetSelector.printPriority()
+function TargetSelector:printPriority()
 	for i, target in ipairs(TargetSelector.enemyTargets) do
         if target.hero ~= nil then
             PrintChat("[TS] Enemy " .. i .. ": " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .." Priority=" .. target.priority)
         end
     end
 end
-function TargetSelector.setFocusOnSelected()
+function TargetSelector:setFocusOnSelected()
 	local hero = GetTarget()
 	if hero ~= nil and hero.type == "obj_AI_Hero" and hero.team ~= player.team then
 		for index,target in ipairs(TargetSelector.enemyTargets) do
@@ -117,7 +114,7 @@ function TargetSelector:__init(mode, range, targetSelected, magicDmgBase, physic
 	self.trueDmg = trueDmg or 0
 	self.target = nil
 	self.targetMode = TargetSelector.texted[mode]
-	function self.conditional() return true end
+	function self.conditional(thisTarget) return true end
 	-- set default to magic 100 if none is set
 	if self.magicDmgBase == 0 and self.physicalDmgBase == 0 and self.trueDmg == 0 then self.magicDmgBase = 100 end
 end
@@ -129,7 +126,7 @@ end
 function TargetSelector:targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget) and GetDistance(currentTarget) < 2000 and self.conditional() then
+		if ValidTarget(currentTarget) and GetDistance(currentTarget) < 2000 and self.conditional(currentTarget) then
 			self.target = currentTarget
 			return true
 		end
@@ -149,7 +146,7 @@ function TargetSelector:updateTarget()
 	local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
     for i, target in ipairs(TargetSelector.enemyTargets) do
         local hero = target.hero
-        if ValidTarget(hero) and GetDistance(hero) <= range and not target.ignore and self.conditional() then
+        if ValidTarget(hero) and GetDistance(hero) <= range and not target.ignore and self.conditional(hero) then
 			if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 			-- Returns lowest effective HP target that is in range
 			-- Or lowest cast to kill target that is in range

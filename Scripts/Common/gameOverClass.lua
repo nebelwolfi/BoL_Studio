@@ -8,7 +8,7 @@
 	USAGE :
 	Add gameOver() to your OnLoad() script or __init class
 
-	gameOver.gameIsOver() will return true/false and update if needed
+	gameOver:gameIsOver() will return true/false and update if needed
 	gameOver.looser will return the TEAM_ that loose if gameIsOver
 	gameOver.winner will return the TEAM_ that win if gameIsOver
 	
@@ -25,7 +25,7 @@ gameOver.needCheck = false
 gameOver.nextUpdate = 0
 gameOver.tickUpdate = 500	-- update each 0.5 sec
 
-function gameOver.gameIsOver()
+function gameOver:gameIsOver()
 	if gameOver.needCheck then
 		local tick = GetTickCount()
 		if gameOver.nextUpdate > tick then return end
@@ -44,15 +44,17 @@ function gameOver.gameIsOver()
 end
 
 function gameOver:__init()
-	map()
-	if (map.index == 1 or map.index == 2 or map.index == 3) and (# gameOver.objects == 0) then
-		gameOver.objectName = "obj_HQ"
-		for i = 1, objManager.maxObjects, 1 do
-			local object = objManager:getObject(i)
-			if object ~= nil and object.type == gameOver.objectName then 
-				table.insert(gameOver.objects, { object = object, team = object.team })
+	if (# gameOver.objects == 0) then
+		map()
+		if (map.index == 1 or map.index == 2 or map.index == 3) then
+			gameOver.objectName = "obj_HQ"
+			for i = 1, objManager.maxObjects, 1 do
+				local object = objManager:getObject(i)
+				if object ~= nil and object.type == gameOver.objectName then 
+					table.insert(gameOver.objects, { object = object, team = object.team })
+				end
 			end
+			gameOver.needCheck = (# gameOver.objects > 0)
 		end
-		gameOver.needCheck = (# gameOver.objects > 0)
 	end
 end
