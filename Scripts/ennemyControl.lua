@@ -330,6 +330,7 @@ do
 				if ennemyControl.minimapHack then
 					ennemyControl.minimapSprite[hero.charName] = returnSprite("Characters/"..hero.charName.."_Square_16.dds", "empty_Square_16.dds")
 				end
+			
 				-- SPELL SUMMONERS SPRITES
 				ennemyControl.ennemyHeros[ennemyHerosCount].summonerSpellName = {}
 				for j = 1, 2 do

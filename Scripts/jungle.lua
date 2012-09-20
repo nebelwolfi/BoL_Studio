@@ -519,7 +519,7 @@ do
 				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and IsKeyDown(1) then
 					jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
 					jungle.writeConfigs()
-				elseif jungle.shiftKeyPressed and IsKeyPressed(1) then
+				elseif jungle.shiftKeyPressed and IsKeyDown(1) then
 					for i,monster in pairs(jungle.monsters[map.shortName]) do
 						if monster.isSeen == true then
 							if monster.iconUnder then
