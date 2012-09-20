@@ -1,3 +1,38 @@
+--[[
+        Class: Vector
+
+		API :
+		---- functions ----
+		VectorType(v)							-- return if as vector
+		VectorIntersection(a1,b1,a2,b2)			-- return the Intersection of 2 lines
+		VectorDirection(v1,v2,v)
+		Vector(a,b)								-- return a vector from x,y pos or from another vector
+		
+		---- Vector Members ----
+		x
+		z
+		
+		---- Vector Functions ----
+		vector:clone()							-- return a new Vector from vector
+		vector:unpack()							-- x, z
+		vector:len2()
+		vector:len()							-- return vector length
+		vector:dist(v)							-- distance between 2 vectors (v and vector)
+		vector:normalize()						-- normalize vector
+		vector:normalized()						-- return a new Vector normalize from vector
+		vector:rotate(phi)						-- rotate the vector by phi angle
+		vector:rotated(phi)						-- return a new Vector rotate from vector by phi angle
+		vector:polar()							-- return the angle from axe
+		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
+		vector:projectOn(v)						-- return a new Vector from vector projected on v
+		vector:mirrorOn(v)						-- return a new Vector from vector mirrored on v
+		vector:cross(v)							-- return cross
+		vector:center(v)						-- return center between vector and v
+		vector:compare(v)						-- compare vector and v
+		vector:perpendicular()					-- return new Vector rotated 90° rigth
+		vector:perpendicular2()					-- return new Vector rotated 90° left
+]]
+
 -- STAND ALONE FUNCTIONS
 function math.close(a,b,eps)
 	eps = eps or 1e-9
@@ -134,14 +169,14 @@ function Vector:normalized()
 	return self:clone():normalize()
 end
 
-function Vector:rotate(v)
-	assert(type(v) == "number", "Rotate: wrong argument types (expected <number> for phi)")
-	local c, s = math.cos(v), math.sin(v)
+function Vector:rotate(phi)
+	assert(type(phi) == "number", "Rotate: wrong argument types (expected <number> for phi)")
+	local c, s = math.cos(phi), math.sin(phi)
 	self.x, self.z = c * self.x - s * self.z, s * self.x + c * self.z
 end
 
-function Vector:rotated(v)
-	assert(type(v) == "number", "Rotated: wrong argument types (expected <number> for phi)")
+function Vector:rotated(phi)
+	assert(type(phi) == "number", "Rotated: wrong argument types (expected <number> for phi)")
 	return self:clone():rotate(phi)
 end
 
