@@ -509,16 +509,18 @@ do
 				if gameOver.gameIsOver() then return end
 				-- walkaround OnWndMsg bug
 				jungle.shiftKeyPressed = IsKeyDown(16)
-				if jungle.useMiniMapVersion == false and jungle.display.moveUnder and IsKeyDown(1) then
-					jungle.display.move = true
-				elseif jungle.useMiniMapVersion == false and jungle.display.move and IsKeyDown(1) == false then
-					jungle.display.move = false
-					jungle.display.moveUnder = false
-					jungle.display.cursorShift = nil
-					jungle.writeConfigs()
-				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and IsKeyDown(1) then
-					jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
-					jungle.writeConfigs()
+				if jungle.useMiniMapVersion == false then
+					if jungle.display.moveUnder and IsKeyDown(1) then
+						jungle.display.move = true
+					elseif jungle.display.move and IsKeyDown(1) == false then
+						jungle.display.move = false
+						jungle.display.moveUnder = false
+						jungle.display.cursorShift = nil
+						jungle.writeConfigs()
+					elseif jungle.display.rotateUnder and IsKeyDown(1) then
+						jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
+						jungle.writeConfigs()
+					end
 				elseif jungle.shiftKeyPressed and IsKeyPressed(1) then
 					for i,monster in pairs(jungle.monsters[map.shortName]) do
 						if monster.isSeen == true then
