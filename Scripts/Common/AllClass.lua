@@ -834,6 +834,7 @@ end
 class 'TargetSelector'
 function TargetSelector:__init(mode, range, targetSelected, magicDmgBase, physicalDmgBase, trueDmg)
 	-- Init Global
+	assert(type(mode) == "number" and type(range) == "number", "TargetSelector: wrong argument types (<mode>, <number> expected)")
 	_enemyHeros__init()
 	for index,_enemyHero in ipairs(_enemyHeros) do
 		_enemyHero.ignore, _enemyHero.priority = false, 1
@@ -1340,6 +1341,7 @@ end
 class 'minionManager'
 
 function minionManager:__init(mode, range, fromPos, sortMode)
+	assert(type(mode) == "number" and type(range) == "number", "minionManager: wrong argument types (<mode>, <number> expected)")
 	minionManager__OnLoad()
 	self.mode = mode
 	self.range = range
