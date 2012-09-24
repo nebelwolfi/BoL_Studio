@@ -103,6 +103,17 @@ function GetHeroLeveled()
 	return player:GetSpellData(SPELL_1).level + player:GetSpellData(SPELL_2).level + player:GetSpellData(SPELL_3).level + player:GetSpellData(SPELL_4).level
 end
 
+
+-- return if target have particule
+function GetTargetParticule(target, particule, range)
+	local range = range or 50
+	for i = 1, objManager.maxObjects do
+		local object = objManager:GetObject(i)
+		if object ~= nil and object.name == particule and GetDistance(target,object) < range then return true end
+	end
+	return false
+end
+
 --[[
         Class: Vector
 
@@ -858,7 +869,7 @@ end
 function TargetSelector:targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget) and GetDistance(currentTarget) < 2000 and self.conditional(currentTarget) then
+		if ValidTarget(currentTarget, 2000) and self.conditional(currentTarget) then
 			self.target = currentTarget
 			return true
 		end
@@ -878,7 +889,7 @@ function TargetSelector:updateTarget()
 	local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
     for i, _enemyHero in ipairs(_enemyHeros) do
         local hero = _enemyHero.hero
-        if ValidTarget(hero) and GetDistance(hero) <= range and not _enemyHero.ignore and self.conditional(hero) then
+        if ValidTarget(hero, range) and not _enemyHero.ignore and self.conditional(hero) then
 			if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 			-- Returns lowest effective HP target that is in range
 			-- Or lowest cast to kill target that is in range
@@ -1010,7 +1021,7 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
 end
 
 function TargetPrediction:GetPrediction(target)
-    assert(target ~= nil, "GetPrediction: wrong argument types (<target> expected)")
+    assert(target == nil, "GetPrediction: wrong argument types (<target> expected)")
 	local index = _enemyHeros__index(target, "GetPrediction: wrong argument types (<charName> or <heroIndex> or <hero> expected)")
 	if not index then return end
 	local selected = _enemyHeros[index].hero
