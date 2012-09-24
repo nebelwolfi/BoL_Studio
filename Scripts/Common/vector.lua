@@ -6,7 +6,8 @@
 		VectorType(v)							-- return if as vector
 		VectorIntersection(a1,b1,a2,b2)			-- return the Intersection of 2 lines
 		VectorDirection(v1,v2,v)
-		Vector(a,b)								-- return a vector from x,y pos or from another vector
+		
+		Vector(a,b)								-- return a vector instance from x,y pos or from another vector
 		
 		---- Vector Members ----
 		x
@@ -33,12 +34,13 @@
 		vector:perpendicular2()					-- return new Vector rotated 90° left
 ]]
 
--- STAND ALONE FUNCTIONS
+-- need to be moved some day in common lib
 function math.close(a,b,eps)
 	eps = eps or 1e-9
 	return math.abs(a - b) <= eps
 end
 
+-- Class related functions
 function VectorType(v)
 	return (v ~= nil and type(v.x) == "number" and type(v.z) == "number")
 end
