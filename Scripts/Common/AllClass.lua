@@ -1014,8 +1014,8 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
 	assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
 	_enemyHeros__init()
 	self.range = range
-	self.proj_speed = proj_speed and proj_speed * 1000
-	self.delay = delay and delay / 1000 or 0
+	self.proj_speed = proj_speed
+	self.delay = delay or 0
 	self.width = widthCollision
 	self.smoothness = smoothness
 end
@@ -1032,13 +1032,12 @@ function TargetPrediction:GetPrediction(target)
 			self.calculateTime = 0
 		end
 		local osTime = os.clock()
-		local proj_speed = proj_speed and proj_speed * 1000
-        local delay = delay and delay / 1000 or 0
+        local delay = self.delay / 1000
+		local proj_speed = self.proj_speed and self.proj_speed * 1000
         if player:GetDistance(selected) < self.range + 300 then
             if osTime - (_enemyHeros[index].prediction.calculateTime or 0) > 0 then
                 _enemyHeros[index].prediction.calculateTime = osTime
-                local latency = GetLatency() / 1000
-				latency = latency or 0
+                local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
                 if selected.visible then
 					PositionPrediction = (_enemyHeros[index].prediction.movement * (delay + latency)) + selected
@@ -1053,18 +1052,18 @@ function TargetPrediction:GetPrediction(target)
                     local t = (-(math.sqrt(-f * (l - 2 * c.z * a.z + j) + 2 * b.x * b.z * d * e - g * (k - 2 * c.x * a.x + i) + (k - 2 * c.x * a.x + l - 2 * c.z * a.z + i + j) * h) - b.x * d - b.z * e)) / (f + g - h)
 					PositionPrediction = (_enemyHeros[index].prediction.movement * t) + PositionPrediction
                 end
-                if smoothness and smoothness < 100 and self.nextPosition then
-                    self.nextPosition = (PositionPrediction * ((100 - smoothness) / 100)) + (self.nextPosition * (smoothness / 100))
+                if self.smoothness and self.smoothness < 100 and self.nextPosition then
+                    self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
                 else
                     self.nextPosition = PositionPrediction:clone()
                 end
                 if PositionPrediction:dist(player) < self.range then
 					--update next Health
-                    self.nextHealth = selected.health + (_enemyHeros[index].prediction.healthDifference or selected.health) * (t + delay + latency)
+                    self.nextHealth = selected.health + (_enemyHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
 					self.minions = false
-					if width then
-						self.minions = GetMinionCollision(PositionPrediction, width)
+					if self.width then
+						self.minions = GetMinionCollision(PositionPrediction, self.width)
                     end
                 else return
                 end
