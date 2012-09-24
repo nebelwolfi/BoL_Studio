@@ -1021,7 +1021,7 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
 end
 
 function TargetPrediction:GetPrediction(target)
-    assert(target == nil, "GetPrediction: wrong argument types (<target> expected)")
+    assert(target ~= nil, "GetPrediction: wrong argument types (<target> expected)")
 	local index = _enemyHeros__index(target, "GetPrediction: wrong argument types (<charName> or <heroIndex> or <hero> expected)")
 	if not index then return end
 	local selected = _enemyHeros[index].hero
