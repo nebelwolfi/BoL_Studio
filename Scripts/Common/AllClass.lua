@@ -644,15 +644,15 @@ Methods:
 ts = TargetSelector(mode, range, targetSelectedMode (opt), magicDmgBase (opt), physicalDmgBase (opt), trueDmg (opt))
 
 Goblal Functions :
-TargetSelectorPriority()			-> print Priority (global)
+TS_Print()			-> print Priority (global)
 
-TargetSelectorSetFocus() 			-> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
-TargetSelectorSetFocus(id)			-> set priority to the championID (you need to use PRIORITY modes to use it) (global)
-TargetSelectorSetFocus(charName)	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
-TargetSelectorSetFocus(hero) 		-> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus() 			-> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(id)			-> set priority to the championID (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(charName)	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(hero) 		-> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
 
-TargetSelectorSetHeroPriority(priority, target)	-> set the priority to target
-TargetSelectorSetPriority(target1, target2, target3, target4, target5) -> set priority in order to targets
+TS_SetHeroPriority(priority, target)	-> set the priority to target
+TS_SetPriority(target1, target2, target3, target4, target5) -> set priority in order to targets
 
 TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you want the chat command
 
@@ -777,7 +777,7 @@ function _enemyHeros__index(target, assertText)
 	return selected
 end
 
-function TargetSelectorPriority()
+function TS_Print()
 	for i, target in ipairs(_enemyHeros) do
         if target.hero ~= nil then
             PrintChat("[TS] Enemy " .. target.index .. ": " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .." Priority=" .. target.priority)
@@ -785,8 +785,8 @@ function TargetSelectorPriority()
     end
 end
 
-function TargetSelectorSetFocus(target)
-	local selected = _enemyHeros__hero(target, "TargetSelectorSetFocus: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
+function TS_SetFocus(target)
+	local selected = _enemyHeros__hero(target, "TS_SetFocus: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
 	if selected ~= nil and selected.type == "obj_AI_Hero" and selected.team ~= player.team then
 		for index,enemyHero in ipairs(_enemyHeros) do
 			if enemyHero.hero.networkID == selected.networkID then
@@ -799,9 +799,9 @@ function TargetSelectorSetFocus(target)
 	end
 end
 
-function TargetSelectorSetHeroPriority(priority, target)
-	assert(type(priority) == "number" and priority >= 0 and priority <= #_enemyHeros, "TargetSelectorSetHeroPriority: wrong argument types (<number> 1 to "..#_enemyHeros.." expected)")
-	local selected = _enemyHeros__hero(target, "TargetSelectorSetHeroPriority: wrong argument types (<number>, <charName> or <heroIndex> or <hero> or nil expected)")
+function TS_SetHeroPriority(priority, target)
+	assert(type(priority) == "number" and priority >= 0 and priority <= #_enemyHeros, "TS_SetHeroPriority: wrong argument types (<number> 1 to "..#_enemyHeros.." expected)")
+	local selected = _enemyHeros__hero(target, "TS_SetHeroPriority: wrong argument types (<number>, <charName> or <heroIndex> or <hero> or nil expected)")
 	if selected ~= nil and selected.type == "obj_AI_Hero" and selected.team ~= player.team then
 		local oldPriority
 		for index,enemyHero in ipairs(_enemyHeros) do
@@ -824,17 +824,17 @@ function TargetSelectorSetHeroPriority(priority, target)
 	end
 end
 
-function TargetSelectorSetPriority(target1, target2, target3, target4, target5)
-	assert((target5 ~= nil and #_enemyHeros == 5) or (target4 ~= nil and #_enemyHeros < 5) or (target3 ~= nil and #_enemyHeros == 3) or (target2 ~= nil and #_enemyHeros == 2) or (target1 ~= nil and #_enemyHeros == 1), "TargetSelectorSetPriority: wrong argument types (arg should fit the number of enemy hero)")
-	TargetSelectorSetHeroPriority(1, target1)
-	TargetSelectorSetHeroPriority(2, target2)
-	TargetSelectorSetHeroPriority(3, target3)
-	TargetSelectorSetHeroPriority(4, target4)
-	TargetSelectorSetHeroPriority(5, target5)
+function TS_SetPriority(target1, target2, target3, target4, target5)
+	assert((target5 ~= nil and #_enemyHeros == 5) or (target4 ~= nil and #_enemyHeros < 5) or (target3 ~= nil and #_enemyHeros == 3) or (target2 ~= nil and #_enemyHeros == 2) or (target1 ~= nil and #_enemyHeros == 1), "TS_SetPriority: wrong argument types (arg should fit the number of enemy hero)")
+	TS_SetHeroPriority(1, target1)
+	TS_SetHeroPriority(2, target2)
+	TS_SetHeroPriority(3, target3)
+	TS_SetHeroPriority(4, target4)
+	TS_SetHeroPriority(5, target5)
 end
 
-function TargetSelectorIgnore(target)
-	local selected = _enemyHeros__hero(target, "TargetSelectorSetFocus: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
+function TS_Ignore(target)
+	local selected = _enemyHeros__hero(target, "TS_SetFocus: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
 	if selected ~= nil and selected.type == "obj_AI_Hero" and selected.team ~= player.team then
 		for index,enemyHero in ipairs(_enemyHeros) do
 			if enemyHero.hero.networkID == selected.networkID then
@@ -857,15 +857,15 @@ function TargetSelector__OnSendChat(msg)
 			if tonumber(arg) then arg = tonumber(arg) end
 		end
 		if cmd == ".tsprint" then
-			TargetSelectorPriority()
+			TS_Print()
 		elseif cmd == ".tsfocus" then
-			TargetSelectorSetFocus(args[2])
+			TS_SetFocus(args[2])
 		elseif cmd == ".tspriorityhero" then
-			TargetSelectorSetHeroPriority(args[2], args[3])
+			TS_SetHeroPriority(args[2], args[3])
 		elseif cmd == ".tspriority" then
-			TargetSelectorSetPriority(args[2], args[3], args[4], args[5], args[6])
+			TS_SetPriority(args[2], args[3], args[4], args[5], args[6])
 		elseif cmd == ".tsignore" then
-			TargetSelectorIgnore(args[2])
+			TS_Ignore(args[2])
 		end
     end
 end
