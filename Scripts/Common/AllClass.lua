@@ -1709,7 +1709,6 @@ function autoLevel__OnTick()
 	_autoLevel.nextUpdate = tick + _autoLevel.tickUpdate
 	local realLevel = GetHeroLeveled()
 	if player.level > realLevel and _autoLevel.levelSequence[realLevel + 1] ~= nil then
-		PrintChat("".._autoLevel.levelSequence[realLevel + 1])
 		local splell = _autoLevel.levelSequence[realLevel + 1]
 		if splell == 0 and type(_autoLevel.onChoiceFunction) == "function" then splell = _autoLevel.onChoiceFunction() end
 		if type(splell) == "number" and splell >= 1 and splell <= 4 then LevelSpell(_autoLevel.spellsSlots[splell]) end
