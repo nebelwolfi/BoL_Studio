@@ -870,7 +870,10 @@ function TargetSelector:targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
 		if ValidTarget(currentTarget, 2000) and self.conditional(currentTarget) then
-			self.target = currentTarget
+			if self.target == nil or self.target.networkID ~= currentTarget.networkID then
+				self.target = currentTarget
+				self.index = _enemyHeros__index(currentTarget)
+			end
 			return true
 		end
 	end
@@ -885,11 +888,11 @@ function TargetSelector:updateTarget()
 	end
 	-- Get current selected target (by player) if needed
     if self:targetSelectedByPlayer() then return end
-	local selected, value
+	local selected, index, value
 	local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
     for i, _enemyHero in ipairs(_enemyHeros) do
         local hero = _enemyHero.hero
-        if ValidTarget(hero, range) and not _enemyHero.ignore and self.conditional(hero) then
+        if ValidTarget(hero, range) and not _enemyHero.ignore and self.conditional(hero, i) then
 			if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 			-- Returns lowest effective HP target that is in range
 			-- Or lowest cast to kill target that is in range
@@ -906,32 +909,24 @@ function TargetSelector:updateTarget()
 				else
 					heroValue = hero.health / totalDmg
 				end
-				if not selected or heroValue < value then
-					selected = hero
-					value = heroValue
-				end
+				if not selected or heroValue < value then selected, index, value = hero, i, heroValue end
 			elseif self.mode == TARGET_MOST_AP then
 			-- Returns target that has highest AP that is in range
-				if not selected or hero.ap > selected.ap then selected = hero end
+				if not selected or hero.ap > selected.ap then selected, index = hero, i end
 			elseif self.mode == TARGET_MOST_AD then
 			-- Returns target that has highest AD that is in range
-				if not selected or hero.totalDamage > selected.totalDamage then selected = hero end
+				if not selected or hero.totalDamage > selected.totalDamage then selected, index = hero, i end
 			elseif self.mode == TARGET_PRIORITY then
 			-- Returns target with highest priority # that is in range
-				if not selected or _enemyHero.priority < value then
-					selected = hero
-					value = _enemyHero.priority
-				end
+				if not selected or _enemyHero.priority < value then selected, index, value = hero, i, _enemyHero.priority end
 			elseif self.mode == TARGET_NEAR_MOUSE then
 			-- Returns target that is the closest to the mouse cursor.
 				local distance = GetDistance(mousePos, hero)
-				if not selected or distance < value then
-					selected = hero
-					value = distance
-				end
+				if not selected or distance < value then selected, index, value = hero, i, distance end
 			end
         end
     end
+	self.index = index
     self.target = selected
 end
 
@@ -1029,14 +1024,12 @@ function TargetPrediction:GetPrediction(target)
 		if index ~= self.target then
 			self.nextPosition = nil
 			self.target = index
-			self.calculateTime = 0
 		end
 		local osTime = os.clock()
         local delay = self.delay / 1000
 		local proj_speed = self.proj_speed and self.proj_speed * 1000
         if player:GetDistance(selected) < self.range + 300 then
             if osTime - (_enemyHeros[index].prediction.calculateTime or 0) > 0 then
-                _enemyHeros[index].prediction.calculateTime = osTime
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
                 if selected.visible then
@@ -1057,7 +1050,7 @@ function TargetPrediction:GetPrediction(target)
                 else
                     self.nextPosition = PositionPrediction:clone()
                 end
-                if PositionPrediction:dist(player) < self.range then
+                if GetDistance(PositionPrediction) < self.range then
 					--update next Health
                     self.nextHealth = selected.health + (_enemyHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
@@ -1072,7 +1065,6 @@ function TargetPrediction:GetPrediction(target)
         end
     end
 end
-
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MAP
