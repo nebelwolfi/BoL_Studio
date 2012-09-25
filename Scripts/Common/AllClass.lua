@@ -1709,6 +1709,7 @@ function autoLevel__OnTick()
 	_autoLevel.nextUpdate = tick + _autoLevel.tickUpdate
 	local realLevel = GetHeroLeveled()
 	if player.level > realLevel and _autoLevel.levelSequence[realLevel + 1] ~= nil then
+		PrintChat("".._autoLevel.levelSequence[realLevel + 1])
 		local splell = _autoLevel.levelSequence[realLevel + 1]
 		if splell == 0 and type(_autoLevel.onChoiceFunction) == "function" then splell = _autoLevel.onChoiceFunction() end
 		if type(splell) == "number" and splell >= 1 and splell <= 4 then LevelSpell(_autoLevel.spellsSlots[splell]) end
@@ -1717,10 +1718,10 @@ end
 
 function autoLevelSetSequence(sequence)
 	assert (sequence == nil or type(sequence) == "table", "autoLevelSetSequence : wrong argument types (<table> or nil expected)")
-	local sequence = nil or {}
+	local sequence = sequence or {}
 	for i = 1, 18 do
 		local spell = sequence[i]
-		if type(spell) == "number" and splell >= 0 and splell <= 4 then
+		if type(spell) == "number" and spell >= 0 and spell <= 4 then
 			_autoLevel.levelSequence[i] = spell
 		else
 			_autoLevel.levelSequence[i] = nil
