@@ -1454,3 +1454,220 @@ function CastItem(itemID, var1, var2)
 	end
 	return false
 end
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Class : ChampionLane
+--[[
+Goblal Function :
+ChampionLane__OnLoad() 		-- OnLoad()
+ChampionLane__OnTick()			-- OnTick()
+
+Method :
+CL = ChampionLane()
+
+Functions :
+CL:GetMyLane()			-- return lane name
+CL:GetHeroCount(lane)		-- return number of enemy hero in lane
+CL:GetHeroCount(lane, team)	-- return number of team hero in lane ("ally", "enemy")
+CL:GetHeroArray(lane)	-- return the array of enemy hero objects in lane
+CL:GetHeroArray(lane, team)	-- return the array of team hero objects in lane
+CL:GetCarryAD()			-- return the object of the enemy Carry Ad or nil
+CL:GetCarryAD(team)		-- return the object of the team Carry Ad or nil
+CL:GetSupport()			-- return the object of the enemy support or nil
+CL:GetSupport(team)		-- return the object of the team support or nil
+CL:GetJungler()			-- return the object of the enemy jungler or nil
+CL:GetJungler(team)		-- return the object of the team jungler or nil
+]]
+
+_championLane = {init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, myLane = "unknow", nextUpdate = 0, tickUpdate = 250,}
+
+-- init values
+function ChampionLane__OnLoad()
+	if _championLane.init then
+		_championLane.init = nil
+		_championLane.mapIndex = GetMap().index
+		local start = GetStart()
+		for i = 1, heroManager.iCount, 1 do
+			local hero = heroManager:getHero(i) 
+			if hero ~= nil then
+				local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name..hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
+				table.insert(_championLane[(hero.team == player.team and "ally" or "enemy")].champions, {hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler})
+				if isJungler then
+					_championLane[(hero.team == player.team and "ally" or "enemy")].jungler = hero
+				end
+			end
+		end
+		if _championLane.mapIndex == 1 or _championLane.mapIndex == 2 then
+			_championLane.startTime = start.tick + 120000 --2 min from start
+			_championLane.stopTime = start.tick + 600000 --10 min from start
+			if _championLane.mapIndex == 1 then
+				_championLane.top = {point = {x = 1900, y = 0, z = 12600} }
+				_championLane.mid = {point = {x = 7100, y = 0, z = 7100} }
+				_championLane.bot = {point = {x = 12100, y = 0, z = 2100} }
+			elseif _championLane.mapIndex == 2 then
+				_championLane.top = {point = {x = 6700, y = 0, z = 7100} }
+				_championLane.bot = {point = {x = 6700, y = 0, z = 3100} }
+			end
+		else
+			
+		end
+	end
+end
+
+function ChampionLane__OnTick()
+	if not _championLane.startTime then return end
+	local tick = GetTickCount()
+	if tick < _championLane.startTime or tick < _championLane.nextUpdate then return end
+	if tick > _championLane.stopTime then _championLane.startTime = nil return end
+	_championLane.nextUpdate = tick + _championLane.tickUpdate
+	-- team update
+	for i, team in pairs({"ally", "enemy"}) do
+		local update = {top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }
+		for i, champion in pairs(_championLane[team].champions) do
+			-- update champ pos
+			if champion.hero.dead == false then
+				if champion.hero.visible then
+					if GetDistance(_championLane.top.point, champion.hero) < 2000 then champion.top = champion.top + 10 end
+					if _championLane.mid ~= nil and GetDistance(_championLane.mid.point, champion.hero) < 2000 then champion.mid = champion.mid + 10 end
+					if GetDistance(_championLane.bot.point, champion.hero) < 2000 then champion.bot = champion.bot + 10 end
+				else
+					champion.jungle = champion.jungle + 1
+				end
+				if champion.isJungler then champion.jungle = champion.jungle + 5 end
+			end
+			local lane
+			if champion.top > champion.mid and champion.top > champion.bot and champion.top > champion.jungle then lane = "top"
+			elseif champion.mid > champion.bot and champion.mid > champion.jungle then lane = "mid"
+			elseif champion.bot > champion.jungle then lane = "bot"
+			elseif champion.jungle > 0 then lane = "jungle"
+			else lane = "unknow"
+			end
+			table.insert(update[lane], champion.hero)
+			if champion.hero.networkID == player.networkID then
+				_championLane.myLane = lane
+			end
+		end
+		_championLane[team].top = update.top
+		_championLane[team].mid = update.mid
+		_championLane[team].bot = update.bot
+		_championLane[team].jungle = update.jungle
+		-- update jungler if needed
+		if _championLane[team].jungler == nil and #_championLane[team].jungle == 1 then
+			_championLane[team].jungler = _championLane[team].jungle[1]
+		end
+		if _championLane.mapIndex == 1 then
+			-- update carry / support
+			local carryAD = nil
+			local support = nil
+			for i, hero in pairs(_championLane[team].bot) do
+				if carryAD == nil or hero.totalDamage > carryAD.totalDamage then carryAD = hero end
+				if support == nil or hero.totalDamage < support.totalDamage then support = hero end
+			end
+			_championLane[team].carryAD = carryAD
+			_championLane[team].support = support
+		end
+	end
+end
+
+class 'ChampionLane'
+
+function ChampionLane:__init()
+	ChampionLane__OnLoad()
+end
+
+function ChampionLane:GetMyLane()
+	return _championLane.myLane
+end
+
+function ChampionLane:GetHeroCount(lane, team)
+	local team = team or "enemy"
+	assert(type(lane) == "string" and lane == "top" and lane == "bot" and lane == "mid" and lane == "jungle" and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroCount: wrong argument types (<lane>, <team> expected)")
+	return # _championLane[team][lane]
+end
+
+function ChampionLane:GetHeroArray(lane, team)
+	local team = team or "enemy"
+	assert(type(lane) == "string" and lane == "top" and lane == "bot" and lane == "mid" and lane == "jungle" and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroArray: wrong argument types (<lane>, <team> expected)")
+	return _championLane[team][lane]
+end
+
+function ChampionLane:GetCarryAD(team)
+	local team = team or "enemy"
+	assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetCarryAD: wrong argument types (<team> or nil expected)")
+	return _championLane[team].carryAD
+end
+
+function ChampionLane:GetSupport(team)
+	local team = team or "enemy"
+	assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetSupport: wrong argument types (<team> or nil expected)")
+	return _championLane[team].support
+end
+
+function ChampionLane:GetJungler(team)
+	local team = team or "enemy"
+	assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetJungler: wrong argument types (<team> or nil expected)")
+	return _championLane[team].jungler
+end
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- minimap
+--[[
+Goblal Function :
+GetMinimapX(x) 					-- Return x minimap value
+GetMinimapY(y)					-- Return y minimap value
+GetMinimap(v)					-- Get minimap point {x, y} from object
+GetMinimap(x, y)					-- Get minimap point {x, y}
+]]
+
+_miniMap = {
+	shift = {x=0,y=0},
+	step = {x=0,y=0},
+	offsets = {x1=300,y1=200,x2=300,y2=225},
+	configFile = LIB_PATH.."_minimap.cfg",
+	init = true,
+}
+
+function GetMinimapX(x)
+	assert(type(x) == "number", "GetMinimapX: wrong argument types (<number> expected for x)")
+	return (_miniMap__OnLoad() and -100 or _miniMap.offsets.x2 - _miniMap.shift.x + _miniMap.step.x * x)
+end
+
+function GetMinimapY(y)
+	assert(type(y) == "number", "GetMinimapY: wrong argument types (<number> expected for y)")
+	return (_miniMap__OnLoad() and -100 or _miniMap.offsets.y2 - _miniMap.shift.y + _miniMap.step.y * y)
+end
+
+function GetMinimap(a,b)
+	local x,y
+	if b == nil then
+		if VectorType(a) then
+			x, y = a.x, a.z
+		else
+			assert(type(a.x) == "number" and type(a.y) == "number", "GetMinimap: wrong argument types (<vector> expected, or <number>, <number>)")
+			x, y = a.x, a.y
+		end
+	else
+		assert(type(a) == "number" and type(b) == "number", "GetMinimap: wrong argument types (<vector> expected, or <number>, <number> for x, y)")
+		x, y = a, b
+	end
+	return { x = GetMinimapX(x), y = GetMinimapY(y) }
+end
+
+function _miniMap__OnLoad()
+	if _miniMap.init and file_exists(_miniMap.configFile) then
+		dofile(_miniMap.configFile)
+		local map = GetMap()
+		_miniMap.step.x = ( _miniMap.offsets.x1 - _miniMap.offsets.x2 ) / map.x
+		_miniMap.step.y = ( _miniMap.offsets.y1 - _miniMap.offsets.y2 ) / map.y
+		_miniMap.shift.x = _miniMap.step.x * map.min.x
+		_miniMap.shift.y = _miniMap.step.y * map.min.y
+		_miniMap.init = nil
+		_miniMap.configFile = nil
+	end
+	return _miniMap.init
+end
+
+-- miniMap.convertToMinimap(ingameX,ingameZ) to avoid conficts
+function convertToMinimap(x,y)
+    return GetMinimapX(x), GetMinimapY(y)
+end
