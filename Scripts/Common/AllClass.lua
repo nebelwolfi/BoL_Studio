@@ -1671,3 +1671,64 @@ end
 function convertToMinimap(x,y)
     return GetMinimapX(x), GetMinimapY(y)
 end
+
+--	autoLevel
+--[[
+autoLevel__OnTick()			--OnTick()
+autoLevelSetSequence(sequence)	-- set the sequence
+autoLevelSetFunction(func)		-- set the function used if sequence level == 0
+	Usage :
+		On your script :
+		Set the levelSequence :
+			local levelSequence = {1,nil,0,1,1,4,1,nil,1,nil,4,nil,nil,nil,nil,4,nil,nil}
+			autoLevelSetSequence(levelSequence)
+				The levelSequence is table of 18 fields
+				1-4 = spell 1 to 4
+				nil = will not auto level on this one
+				0 = will use your own function for this one, that return a number between 1-4
+			
+		Set the function if you use 0, example :
+			local onChoiceFunction = function()
+				if player:GetSpellData(SPELL_2).level < player:GetSpellData(SPELL_3).level then
+					return 2
+				else
+					return 3
+				end
+			end
+			autoLevelSetFunction(onChoiceFunction)
+			
+		Call the main function on your tick :
+			autoLevel__OnTick()
+]]
+
+_autoLevel = {spellsSlots = {SPELL_1, SPELL_2, SPELL_3, SPELL_4}, levelSequence = {}, nextUpdate = 0, tickUpdate = 500}
+
+function autoLevel__OnTick()
+	local tick = GetTickCount()
+	if _autoLevel.nextUpdate > tick then return end
+	_autoLevel.nextUpdate = tick + _autoLevel.tickUpdate
+	local realLevel = GetHeroLeveled()
+	if player.level > realLevel and _autoLevel.levelSequence[realLevel + 1] ~= nil then
+		local splell = _autoLevel.levelSequence[realLevel + 1]
+		if splell == 0 and type(_autoLevel.onChoiceFunction) == "function" then splell = _autoLevel.onChoiceFunction() end
+		if type(splell) == "number" and splell >= 1 and splell <= 4 then LevelSpell(_autoLevel.spellsSlots[splell]) end
+	end
+end
+
+function autoLevelSetSequence(sequence)
+	assert (sequence == nil or type(sequence) == "table", "autoLevelSetSequence : wrong argument types (<table> or nil expected)")
+	local sequence = nil or {}
+	for i = 1, 18 do
+		local spell = sequence[i]
+		if type(spell) == "number" and splell >= 0 and splell <= 4 then
+			_autoLevel.levelSequence[i] = spell
+		else
+			_autoLevel.levelSequence[i] = nil
+		end
+	end
+end
+
+function autoLevelSetFunction(func)
+	assert (func == nil or type(func) == "function", "autoLevelSetFunction : wrong argument types (<function> or nil expected)")
+	_autoLevel.onChoiceFunction = func
+end
