@@ -908,7 +908,7 @@ function TargetSelector:targetSelectedByPlayer()
 	return false
 end
 
-function TargetSelector:updateTarget()
+function TargetSelector:update()
     -- Resets the target if player died
     if player.dead then
         self.target = nil
@@ -1581,13 +1581,13 @@ end
 
 function ChampionLane:GetHeroCount(lane, team)
 	local team = team or "enemy"
-	assert(type(lane) == "string" and lane == "top" and lane == "bot" and lane == "mid" and lane == "jungle" and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroCount: wrong argument types (<lane>, <team> expected)")
+	assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid" or lane == "jungle") and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroCount: wrong argument types (<lane>, <team> expected)")
 	return # _championLane[team][lane]
 end
 
 function ChampionLane:GetHeroArray(lane, team)
 	local team = team or "enemy"
-	assert(type(lane) == "string" and lane == "top" and lane == "bot" and lane == "mid" and lane == "jungle" and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroArray: wrong argument types (<lane>, <team> expected)")
+	assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid" or lane == "jungle") and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroArray: wrong argument types (<lane>, <team> expected)")
 	return _championLane[team][lane]
 end
 
