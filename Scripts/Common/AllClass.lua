@@ -18,23 +18,25 @@ function ValidTarget(object, distance)
 end
 
 function ValidTargetNear(object, distance, target)
-   return object ~= nil and object.team == target.team and object.visible and not object.dead and object.bTargetable and GetDistance(target, object) <= distance
+   return object ~= nil and object.team == target.team and object.networkID ~= target.networkID and object.visible and not object.dead and object.bTargetable and GetDistance(target, object) <= distance
 end
 
 function GetDistanceFromMouse(object)
-	if target ~= nil then return GetDistance(object, mousePos) end
+	if target ~= nil and VectorType(object) then return GetDistance(object, mousePos) end
 	return 100000
 end
 
 -- Round a number
 if math.round == nil then
 	function math.round(num, idp)
+		assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
 		local mult = 10^(idp or 0)
 		return math.floor(num * mult + 0.5) / mult
 	end
 end
 if math.close == nil then
 	function math.close(a,b,eps)
+		assert(type(a) == "number" and type(b) == "number", "math.close: wrong argument types (at least 2 <number> expected)")
 		eps = eps or 1e-9
 		return math.abs(a - b) <= eps
 	end
@@ -42,12 +44,14 @@ end
 
 -- return true if file exist
 function file_exists(name)
-   local f=io.open(name,"r")
-   if f~=nil then io.close(f) return true else return false end
+	assert(type(name) == "string", "file_exists: wrong argument types (<string> expected for name)")
+	local f=io.open(name,"r")
+	if f~=nil then io.close(f) return true else return false end
 end
 
 -- return if cursor is under a rectangle
 function CursorIsUnder(x, y, sizeX, sizeY)
+	assert(type(x) == "number" and type(y) == "number" and type(sizeX) == "number", "CursorIsUnder: wrong argument types (at least 3 <number> expected)")
 	local posX, posY = GetCursorPos().x, GetCursorPos().y
 	if sizeY == nil then sizeY = sizeX end
 	if sizeX < 0 then
@@ -85,6 +89,7 @@ timerText = TimerText
 
 -- return sprite
 function GetSprite(file, altFile)
+	assert(type(file) == "string", "GetSprite: wrong argument types (<string> expected for file)")
 	if file_exists(SPRITE_PATH..file) == true then
 		return createSprite(file)
 	else
@@ -103,15 +108,38 @@ function GetHeroLeveled()
 	return player:GetSpellData(SPELL_1).level + player:GetSpellData(SPELL_2).level + player:GetSpellData(SPELL_3).level + player:GetSpellData(SPELL_4).level
 end
 
-
 -- return if target have particule
-function GetTargetParticule(target, particule, range)
+function TargetHaveParticle(particle, target, range)
+	assert(type(particle) == "string", "TargetHaveParticule: wrong argument types (<string> expected for particle)")
+	local target = target or player
 	local range = range or 50
 	for i = 1, objManager.maxObjects do
 		local object = objManager:GetObject(i)
-		if object ~= nil and object.name == particule and GetDistance(target,object) < range then return true end
+		if object ~= nil and object.name == particle and GetDistance(target,object) < range then return true end
 	end
 	return false
+end
+
+-- return if target have buff
+function TargetHaveBuff(buffName, target)
+	assert(type(buffName) == "string", "TargetHaveBuff: wrong argument types (<string> expected for buffName)")
+	local target = target or player
+	for i = 1, target.buffCount do
+		if target:getBuff(i) == buffName then return true end
+	end
+	return false
+end
+
+-- return number of enemy in range
+function CountEnemyHeroInRange(range)
+	local enemyInRange = 0
+	for i = 1, heroManager.iCount, 1 do
+		local hero = heroManager:getHero(i)
+		if ValidTarget(hero,range) then
+			enemyInRange = enemyInRange + 1
+		end
+	end
+	return enemyInRange
 end
 
 --[[
@@ -554,7 +582,7 @@ function GetMEC(radius, range, target)
 	local points = {}
     for i = 1, heroManager.iCount do
         local object = heroManager:GetHero(i)
-		if (target and ValidTargetNear(object,radius*2,target)) or (target == nil and ValidTarget(object, (range + radius))) then
+		if (target and (ValidTargetNear(object,radius*2,target) or object.networkID == target.networkID)) or (target == nil and ValidTarget(object, (range + radius))) then
 			table.insert(points, Vector(object))
 		end
     end
@@ -1120,7 +1148,7 @@ gameState:gameIsOver()				-- update the gameIsOver state
 
 Members:
 gameState.winner			-> TEAM_BLUE / TEAM_RED winner
-gameState.looser 			-> TEAM_BLUE / TEAM_RED looser
+gameState.loser 			-> TEAM_BLUE / TEAM_RED loser
 
 Usage :
 ex :
@@ -1141,32 +1169,10 @@ _gameState = {objects = {}, isOver = false, needCheck = false, nextUpdate = 0, t
 
 class 'GameState'
 
-function GameState:gameIsOver()
-	if _gameState.needCheck then
-		local tick = GetTickCount()
-		if _gameState.nextUpdate > tick then return end
-		_gameState.nextUpdate = tick + _gameState.tickUpdate
-		for i, objectCheck in pairs(_gameState.objects) do
-			if objectCheck.object == nil or objectCheck.object.dead or objectCheck.object.health == 0 then
-				_gameState.isOver = true
-				_gameState.looser = objectCheck.team
-				_gameState.winner = (objectCheck.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-				_gameState.needCheck = false
-				break
-			end
-		end
-	end
-	if _gameState.isOver and self.looser == 0 and self.winner == 0 then
-		self.looser = _gameState.looser
-		self.winner = _gameState.winner
-	end
-	return _gameState.isOver
-end
-
 function GameState:__init()
 	if (# _gameState.objects == 0) then
-		map = GetMap()
-		if (map.index == 1 or map.index == 2 or map.index == 3) then
+		local mapIndex = GetMap().index
+		if (mapIndex == 1 or mapIndex == 2 or mapIndex == 3) then
 			for i = 1, objManager.maxObjects, 1 do
 				local object = objManager:getObject(i)
 				if object ~= nil and object.type == "obj_HQ" then 
@@ -1176,10 +1182,31 @@ function GameState:__init()
 			_gameState.needCheck = (# _gameState.objects > 0)
 		end
 	end
-	self.looser = 0
+	self.loser = 0
 	self.winner = 0
 end
 
+function GameState:gameIsOver()
+	if _gameState.needCheck then
+		local tick = GetTickCount()
+		if _gameState.nextUpdate > tick then return end
+		_gameState.nextUpdate = tick + _gameState.tickUpdate
+		for i, objectCheck in pairs(_gameState.objects) do
+			if objectCheck.object == nil or objectCheck.object.dead or objectCheck.object.health == 0 then
+				_gameState.isOver = true
+				_gameState.loser = objectCheck.team
+				_gameState.winner = (objectCheck.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+				_gameState.needCheck = false
+				break
+			end
+		end
+	end
+	if _gameState.isOver and self.loser == 0 and self.winner == 0 then
+		self.loser = _gameState.loser
+		self.winner = _gameState.winner
+	end
+	return _gameState.isOver
+end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Start Saved Values
@@ -1194,7 +1221,7 @@ Members :
 	start.WINDOW_H		-- return saved WINDOW_H
 ]]
 
-_gameStart = {configFile = LIB_PATH.."start.cfg", init = true}
+_gameStart = {configFile = LIB_PATH.."gameStart.cfg", init = true}
 
 function GetStart()
 	if _gameStart.init then
@@ -1325,7 +1352,8 @@ end
 
 function minionManager__OnLoad()
 	if _minionManager.init then
-		if GetMap().index ~= 4 then
+		local mapIndex = GetMap().index
+		if mapIndex ~= 4 then
 			_minionManager.ally = "Minion_T"..player.team
 			_minionManager.enemy = "Minion_T"..TEAM_ENEMY
 		else
