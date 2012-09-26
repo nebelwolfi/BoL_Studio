@@ -642,7 +642,7 @@ end
 --[[
 TargetSelector Class :
 Methods:
-ts = TargetSelector(mode, range, targetSelectedMode (opt), magicDmgBase (opt), physicalDmgBase (opt), trueDmg (opt))
+ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
 
 Goblal Functions :
 TS_Print()			-> print Priority (global)
@@ -658,42 +658,37 @@ TS_SetPriorityA(target1, target2, target3, target4, target5) 	-> set priority in
 
 TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you want the chat command
 
-TargetSelector(mode, range)			-- return a TS instance with defaut values
-TargetSelector(mode, range, targetSelectedMode, magicDmgBase, physicalDmgBase, trueDmg) -- return a TS instance
-
 Functions :
 ts:update() 											-- update the instance target
 ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)	
 
-TargetSelector:SetPrediction()							-- prediction off
-TargetSelector:SetPrediction(delay)						-- predict movement for champs (need Prediction__OnTick())
-TargetSelector:SetMinionCollision()						-- minion colission off
-TargetSelector:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
-TargetSelector:SetConditional()							-- erase external function use
-TargetSelector:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
+ts:SetPrediction()							-- prediction off
+ts:SetPrediction(delay)						-- predict movement for champs (need Prediction__OnTick())
+ts:SetMinionCollision()						-- minion colission off
+ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
+ts:SetConditional()							-- erase external function use
+ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 ts.range 					-> number > 0
-ts.targetSelectedMode 		-> true/false
+ts.targetSelected 		-> true/false
 ts.target 					-> return the target (object or nil)
 
 
 Usage :
-variable = TargetSelector(mode, range, targetSelectedMode (opt), magicDmgBase (opt), physicalDmgBase (opt), trueDmg (opt))
-targetSelectedMode is set to true if not filled
-Damages are set to 0 if not filled
+variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
+targetSelected is set to true if not filled
 Damages are set as default to magic 100 if none is set
+enemyTeam is false if ally, nil or true if enemy
 
 when you want to update, call variable:update()
 
 Values you can change on instance :
 variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 variable.range -> number > 0
+variable.targetSelected -> true/false (if you clicked on a champ)
 
-variable.targetSelectedMode -> true/false (if you clicked on a champ)
-
-variable.conditional(object) -> function that return true/false to allow external filter
 
 ex :
 function OnLoad()
@@ -970,7 +965,7 @@ end
 function TargetSelector:_targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget, 2000, self.enemyTeam) and (self._conditional == nil or self._conditional(currentTarget)) then
+		if ValidTarget(currentTarget, 2000, self.enemyTeam) and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
 			if self.target == nil or self.target.networkID ~= currentTarget.networkID then
 				self.target = currentTarget
 				self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
@@ -1058,10 +1053,10 @@ Globals Functions
 Prediction__OnTick()			-- OnTick()
 GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
 GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
-GetPredictionPos(target, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true) 
+GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true) 
 GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
 GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
-GetPredictionHealth(target, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true) 
+GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true) 
 
 ]]
 _Prediction = {init = true, delta = 1}
