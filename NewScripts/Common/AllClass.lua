@@ -660,7 +660,7 @@ TargetSelector(mode, range)			-- return a TS instance with defaut values
 TargetSelector(mode, range, targetSelectedMode, magicDmgBase, physicalDmgBase, trueDmg) -- return a TS instance
 
 Functions :
-TargetSelector:updateTarget() 		-- update the instance target
+TargetSelector:update() 		-- update the instance target
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -678,7 +678,7 @@ targetSelectedMode is set to true if not filled
 Damages are set to 0 if not filled
 Damages are set as default to magic 100 if none is set
 
-when you want to update, call variable:updateTarget()
+when you want to update, call variable:update()
 
 Values you can change on instance :
 variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -695,7 +695,7 @@ function OnLoad()
 end
 
 function OnTick()
-	ts:updateTarget()
+	ts:update()
 	if ts.target ~= nil then
 		PrintChat(ts.target.charName)
 		ts.magicDmgBase = (player.ap * 10)
@@ -885,6 +885,7 @@ function TargetSelector:__init(mode, range, targetSelected, magicDmgBase, physic
 	self.physicalDmgBase = physicalDmgBase or 0
 	self.trueDmg = trueDmg or 0
 	self.target = nil
+	self.TP = nil
 	function self.conditional(thisTarget) return true end
 	-- set default to magic 100 if none is set
 	if self.magicDmgBase == 0 and self.physicalDmgBase == 0 and self.trueDmg == 0 then self.magicDmgBase = 100 end
@@ -901,6 +902,11 @@ function TargetSelector:targetSelectedByPlayer()
 			if self.target == nil or self.target.networkID ~= currentTarget.networkID then
 				self.target = currentTarget
 				self.index = _enemyHeros__index(currentTarget)
+				if self.index ~= nil and self.TP ~= nil then
+					self.nextPosition, self.minions, self.nextHealth = self.TP:GetPrediction(self.index)
+				else
+					self.nextPosition, self.minions, self.nextHealth = nil, nil, nil
+				end
 			end
 			return true
 		end
@@ -921,41 +927,51 @@ function TargetSelector:update()
     for i, _enemyHero in ipairs(_enemyHeros) do
         local hero = _enemyHero.hero
         if ValidTarget(hero, range) and not _enemyHero.ignore and self.conditional(hero, i) then
-			if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
-			-- Returns lowest effective HP target that is in range
-			-- Or lowest cast to kill target that is in range
-				local magicDmg = (self.magicDmgBase > 0 and player:CalcMagicDamage(hero, self.magicDmgBase) or 0)
-				local physicalDmg = (self.physicalDmgBase > 0 and player:CalcDamage(hero, self.physicalDmgBase) or 0)
-				local totalDmg = magicDmg + physicalDmg + self.trueDmg
-				-- priority mode
-				if self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST_PRIORITY then
-					totalDmg = totalDmg / _enemyHero.priority
+			local TPpassed, nextPosition, minionCollision, nextHealth = true, nil, nil, nil
+			if self.TP ~= nil then
+				nextPosition, minionCollision, nextHealth = self.TP:GetPrediction(i)
+				TPpassed = (GetDistance(nextPosition) <= range)
+			end
+			if TPpassed then
+				if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
+				-- Returns lowest effective HP target that is in range
+				-- Or lowest cast to kill target that is in range
+					local magicDmg = (self.magicDmgBase > 0 and player:CalcMagicDamage(hero, self.magicDmgBase) or 0)
+					local physicalDmg = (self.physicalDmgBase > 0 and player:CalcDamage(hero, self.physicalDmgBase) or 0)
+					local totalDmg = magicDmg + physicalDmg + self.trueDmg
+					-- priority mode
+					if self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST_PRIORITY then
+						totalDmg = totalDmg / _enemyHero.priority
+					end
+					local heroValue
+					if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY then
+						heroValue = hero.health - totalDmg
+					else
+						heroValue = hero.health / totalDmg
+					end
+					if not selected or heroValue < value then selected, index, value = hero, i, heroValue end
+				elseif self.mode == TARGET_MOST_AP then
+				-- Returns target that has highest AP that is in range
+					if not selected or hero.ap > selected.ap then selected, index = hero, i end
+				elseif self.mode == TARGET_MOST_AD then
+				-- Returns target that has highest AD that is in range
+					if not selected or hero.totalDamage > selected.totalDamage then selected, index = hero, i end
+				elseif self.mode == TARGET_PRIORITY then
+				-- Returns target with highest priority # that is in range
+					if not selected or _enemyHero.priority < value then selected, index, value = hero, i, _enemyHero.priority end
+				elseif self.mode == TARGET_NEAR_MOUSE then
+				-- Returns target that is the closest to the mouse cursor.
+					local distance = GetDistance(mousePos, hero)
+					if not selected or distance < value then selected, index, value = hero, i, distance end
 				end
-				local heroValue
-				if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY then
-					heroValue = hero.health - totalDmg
-				else
-					heroValue = hero.health / totalDmg
-				end
-				if not selected or heroValue < value then selected, index, value = hero, i, heroValue end
-			elseif self.mode == TARGET_MOST_AP then
-			-- Returns target that has highest AP that is in range
-				if not selected or hero.ap > selected.ap then selected, index = hero, i end
-			elseif self.mode == TARGET_MOST_AD then
-			-- Returns target that has highest AD that is in range
-				if not selected or hero.totalDamage > selected.totalDamage then selected, index = hero, i end
-			elseif self.mode == TARGET_PRIORITY then
-			-- Returns target with highest priority # that is in range
-				if not selected or _enemyHero.priority < value then selected, index, value = hero, i, _enemyHero.priority end
-			elseif self.mode == TARGET_NEAR_MOUSE then
-			-- Returns target that is the closest to the mouse cursor.
-				local distance = GetDistance(mousePos, hero)
-				if not selected or distance < value then selected, index, value = hero, i, distance end
 			end
         end
     end
 	self.index = index
     self.target = selected
+	self.nextPosition = nextPosition
+	self.minionCollision = minionCollision
+	self.nextHealth = nextHealth
 end
 
 
