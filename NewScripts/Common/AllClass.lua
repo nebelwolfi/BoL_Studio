@@ -866,6 +866,13 @@ function TS_SetPriorityA(target1, target2, target3, target4, target5)
 	TS_SetHeroPriority(5, target5, false)
 end
 
+function TS_GetPriority(target, enemyTeam)
+	local enemyTeam = (enemyTeam ~= false)
+	local index = _gameHeros__index(target, "TS_GetPriority", enemyTeam)
+	return (index and _gameHeros[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
+end
+
+
 function TS_Ignore(target, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	local selected = _gameHeros__hero(target, "TS_Ignore")
@@ -1627,6 +1634,7 @@ CL = ChampionLane()
 
 Functions :
 CL:GetMyLane()			-- return lane name
+CL:GetPoint(lane)			-- return the 3D point of the center of the lane
 CL:GetHeroCount(lane)		-- return number of enemy hero in lane
 CL:GetHeroCount(lane, team)	-- return number of team hero in lane ("ally", "enemy")
 CL:GetHeroArray(lane)	-- return the array of enemy hero objects in lane
@@ -1733,6 +1741,11 @@ class 'ChampionLane'
 
 function ChampionLane:__init()
 	ChampionLane__OnLoad()
+end
+
+function ChampionLane:GetPoint(lane)
+	assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid"), "GetPoint: wrong argument types (<lane> expected)")
+	return _championLane[lane].point
 end
 
 function ChampionLane:GetMyLane()

@@ -23,8 +23,9 @@ do
 			local heroArray = CL:GetHeroArray(myLane)
 			local heroCount = #heroArray
 			local heroInLane = 0
+			local point = CL:GetPoint(myLane)
 			for i, hero in pairs(heroArray) do
-				if hero.visible and GetDistance(hero, championLane[championLane.myLane].point) < 3000 then heroInLane = heroInLane + 1
+				if hero.visible and GetDistance(hero, point) < 3000 then heroInLane = heroInLane + 1
 				elseif hero.dead then heroCount = heroCount - 1
 				end
 			end
