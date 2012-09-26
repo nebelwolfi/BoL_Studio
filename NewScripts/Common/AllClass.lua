@@ -652,8 +652,9 @@ TS_SetFocus(id)			-> set priority to the championID (you need to use PRIORITY mo
 TS_SetFocus(charName)	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(hero) 		-> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
 
-TS_SetHeroPriority(priority, target)	-> set the priority to target
-TS_SetPriority(target1, target2, target3, target4, target5) -> set priority in order to targets
+TS_SetHeroPriority(priority, target, enemyTeam)					-> set the priority to target
+TS_SetPriority(target1, target2, target3, target4, target5) 	-> set priority in order to enemy targets
+TS_SetPriorityA(target1, target2, target3, target4, target5) 	-> set priority in order to ally targets
 
 TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you want the chat command
 
@@ -661,17 +662,22 @@ TargetSelector(mode, range)			-- return a TS instance with defaut values
 TargetSelector(mode, range, targetSelectedMode, magicDmgBase, physicalDmgBase, trueDmg) -- return a TS instance
 
 Functions :
-TargetSelector:update() 		-- update the instance target
+ts:update() 											-- update the instance target
+ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)	
+
+TargetSelector:SetPrediction()							-- prediction off
+TargetSelector:SetPrediction(delay)						-- predict movement for champs (need Prediction__OnTick())
+TargetSelector:SetMinionCollision()						-- minion colission off
+TargetSelector:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
+TargetSelector:SetConditional()							-- erase external function use
+TargetSelector:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 ts.range 					-> number > 0
 ts.targetSelectedMode 		-> true/false
-ts.magicDmgBase 			-> positive integer
-ts.physicalDmgBase 			-> positive integer
-ts.trueDmg 					-> positive integer
-ts.conditional(object) 		-> function that return true/false to allow external filter
 ts.target 					-> return the target (object or nil)
+
 
 Usage :
 variable = TargetSelector(mode, range, targetSelectedMode (opt), magicDmgBase (opt), physicalDmgBase (opt), trueDmg (opt))
@@ -684,10 +690,9 @@ when you want to update, call variable:update()
 Values you can change on instance :
 variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 variable.range -> number > 0
-variable.targetSelectedMode -> true/false
-variable.magicDmgBase -> positive integer
-variable.physicalDmgBase -> positive integer
-variable.trueDmg -> positive integer
+
+variable.targetSelectedMode -> true/false (if you clicked on a champ)
+
 variable.conditional(object) -> function that return true/false to allow external filter
 
 ex :
@@ -699,7 +704,7 @@ function OnTick()
 	ts:update()
 	if ts.target ~= nil then
 		PrintChat(ts.target.charName)
-		ts.magicDmgBase = (player.ap * 10)
+		ts:SetDamages = ((player.ap * 10), 0, 0)
 	end
 end
 
@@ -718,10 +723,11 @@ TARGET_NEAR_MOUSE = 5
 TARGET_PRIORITY = 6
 TARGET_LOW_HP_PRIORITY = 7
 TARGET_LESS_CAST_PRIORITY = 8
+DAMAGE_MAGIC = 1
+DAMAGE_PHYSICAL = 2
 
 -- Class related global
 _gameHeros, _gameAllyCount, _gameEnemyCount = {}, 0, 0
-_enemyHeros = {}
 _TargetSelector__texted = {"LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority"}
 
 -- Class related function
@@ -823,7 +829,7 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	local heroCount = (enemyTeam and _gameEnemyCount or _gameAllyCount)
 	assert(type(priority) == "number" and priority >= 0 and priority <= heroCount, "TS_SetHeroPriority: wrong argument types (<number> 1 to "..heroCount.." expected)")
-	local selected = _gameHeros__hero(target, "TS_SetHeroPriority: wrong argument types (<number>, <charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
+	local selected = _gameHeros__hero(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
 	if selected ~= nil and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
 		local oldPriority
 		for index,_gameHero in ipairs(_gameHeros) do
@@ -869,10 +875,10 @@ function TS_Ignore(target, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	local selected = _gameHeros__hero(target, "TS_Ignore")
 	if selected ~= nil and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-		for index,enemyHero in ipairs(_enemyHeros) do
-			if enemyHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
-				enemyHero.ignore = not enemyHero.ignore
-				PrintChat("[TS] "..(enemyHero.ignore and "Ignoring " or "Re-targetting ")..enemyHero.hero.charName)
+		for index,_gameHero in ipairs(_gameHeros) do
+			if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
+				_gameHero.ignore = not _gameHero.ignore
+				PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
 				break
 			end
 		end
@@ -914,54 +920,67 @@ function TargetSelector__OnSendChat(msg)
 end
 
 class 'TargetSelector'
-function TargetSelector:__init(mode, range, targetSelected, enemyTeam, magicDmgBase, physicalDmgBase, trueDmg)
+function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTeam)
 	-- Init Global
 	assert(type(mode) == "number" and type(range) == "number", "TargetSelector: wrong argument types (<mode>, <number> expected)")
 	_gameHeros__init()
 	self.mode = mode
 	self.range = range
+	self._mDmgBase, self._pDmgBase, self._tDmg = 0, 0, 0
+	self._dmgType = damageType or DAMAGE_MAGIC
+	if self._dmgType == DAMAGE_MAGIC then self._mDmgBase = 100 else self._tDmg = player.totalDamage end
 	self.targetSelected = (targetSelected ~= false)
 	self.enemyTeam = (enemyTeam ~= false)
-	self.magicDmgBase = magicDmgBase or 0
-	self.physicalDmgBase = physicalDmgBase or 0
-	self.trueDmg = trueDmg or 0
 	self.target = nil
-	self.conditional = function(thisTarget) return true end
+	self._conditional = nil
 	self._spellWidth = nil
 	self._pDelay = nil
-	-- set default to magic 100 if none is set
-	if self.magicDmgBase == 0 and self.physicalDmgBase == 0 and self.trueDmg == 0 then self.magicDmgBase = 100 end
 end
 
 function TargetSelector:printMode()
     PrintChat("[TS] Target mode: " .._TargetSelector__texted[self.mode])
 end
 
+function TargetSelector:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
+	assert(magicDmgBase == nil or type(magicDmgBase) == "number", "SetDamages: wrong argument types (<number> or nil expected) for magicDmgBase")
+	assert(physicalDmgBase == nil or type(physicalDmgBase) == "number", "SetDamages: wrong argument types (<number> or nil expected) for physicalDmgBase")
+	assert(trueDmg == nil or type(trueDmg) == "number", "SetDamages: wrong argument types (<number> or nil expected) for trueDmg")
+	self._dmgType = 0
+	self._mDmgBase = magicDmgBase or 0
+	self._pDmgBase = physicalDmgBase or 0
+	self._tDmg = trueDmg or 0
+end
+
 function TargetSelector:SetMinionCollision(spellWidth)
-	assert(spellWidth == nil or type(spellWidth), "SetMinionCollision: wrong argument types (<number> or nil expected)")
+	assert(spellWidth == nil or type(spellWidth) == "number", "SetMinionCollision: wrong argument types (<number> or nil expected)")
 	self._spellWidth = ((spellWidth ~= nil or spellWidth > 0) and spellWidth or nil)
 end
 
 function TargetSelector:SetPrediction(delay)
-	assert(delay == nil or type(delay), "SetPrediction: wrong argument types (<number> or nil expected)")
-	self._pDelay = ((delay ~= nil or delay > 0) and delay or nil)
+	assert(delay == nil or type(delay) == "number", "SetPrediction: wrong argument types (<number> or nil expected)")
+	_Prediction__OnLoad()
+	self._pDelay = ((delay ~= nil and delay > 0) and delay or nil)
+end
+
+function TargetSelector:SetConditional(func)
+	assert (func == nil or type(func) == "function", "SetConditional : wrong argument types (<function> or nil expected)")
+	self._conditional = func
 end
 
 function TargetSelector:_targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget, 2000, self.enemyTeam) and self.conditional(currentTarget) then
+		if ValidTarget(currentTarget, 2000, self.enemyTeam) and (self._conditional == nil or self._conditional(currentTarget)) then
 			if self.target == nil or self.target.networkID ~= currentTarget.networkID then
 				self.target = currentTarget
 				self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
-				local nextPosition, nextHealth, minionCollision = Vector(hero), hero.health, false
-				if self.index and self._pDelay then
-					self.nextPosition = _PredictionPosition(self.index, self._pDelay)
-					self.nextHealth = _PredictionHealth(self.index, self._pDelay)
-				else
-					self.nextPosition = Vector(currentTarget)
-					self.nextHealth = currentTarget.health
-				end
+			end
+			if self.index and self._pDelay then
+				self.nextPosition = _PredictionPosition(self.index, self._pDelay)
+				self.nextHealth = _PredictionHealth(self.index, self._pDelay)
+			else
+				self.nextPosition = Vector(currentTarget)
+				self.nextHealth = currentTarget.health
 			end
 			return true
 		end
@@ -977,12 +996,15 @@ function TargetSelector:update()
 	end
 	-- Get current selected target (by player) if needed
     if self:_targetSelectedByPlayer() then return end
-	local selected, index, value
+	local selected, index, value, nextPosition, nextHealth
 	local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
     for i, _gameHero in ipairs(_gameHeros) do
         local hero = _gameHero.hero
-        if ValidTarget(hero, range, self.enemyTeam) and not _gameHero.ignore and self.conditional(hero, i) then
-			local nextPosition, nextHealth, minionCollision = Vector(hero), hero.health, false
+        if ValidTarget(hero, range, self.enemyTeam) and not _gameHero.ignore and (self._conditional == nil or self._conditional(hero, i)) then
+			nextPosition, nextHealth = Vector(hero), hero.health
+			nextPosition.y = hero.y
+			local minionCollision = false
+			nextPosition.y = hero.y
 			if self._pDelay ~= nil then
 				nextPosition = _PredictionPosition(i, self._pDelay)
 				nextHealth = _PredictionHealth(i, self._pDelay)
@@ -992,9 +1014,10 @@ function TargetSelector:update()
 				if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 				-- Returns lowest effective HP target that is in range
 				-- Or lowest cast to kill target that is in range
-					local magicDmg = (self.magicDmgBase > 0 and player:CalcMagicDamage(hero, self.magicDmgBase) or 0)
-					local physicalDmg = (self.physicalDmgBase > 0 and player:CalcDamage(hero, self.physicalDmgBase) or 0)
-					local totalDmg = magicDmg + physicalDmg + self.trueDmg
+					if self._dmgType == DAMAGE_PHYSICAL then self._pDmgBase = player.totalDamage end
+					local mDmg = (self._mDmgBase > 0 and player:CalcMagicDamage(hero, self._mDmgBase) or 0)
+					local pDmg = (self._pDmgBase > 0 and player:CalcDamage(hero, self._pDmgBase) or 0)
+					local totalDmg = mDmg + pDmg + self._tDmg
 					-- priority mode
 					if self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST_PRIORITY then
 						totalDmg = totalDmg / _gameHero.priority
@@ -1025,7 +1048,6 @@ function TargetSelector:update()
     end
 	self.index = index
     self.target = selected
-	if selected and nextPosition and nextPosition.y == nil then nextPosition.y = selected.y end
 	self.nextPosition = nextPosition
 	self.nextHealth = nextHealth
 end
@@ -1060,34 +1082,34 @@ function _Prediction__OnLoad()
 	end
 end
 
-function Prediction__OnTick()
-	_Prediction__OnLoad()
-	local tick = GetTickCount()
-	--if tick < _Prediction.nextUpdate then return end
-	--_Prediction.nextUpdate = tick + _Prediction.tickUpdate
-	_Prediction.delta = 1 / (tick - _Prediction.tick)
-	_Prediction.tick = tick
-	for i, _gameHero in ipairs(_gameHeros) do
-		if _gameHero.hero ~= nil and _gameHero.hero.dead == false and _gameHero.hero.visible then
-			_gameHero.pVector = { Vector(_gameHero.hero) - _gameHero.lastPos }
-			_gameHero.lastPos = Vector(_gameHero.hero)
-			_gameHero.pHealth = _gameHero.hero.health - _gameHero.lastHealth
-			_gameHero.lastHealth = _gameHero.hero.health
-		end
-	end
-end
-
 function _PredictionPosition(iHero, delay)
-	if _gameHeros[iHero] and VectorType(_gameHeros[iHero].pVector) and VectorType(_gameHeros[iHero].lastPos) then
-		local heroPosition = _gameHeros[iHero].lastPos + (_gameHeros[iHero].pVector * (_Prediction.delta * delay))
-		heroPosition.y = _gameHeros[iHero].hero.y
+	local _gameHero = _gameHeros[iHero]
+	if _gameHero and VectorType(_gameHero.pVector) and VectorType(_gameHero.lastPos) then
+		local heroPosition = _gameHero.lastPos + (_gameHero.pVector * (_Prediction.delta * delay))
+		heroPosition.y = _gameHero.hero.y
 		return heroPosition
 	end
 end
 
 function _PredictionHealth(iHero, delay)
-	if _gameHeros[iHero] and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
+	local _gameHero = _gameHeros[iHero]
+	if _gameHero and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
 		return _gameHero.lastHealth + (_gameHero.pHealth * (_Prediction.delta * delay))
+	end
+end
+
+function Prediction__OnTick()
+	_Prediction__OnLoad()
+	local tick = GetTickCount()
+	_Prediction.delta = 1 / (tick - _Prediction.tick)
+	_Prediction.tick = tick
+	for i, _gameHero in ipairs(_gameHeros) do
+		if _gameHero.hero ~= nil and _gameHero.hero.dead == false and _gameHero.hero.visible then
+			_gameHero.pVector = ( Vector(_gameHero.hero) - _gameHero.lastPos )
+			_gameHero.lastPos = Vector(_gameHero.hero)
+			_gameHero.pHealth = _gameHero.hero.health - _gameHero.lastHealth
+			_gameHero.lastHealth = _gameHero.hero.health
+		end
 	end
 end
 
@@ -1146,7 +1168,7 @@ tp.width
 tp.smoothness
 ]]
 
--- use _enemyHeros with TargetSelector
+-- use _gameHeros with TargetSelector
 _TargetPrediction__tick = 0
 
 -- should be place on OnTick()
@@ -1154,7 +1176,7 @@ function TargetPrediction__OnTick()
     local osTime = os.clock()
     if osTime - _TargetPrediction__tick > 0.35 then
         _TargetPrediction__tick = osTime
-		for i, _enemyHero in ipairs(_enemyHeros) do
+		for i, _enemyHero in ipairs(_gameHeros) do
 			local hero = _enemyHero.hero
 			if hero.dead then
 				_enemyHero.prediction = nil
@@ -1188,11 +1210,10 @@ end
 
 function TargetPrediction:GetPrediction(target)
     assert(target ~= nil, "GetPrediction: wrong argument types (<target> expected)")
-	local extended = _gameHeros__extended(target, "GetPrediction")
-	local index = (extended and extended.index or nil)
+	local index = _gameHeros__index(target, "GetPrediction")
 	if not index then return end
-	local selected = _enemyHeros[index].hero
-    if _enemyHeros[index].prediction and _enemyHeros[index].prediction.movement then
+	local selected = _gameHeros[index].hero
+    if _gameHeros[index].prediction and _gameHeros[index].prediction.movement then
 		if index ~= self.target then
 			self.nextPosition = nil
 			self.target = index
@@ -1201,21 +1222,21 @@ function TargetPrediction:GetPrediction(target)
         local delay = self.delay / 1000
 		local proj_speed = self.proj_speed and self.proj_speed * 1000
         if player:GetDistance(selected) < self.range + 300 then
-            if osTime - (_enemyHeros[index].prediction.calculateTime or 0) > 0 then
+            if osTime - (_gameHeros[index].prediction.calculateTime or 0) > 0 then
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
                 if selected.visible then
-					PositionPrediction = (_enemyHeros[index].prediction.movement * (delay + latency)) + selected
-                elseif osTime - _enemyHeros[index].prediction.lastUpdate < 3 then
-					PositionPrediction = (_enemyHeros[index].prediction.movement * (delay + latency + osTime - _enemyHeros[index].prediction.lastUpdate)) + _enemyHeros[index].prediction.position
-                else _enemyHeros[index].prediction = nil return
+					PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency)) + selected
+                elseif osTime - _gameHeros[index].prediction.lastUpdate < 3 then
+					PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency + osTime - _gameHeros[index].prediction.lastUpdate)) + _gameHeros[index].prediction.position
+                else _gameHeros[index].prediction = nil return
                 end
 				local t = 0
 				if proj_speed and proj_speed > 0 then
-					local a, b, c = PositionPrediction, _enemyHeros[index].prediction.movement, Vector(player)
+					local a, b, c = PositionPrediction, _gameHeros[index].prediction.movement, Vector(player)
                     local d, e, f, g, h, i, j, k, l = (-a.x + c.x), (-a.z + c.z), b.x * b.x, b.z * b.z, proj_speed * proj_speed, a.x * a.x, a.z * a.z, c.x * c.x, c.z * c.z
                     local t = (-(math.sqrt(-f * (l - 2 * c.z * a.z + j) + 2 * b.x * b.z * d * e - g * (k - 2 * c.x * a.x + i) + (k - 2 * c.x * a.x + l - 2 * c.z * a.z + i + j) * h) - b.x * d - b.z * e)) / (f + g - h)
-					PositionPrediction = (_enemyHeros[index].prediction.movement * t) + PositionPrediction
+					PositionPrediction = (_gameHeros[index].prediction.movement * t) + PositionPrediction
                 end
                 if self.smoothness and self.smoothness < 100 and self.nextPosition then
                     self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
@@ -1224,7 +1245,7 @@ function TargetPrediction:GetPrediction(target)
                 end
                 if GetDistance(PositionPrediction) < self.range then
 					--update next Health
-                    self.nextHealth = selected.health + (_enemyHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
+                    self.nextHealth = selected.health + (_gameHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
 					self.minions = false
 					if self.width then
