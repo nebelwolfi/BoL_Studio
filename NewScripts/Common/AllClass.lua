@@ -645,16 +645,18 @@ Methods:
 ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
 
 Goblal Functions :
-TS_Print()			-> print Priority (global)
+TS_Print(enemyTeam (opt))			-> print Priority (global)
 
 TS_SetFocus() 			-> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(id)			-> set priority to the championID (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(charName)	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(charName, enemyTeam (opt))	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(hero) 		-> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
 
-TS_SetHeroPriority(priority, target, enemyTeam)					-> set the priority to target
+TS_SetHeroPriority(priority, target, enemyTeam (opt))					-> set the priority to target
 TS_SetPriority(target1, target2, target3, target4, target5) 	-> set priority in order to enemy targets
 TS_SetPriorityA(target1, target2, target3, target4, target5) 	-> set priority in order to ally targets
+
+TS_GetPriority(target, enemyTeam)		-> return the current priority, and the max allowed
 
 TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you want the chat command
 
@@ -674,7 +676,9 @@ ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, 
 ts.range 					-> number > 0
 ts.targetSelected 		-> true/false
 ts.target 					-> return the target (object or nil)
-
+ts.index 		-> index of target (if hero)
+ts.nextPosition -> nextPosition predicted
+ts.nextHealth 		-> nextHealth predicted
 
 Usage :
 variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
@@ -692,14 +696,14 @@ variable.targetSelected -> true/false (if you clicked on a champ)
 
 ex :
 function OnLoad()
-	ts = TargetSelector(TARGET_LESS_CAST, 600, true, 200)
+	ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
 end
 
 function OnTick()
 	ts:update()
 	if ts.target ~= nil then
 		PrintChat(ts.target.charName)
-		ts:SetDamages = ((player.ap * 10), 0, 0)
+		ts:SetDamages((player.ap * 10), 0, 0)
 	end
 end
 
@@ -838,6 +842,7 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
 			if _gameHero.enemy == enemyTeam then
 				if _gameHero.hero.networkID == _gameHero.networkID then
 					_gameHero.priority = priority
+					PrintChat("[TS] "..(enemyTeam and "Enemy " or "Ally ").._gameHero.tIndex.." (".._gameHero.index..") : " .. _gameHero.hero.charName .. " Mode=" .. (_gameHero.ignore and "ignore" or "target") .." Priority=" .. _gameHero.priority)
 				elseif oldPriority > priority and _gameHero.priority < oldPriority then
 					_gameHero.priority = _gameHero.priority + 1
 				elseif oldPriority < priority and _gameHero.priority > oldPriority then
@@ -871,7 +876,6 @@ function TS_GetPriority(target, enemyTeam)
 	local index = _gameHeros__index(target, "TS_GetPriority", enemyTeam)
 	return (index and _gameHeros[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
 end
-
 
 function TS_Ignore(target, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
@@ -1052,6 +1056,29 @@ function TargetSelector:update()
     self.target = selected
 	self.nextPosition = nextPosition
 	self.nextHealth = nextHealth
+end
+
+function TargetSelector:OnSendChat(msg, prefix)
+	assert(type(prefix) == "string" and prefix ~= "" and prefix:lower() ~= "ts", "TS OnSendChat: wrong argument types (<string> (not TS) expected for prefix)")
+    if msg:sub(1,1) ~= "." then return end
+	local prefix = prefix:lower()
+	local length = prefix:len() + 1
+	local args = string.gmatch(msg, "%S+")
+	local cmd = args[1]:lower()
+	if cmd == "."..prefix.."mode" then
+		BlockChat()
+		assert(args[2] ~= nil, "TS OnSendChat: wrong argument types (LowHP, MostAP, MostAD, LessCast, NearMouse, Priority, LowHPPriority, LessCastPriority expected)")
+		local index = 0
+		for i, mode in ipairs({"LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority"}) do
+			if mode:lower() == args[2]:lower() then
+				index = i
+				break
+			end
+		end
+		assert(index ~= 0, "TS OnSendChat: wrong argument types (LowHP, MostAP, MostAD, LessCast, NearMouse, Priority, LowHPPriority, LessCastPriority expected)")
+		self.mode = index
+		self:printMode()
+    end
 end
 
 -- Prediction Functions
