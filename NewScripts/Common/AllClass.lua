@@ -1906,7 +1906,7 @@ function _miniMap__OnLoad()
 	if _miniMap.init then
 		local map = GetMap()
 		local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
-		_miniMap.step = {x = 290*percent/map.x, -290*percent/map.y}
+		_miniMap.step = {x = 290*percent/map.x, y = -290*percent/map.y}
 		_miniMap.x = WINDOW_W-300*percent - _miniMap.step.x * map.min.x
 		_miniMap.y = WINDOW_H-10*percent - _miniMap.step.y * map.min.y
 		_miniMap.init = nil
