@@ -828,25 +828,15 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	local heroCount = (enemyTeam and _gameEnemyCount or _gameAllyCount)
 	assert(type(priority) == "number" and priority >= 0 and priority <= heroCount, "TS_SetHeroPriority: wrong argument types (<number> 1 to "..heroCount.." expected)")
-	local selected = _gameHeros__hero(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
-	if selected ~= nil and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-		local oldPriority
-		for index,_gameHero in ipairs(_gameHeros) do
-			if _gameHero.hero.networkID == selected.networkID then
-				oldPriority = _gameHero.priority
-				break
-			end
-		end
+	local selected = _gameHeros__index(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
+	if selected ~= nil then
+		local oldPriority = _gameHeros[selected].priority
 		if oldPriority == nil or oldPriority == priority then return end
 		for index,_gameHero in ipairs(_gameHeros) do
 			if _gameHero.enemy == enemyTeam then
-				if _gameHero.hero.networkID == _gameHero.networkID then
+				if index == selected then
 					_gameHero.priority = priority
 					PrintChat("[TS] "..(enemyTeam and "Enemy " or "Ally ").._gameHero.tIndex.." (".._gameHero.index..") : " .. _gameHero.hero.charName .. " Mode=" .. (_gameHero.ignore and "ignore" or "target") .." Priority=" .. _gameHero.priority)
-				elseif oldPriority > priority and _gameHero.priority < oldPriority then
-					_gameHero.priority = _gameHero.priority + 1
-				elseif oldPriority < priority and _gameHero.priority > oldPriority then
-					_gameHero.priority = _gameHero.priority - 1
 				end
 			end
 		end
@@ -897,8 +887,8 @@ function TS__DrawMenu(x, y, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	for index,_gameHero in ipairs(_gameHeros) do
 		if _gameHero.enemy == enemyTeam then
-			local y1 = y+(21)*_gameHero.tIndex
-			DrawText(_gameHero.hero.charName.." priority: ".._gameHero.priority, 20, x, y1, 0xFF00FF33)
+			local y1 = y-21+(21)*_gameHero.tIndex
+			DrawText(_gameHero.hero.charName.." priority: ".._gameHero.priority, 20, x, y1, (_gameHero.ignore and 0xFFFF3300 or 0xFF00FF33))
 			DrawText( "o", 36, x+200-5,        y1-13, 0xFF000000 )
 			DrawText( "-", 25, x+200,          y1-6,  0xFFffa200)
 			DrawText( "o", 36, x+250-3,        y1-13, 0xFF000000 )
@@ -915,11 +905,11 @@ function TS_ClickMenu(x, y, enemyTeam)
 	local enemyTeam = (enemyTeam ~= false)
 	for index,_gameHero in ipairs(_gameHeros) do
 		if _gameHero.enemy == enemyTeam then
-			local y1 = y-4+(21)*_gameHero.tIndex
+			local y1 = y-21+(21)*_gameHero.tIndex
 			if CursorIsUnder(x+195, y1, 18, 18) then
-				TS_SetHeroPriority(math.min((enemyTeam and _gameEnemyCount or _gameAllyCount), _gameHero.priority + 1), index)
+				TS_SetHeroPriority(math.max(1, _gameHero.priority - 1), index)
 			elseif CursorIsUnder(x+247, y1, 18, 18) then
-				TS_SetHeroPriority(math.max(1, _gameHero.priority + 1), index)
+				TS_SetHeroPriority(math.min((enemyTeam and _gameEnemyCount or _gameAllyCount), _gameHero.priority + 1), index)
 			elseif CursorIsUnder(x+297, y1, 18, 18) then TS_Ignore(index) end
 		end
 	end
@@ -927,36 +917,38 @@ function TS_ClickMenu(x, y, enemyTeam)
 end
 
 function TargetSelector__OnSendChat(msg)
-    if msg:sub(1,1) ~= "." then return end
-	local args = string.gmatch(msg, "%S+")
+    if msg:sub(1,3) ~= ".ts" then return end
+	BlockChat()
+	local args = {}
+	while string.find(msg," ") do
+		local index = string.find(msg," ")
+		table.insert(args, msg:sub(1,index-1))
+		msg = string.sub(msg,index+1)
+	end
+	table.insert(args, msg)
 	local cmd = args[1]:lower()
-	if cmd:sub(1,3) == ".ts" then
-		BlockChat()
-		for arg in args do
-			if tonumber(arg) then arg = tonumber(arg) end
-		end
-		if cmd == ".tsprint" then
-			TS_Print()
-		elseif cmd == ".tsprinta" then
-			TS_Print(false)
-		elseif cmd == ".tsfocus" then
-			TS_SetFocus(args[2])
-		elseif cmd == ".tsfocusa" then
-			TS_SetFocus(args[2], false)
-		elseif cmd == ".tspriorityhero" then
-			TS_SetHeroPriority(args[2], args[3])
-		elseif cmd == ".tspriorityheroa" then
-			TS_SetHeroPriority(args[2], args[3], false)
-		elseif cmd == ".tspriority" then
-			TS_SetPriority(args[2], args[3], args[4], args[5], args[6])
-		elseif cmd == ".tsprioritya" then
-			TS_SetPriorityA(args[2], args[3], args[4], args[5], args[6])
-		elseif cmd == ".tsignore" then
-			TS_Ignore(args[2])
-		elseif cmd == ".tsignorea" then
-			TS_Ignore(args[2], false)
-		end
-    end
+	if cmd == ".tsprint" then
+		TS_Print()
+	elseif cmd == ".tsprinta" then
+		TS_Print(false)
+	elseif cmd == ".tsfocus" then
+		PrintChat(cmd.." - "..args[2])
+		TS_SetFocus(args[2])
+	elseif cmd == ".tsfocusa" then
+		TS_SetFocus(args[2], false)
+	elseif cmd == ".tspriorityhero" then
+		TS_SetHeroPriority(args[2], args[3])
+	elseif cmd == ".tspriorityheroa" then
+		TS_SetHeroPriority(args[2], args[3], false)
+	elseif cmd == ".tspriority" then
+		TS_SetPriority(args[2], args[3], args[4], args[5], args[6])
+	elseif cmd == ".tsprioritya" then
+		TS_SetPriorityA(args[2], args[3], args[4], args[5], args[6])
+	elseif cmd == ".tsignore" then
+		TS_Ignore(args[2])
+	elseif cmd == ".tsignorea" then
+		TS_Ignore(args[2], false)
+	end
 end
 
 class 'TargetSelector'
@@ -1097,10 +1089,17 @@ function TargetSelector:OnSendChat(msg, prefix)
     if msg:sub(1,1) ~= "." then return end
 	local prefix = prefix:lower()
 	local length = prefix:len() + 1
-	local args = string.gmatch(msg, "%S+")
+	if msg:sub(1,length) ~= "."..prefix then return end
+	BlockChat()
+	local args = {}
+	while string.find(msg," ") do
+		local index = string.find(msg," ")
+		table.insert(args, msg:sub(1,index-1))
+		msg = msg:sub(index+1)
+	end
+	table.insert(args, msg)
 	local cmd = args[1]:lower()
 	if cmd == "."..prefix.."mode" then
-		BlockChat()
 		assert(args[2] ~= nil, "TS OnSendChat: wrong argument types (LowHP, MostAP, MostAD, LessCast, NearMouse, Priority, LowHPPriority, LessCastPriority expected)")
 		local index = 0
 		for i, mode in ipairs({"LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority"}) do
@@ -1117,23 +1116,22 @@ end
 
 function TargetSelector:DrawMenu(x, y, name)
 	assert(type(x) == "number" and type(y) == "number" and type(name) == "string", "ts:DrawMenu: wrong argument types (<number>, <number>, <string> expected)")
-	local y1 = y+21
-	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y1, 0xFFFF9000)
-	DrawText( "o", 36, x+200-5,        y1-13, 0xFF000000 )
-	DrawText( "<", 25, x+200,          y1-6,  0xFFffa200)
-	DrawText( "o", 36, x+250-3,        y1-13, 0xFF000000 )
-	DrawText( ">", 25, x+250,          y1-4,  0xFF00FF33 )
-	return y1
+	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y, 0xFFFF9000)
+	DrawText( "o", 36, x+200-5,        y-13, 0xFF000000 )
+	DrawText( "<", 25, x+200,          y-6,  0xFFffa200)
+	DrawText( "o", 36, x+250-3,        y-13, 0xFF000000 )
+	DrawText( ">", 25, x+250,          y-4,  0xFF00FF33 )
+	return y+21
 end
 
 function TargetSelector:ClickMenu(x, y)
 	assert(type(x) == "number" and type(y) == "number", "ts:ClickMenu: wrong argument types (<number>, <number>, <string> expected)")
-	if CursorIsUnder(x+195, y-4+(21), 18, 18) then
-		PrintChat("ts Menu")
-	elseif CursorIsUnder(x+195, y-4+(21), 18, 18) then
-		PrintChat("ts Menu 2")
+	if CursorIsUnder(x+195, y-4, 18, 18) then
+		self.mode = (self.mode == 1 and #_TargetSelector__texted or self.mode - 1)
+	elseif CursorIsUnder(x+245, y-4, 18, 18) then
+		self.mode = (self.mode == #_TargetSelector__texted and 1 or self.mode + 1)
 	end
-	return y + 21
+	return y+21
 end
 
 -- Prediction Functions
@@ -1565,13 +1563,14 @@ end
 
 ]]
 
-_minionTable = {{}, {}, {}, {}}
-_minionManager = {init = true, ally = "##", enemy ="##"}
+_minionTable = {{}, {}, {}, {}, {}}
+_minionManager = {init = true, ally = "##", enemy ="##", jungle ="##",}
 -- Class related constants
 MINION_ALL = 1
 MINION_ENEMY = 2
 MINION_ALLY = 3
-MINION_OTHER = 4
+MINION_JUNGLE = 4
+MINION_OTHER = 5
 MINION_SORT_HEALTH_ASC = 1
 MINION_SORT_HEALTH_DEC = 2
 MINION_SORT_MAXHEALTH_ASC = 3
@@ -1586,6 +1585,7 @@ function minionManager__OnCreateObj(object)
 		_minionTable[MINION_ALL][name] = object
 		if string.find(name,_minionManager.ally) then _minionTable[MINION_ALLY][name] = object
 		elseif string.find(name,_minionManager.enemy) then _minionTable[MINION_ENEMY][name] = object
+		elseif string.find(name,_minionManager.jungle) then _minionTable[MINION_JUNGLE][name] = object
 		else _minionTable[MINION_OTHER][name] = object
 		end
 	end
@@ -1605,6 +1605,11 @@ function minionManager__OnLoad()
 		if mapIndex ~= 4 then
 			_minionManager.ally = "Minion_T"..player.team
 			_minionManager.enemy = "Minion_T"..TEAM_ENEMY
+			if mapIndex == 1 then
+				_minionManager.jungle = "Worm,Dragon,AncientGolem,LizardElder,GiantWolf,wolf,YoungLizard,SmallGolem,LesserWraith"
+			elseif mapIndex == 2 then
+				_minionManager.jungle = "blueDragon,TwistedLizardElder,Ghast,RabidWolf,TwistedBlueWraith,TwistedGiantWolf,TwistedGolem,TwistedYoungLizard,TwistedTinyWraith,TwistedSmallWolf"
+			end
 		else
 			_minionManager.ally = (player.team == TEAM_BLUE and "Blue" or "Red")
 			_minionManager.enemy = (player.team == TEAM_BLUE and "Red" or "Blue")
