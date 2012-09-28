@@ -892,6 +892,40 @@ function TS_Ignore(target, enemyTeam)
 end
 
 -- just here for chat way
+function TS__DrawMenu(x, y, enemyTeam)
+	assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
+	local enemyTeam = (enemyTeam ~= false)
+	for index,_gameHero in ipairs(_gameHeros) do
+		if _gameHero.enemy == enemyTeam then
+			local y1 = y+(21)*_gameHero.tIndex
+			DrawText(_gameHero.hero.charName.." priority: ".._gameHero.priority, 20, x, y1, 0xFF00FF33)
+			DrawText( "o", 36, x+200-5,        y1-13, 0xFF000000 )
+			DrawText( "-", 25, x+200,          y1-6,  0xFFffa200)
+			DrawText( "o", 36, x+250-3,        y1-13, 0xFF000000 )
+			DrawText( "+", 25, x+250,          y1-4,  0xFF00FF33 )
+			DrawText( "o", 36, x+300-3,        y1-13, 0xFF000000 )
+			DrawText( "x", 25, x+300,          y1-6,  0xFFFF0000 )
+		end
+	end
+	return y+(21)*(enemyTeam and _gameEnemyCount or _gameAllyCount)
+end
+
+function TS_ClickMenu(x, y, enemyTeam)
+	assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
+	local enemyTeam = (enemyTeam ~= false)
+	for index,_gameHero in ipairs(_gameHeros) do
+		if _gameHero.enemy == enemyTeam then
+			local y1 = y-4+(21)*_gameHero.tIndex
+			if CursorIsUnder(x+195, y1, 18, 18) then
+				TS_SetHeroPriority(math.min((enemyTeam and _gameEnemyCount or _gameAllyCount), _gameHero.priority + 1), index)
+			elseif CursorIsUnder(x+247, y1, 18, 18) then
+				TS_SetHeroPriority(math.max(1, _gameHero.priority + 1), index)
+			elseif CursorIsUnder(x+297, y1, 18, 18) then TS_Ignore(index) end
+		end
+	end
+	return y+(21)*(enemyTeam and _gameEnemyCount or _gameAllyCount)
+end
+
 function TargetSelector__OnSendChat(msg)
     if msg:sub(1,1) ~= "." then return end
 	local args = string.gmatch(msg, "%S+")
@@ -1079,6 +1113,27 @@ function TargetSelector:OnSendChat(msg, prefix)
 		self.mode = index
 		self:printMode()
     end
+end
+
+function TargetSelector:DrawMenu(x, y, name)
+	assert(type(x) == "number" and type(y) == "number" and type(name) == "string", "ts:DrawMenu: wrong argument types (<number>, <number>, <string> expected)")
+	local y1 = y+21
+	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y1, 0xFFFF9000)
+	DrawText( "o", 36, x+200-5,        y1-13, 0xFF000000 )
+	DrawText( "<", 25, x+200,          y1-6,  0xFFffa200)
+	DrawText( "o", 36, x+250-3,        y1-13, 0xFF000000 )
+	DrawText( ">", 25, x+250,          y1-4,  0xFF00FF33 )
+	return y1
+end
+
+function TargetSelector:ClickMenu(x, y)
+	assert(type(x) == "number" and type(y) == "number", "ts:ClickMenu: wrong argument types (<number>, <number>, <string> expected)")
+	if CursorIsUnder(x+195, y-4+(21), 18, 18) then
+		PrintChat("ts Menu")
+	elseif CursorIsUnder(x+195, y-4+(21), 18, 18) then
+		PrintChat("ts Menu 2")
+	end
+	return y + 21
 end
 
 -- Prediction Functions
@@ -1819,22 +1874,16 @@ GetMinimap(v)					-- Get minimap point {x, y} from object
 GetMinimap(x, y)					-- Get minimap point {x, y}
 ]]
 
-_miniMap = {
-	shift = {x=0,y=0},
-	step = {x=0,y=0},
-	offsets = {x1=300,y1=200,x2=300,y2=225},
-	configFile = LIB_PATH.."_minimap.cfg",
-	init = true,
-}
+_miniMap = { init = true }
 
 function GetMinimapX(x)
 	assert(type(x) == "number", "GetMinimapX: wrong argument types (<number> expected for x)")
-	return (_miniMap__OnLoad() and -100 or _miniMap.offsets.x2 - _miniMap.shift.x + _miniMap.step.x * x)
+	return (_miniMap__OnLoad() and -100 or _miniMap.x + _miniMap.step.x * x)
 end
 
 function GetMinimapY(y)
 	assert(type(y) == "number", "GetMinimapY: wrong argument types (<number> expected for y)")
-	return (_miniMap__OnLoad() and -100 or _miniMap.offsets.y2 - _miniMap.shift.y + _miniMap.step.y * y)
+	return (_miniMap__OnLoad() and -100 or _miniMap.y + _miniMap.step.y * y)
 end
 
 function GetMinimap(a,b)
@@ -1854,22 +1903,15 @@ function GetMinimap(a,b)
 end
 
 function _miniMap__OnLoad()
-	if _miniMap.init and file_exists(_miniMap.configFile) then
-		dofile(_miniMap.configFile)
+	if _miniMap.init then
 		local map = GetMap()
-		_miniMap.step.x = ( _miniMap.offsets.x1 - _miniMap.offsets.x2 ) / map.x
-		_miniMap.step.y = ( _miniMap.offsets.y1 - _miniMap.offsets.y2 ) / map.y
-		_miniMap.shift.x = _miniMap.step.x * map.min.x
-		_miniMap.shift.y = _miniMap.step.y * map.min.y
+		local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
+		_miniMap.step = {x = 290*percent/map.x, -290*percent/map.y}
+		_miniMap.x = WINDOW_W-300*percent - _miniMap.step.x * map.min.x
+		_miniMap.y = WINDOW_H-10*percent - _miniMap.step.y * map.min.y
 		_miniMap.init = nil
-		_miniMap.configFile = nil
 	end
 	return _miniMap.init
-end
-
--- miniMap.convertToMinimap(ingameX,ingameZ) to avoid conficts
-function convertToMinimap(x,y)
-    return GetMinimapX(x), GetMinimapY(y)
 end
 
 --	autoLevel
