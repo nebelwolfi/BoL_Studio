@@ -1585,7 +1585,7 @@ function minionManager__OnCreateObj(object)
 		_minionTable[MINION_ALL][name] = object
 		if string.find(name,_minionManager.ally) then _minionTable[MINION_ALLY][name] = object
 		elseif string.find(name,_minionManager.enemy) then _minionTable[MINION_ENEMY][name] = object
-		elseif string.find(name,_minionManager.jungle) then _minionTable[MINION_JUNGLE][name] = object
+		elseif string.find(_minionManager.jungle, object.charName) then _minionTable[MINION_JUNGLE][name] = object
 		else _minionTable[MINION_OTHER][name] = object
 		end
 	end
@@ -1910,6 +1910,11 @@ end
 function _miniMap__OnLoad()
 	if _miniMap.init then
 		local map = GetMap()
+		if not WINDOW_W or not WINDOW_H then
+			WINDOW_H = GetStart().WINDOW_H
+			WINDOW_W = GetStart().WINDOW_W
+		end
+		if WINDOW_H < 500 or WINDOW_W < 500 then return true end
 		local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
 		_miniMap.step = {x = 290*percent/map.x, y = -290*percent/map.y}
 		_miniMap.x = WINDOW_W-300*percent - _miniMap.step.x * map.min.x
