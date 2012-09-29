@@ -27,15 +27,15 @@ do
 		useSprites = true,				-- show sprite on minimap
 		--[[      GLOBAL      ]]
 		objectsToAdd = {
-			{ name = "VisionWard", objectType = "wards", spellName = "VisionWard", color = 0x00FF00FF, range = 1450, duration = 180000, sprite = "yellowPoint"},
-			{ name = "SightWard", objectType = "wards", spellName = "SightWard", color = 0x0000FF00, range = 1450, duration = 180000, sprite = "greenPoint"},
-			{ name = "WriggleLantern", objectType = "wards", spellName = "WriggleLantern", color = 0x0000FF00, range = 1450, duration = 180000, sprite = "greenPoint"},
-			{ name = "Jack In The Box", objectType = "boxes", spellName = "JackInTheBox", color = 0x00FF0000, range = 300, duration = 60000, sprite = "redPoint"},
-			{ name = "Cupcake Trap", objectType = "traps", spellName = "CaitlynYordleTrap", color = 0x00FF0000, range = 300, duration = 240000, sprite = "cyanPoint"},
-			{ name = "Noxious Trap", objectType = "traps", spellName = "Bushwhack", color = 0x00FF0000, range = 300, duration = 240000, sprite = "cyanPoint"},
-			{ name = "Noxious Trap", objectType = "traps", spellName = "BantamTrap", color = 0x00FF0000, range = 300, duration = 600000, sprite = "cyanPoint"},
-			-- to confirm
-			{ name = "MaokaiSproutling", objectType = "boxes", spellName = "MaokaiSapling2", color = 0x00FF0000, range = 300, duration = 35000, sprite = "redPoint"},
+			{ name = "VisionWard", objectType = "wards", spellName = "VisionWard", charName = "VisionWard", color = 0x00FF00FF, range = 1450, duration = 180000, sprite = "yellowPoint"},
+			{ name = "SightWard", objectType = "wards", spellName = "SightWard", charName = "SightWard", color = 0x0000FF00, range = 1450, duration = 180000, sprite = "greenPoint"},
+			{ name = "WriggleLantern", objectType = "wards", spellName = "WriggleLantern", charName = "WriggleLantern", color = 0x0000FF00, range = 1450, duration = 180000, sprite = "greenPoint"},
+			{ name = "Jack In The Box", objectType = "boxes", spellName = "JackInTheBox", charName = "ShacoBox", color = 0x00FF0000, range = 300, duration = 60000, sprite = "redPoint"},
+			{ name = "Cupcake Trap", objectType = "traps", spellName = "CaitlynYordleTrap", charName = "CaitlynTrap", color = 0x00FF0000, range = 300, duration = 240000, sprite = "cyanPoint"},
+			{ name = "Noxious Trap", objectType = "traps", spellName = "Bushwhack", charName = "Nidalee_Spear", color = 0x00FF0000, range = 300, duration = 240000, sprite = "cyanPoint"},
+			{ name = "Noxious Trap", objectType = "traps", spellName = "BantamTrap", charName = "TeemoMushroom", color = 0x00FF0000, range = 300, duration = 600000, sprite = "cyanPoint"},
+			-- to confirm spell
+			{ name = "DoABarrelRoll", objectType = "boxes", spellName = "MaokaiSapling2", charName = "MaokaiSproutling", color = 0x00FF0000, range = 300, duration = 35000, sprite = "redPoint"},
 		},
 		sprites = {
 			cyanPoint = { spriteFile = "PingMarkerCyan_8", }, 
@@ -48,9 +48,9 @@ do
 	}
 
 	--[[      CODE      ]]
-	function hiddenObjects.objectExist(objectType, pos)
+	function hiddenObjects.objectExist(spellName, pos)
 		for i,obj in pairs(hiddenObjects.objects) do
-			if obj.object == nil and obj.objectType == objectType and GetDistance(obj.pos, pos) < 100 then
+			if obj.object == nil and obj.spellName == spellName and GetDistance(obj.pos, pos) < 200 then
 				return i
 			end
 		end	
@@ -59,9 +59,9 @@ do
 
 	function hiddenObjects.addObject(objectToAdd, pos, fromSpell, object)
 		-- add the object
-		local objId = objectToAdd.objectType..(math.floor(pos.x) + math.floor(pos.z))
+		local objId = objectToAdd.spellName..(math.floor(pos.x) + math.floor(pos.z))
 		--check if exist
-		local objectExist = hiddenObjects.objectExist(objectToAdd.objectType, {x = pos.x, z = pos.z,})
+		local objectExist = hiddenObjects.objectExist(objectToAdd.spellName, {x = pos.x, z = pos.z,})
 		if objectExist ~= nil then
 			hiddenObjects.objects[objId] = hiddenObjects.objects[objectExist]
 			hiddenObjects.objects[objectExist] = nil
@@ -73,7 +73,7 @@ do
 				color = objectToAdd.color,
 				range = objectToAdd.range,
 				sprite = objectToAdd.sprite,
-				objectType = objectToAdd.objectType,
+				spellName = objectToAdd.spellName,
 				seenTick = tick,
 				endTick = tick + objectToAdd.duration,
 				fromSpell = fromSpell,
@@ -88,9 +88,9 @@ do
 	end
 
 	function OnCreateObj(object)
-		if object ~= nil and object.name ~= nil and object.team ~= player.team then
+		if object ~= nil and object.type == "obj_AI_Minion" and object.team ~= player.team then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
-				if object.name == objectToAdd.name then
+				if object.charName == objectToAdd.charName then
 					-- add the object
 					hiddenObjects.addObject(objectToAdd, object, false, object)
 				end
@@ -112,10 +112,16 @@ do
 	function OnDeleteObj(object)
 		if object ~= nil and object.name ~= nil and object.team ~= player.team then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
-				if object.name == objectToAdd.name then
+				if object.charName == objectToAdd.charName then
 					-- remove the object
-					local objId = objectToAdd.objectType..(math.floor(object.x) + math.floor(object.z))
-					if objId ~= nil and hiddenObjects.objects[objId] ~= nil then hiddenObjects.objects[objId] = nil end
+					for j,obj in pairs(hiddenObjects.objects) do
+						if obj.object ~= nil and obj.object.networkID == object.networkID then
+							hiddenObjects.objects[j] = nil
+							return
+						end
+					end
+					local objId = objectToAdd.spellName..(math.floor(object.x) + math.floor(object.z))
+					if objId ~= nil and hiddenObjects.objects[objId] ~= nil then hiddenObjects.objects[objId] = nil return end
 				end
 			end
 		end
