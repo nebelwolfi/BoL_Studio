@@ -274,8 +274,8 @@ function OnDraw()
 		newY = ts:DrawMenu(tablex, newY, "pri")
 		DrawText("Draw Circles: "..(drawcircles and "ON" or "OFF"), 20, tablex, newY+21, (drawcircles and 0xFF00FF33 or 0xFFFF0000))
 		DrawText("Draw Text: "..(drawtext and "ON" or "OFF"), 20, tablex, newY+21*2, (drawtext and 0xFF00FF33 or 0xFFFF0000))
-		DrawText("Draw Prediction: "..(drawprediction and "ON" or "OFF"), 20, tablex, tabley+21*3, (drawprediction and 0xFF00FF33 or 0xFFFF0000))
-		DrawText("Use E: "..(useE and "ON" or "OFF"), 20, tablex, tabley+21*4, (useE and 0xFF00FF33 or 0xFFFF0000))
+		DrawText("Draw Prediction: "..(drawprediction and "ON" or "OFF"), 20, tablex, newY+21*3, (drawprediction and 0xFF00FF33 or 0xFFFF0000))
+		DrawText("Use E: "..(useE and "ON" or "OFF"), 20, tablex, newY+21*4, (useE and 0xFF00FF33 or 0xFFFF0000))
 	end
 end
 
