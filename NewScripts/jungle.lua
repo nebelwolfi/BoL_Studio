@@ -449,7 +449,27 @@ do
 					jungle.addCampAndCreep(object)
 				end
 			end
-	
+			
+			function OnWndMsg(msg,key)
+				if msg == WM_LBUTTONDOWN and IsKeyDown(16) then
+					for i,monster in pairs(jungle.monsters[mapName]) do
+						if monster.isSeen == true then
+							if monster.iconUnder then
+								monster.advise = not monster.advise
+								break
+							else
+								for j,camp in pairs(monster.camps) do
+									if camp.textUnder then
+										if camp.respawnText ~= nil then SendChat(""..camp.respawnText) end
+										break
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			
 			function OnDeleteObj(object)
 				if object ~= nil then
 					jungle.removeCreep(object)
@@ -470,22 +490,6 @@ do
 				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and IsKeyDown(1) then
 					jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
 					jungle.writeConfigs()
-				elseif jungle.shiftKeyPressed and IsKeyPress(1) then
-					for i,monster in pairs(jungle.monsters[mapName]) do
-						if monster.isSeen == true then
-							if monster.iconUnder then
-								monster.advise = not monster.advise
-								break
-							else
-								for j,camp in pairs(monster.camps) do
-									if camp.textUnder then
-										if camp.respawnText ~= nil then SendChat(""..camp.respawnText) end
-										break
-									end
-								end
-							end
-						end
-					end
 				end
 				local tick = GetTickCount()
 				local monsterCount = 0
