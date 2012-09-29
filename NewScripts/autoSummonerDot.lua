@@ -11,6 +11,7 @@
 ]]
 
 --[[ 		Globals		]]
+require "AllClass"
 do
 	local autoSummonerDot = {
 		range = 600,

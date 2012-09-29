@@ -9,7 +9,7 @@
 	v0.1 	initial release
 	v0.2	BoL Studio Version
 ]]
-
+require "AllClass"
 do
 	--[[ 		Globals		]]
 	local autoSummonerExhaust = {

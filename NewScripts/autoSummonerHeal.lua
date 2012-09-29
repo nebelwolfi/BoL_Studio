@@ -9,7 +9,7 @@
 	v0.1 	initial release
 	v0.2	BoL Studio Version
 ]]
-
+require "AllClass"
 --[[ 		Globals		]]
 do
 	local autoSummonerHeal = {
