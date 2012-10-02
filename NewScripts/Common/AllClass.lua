@@ -123,10 +123,17 @@ end
 
 -- return if target have buff
 function TargetHaveBuff(buffName, target)
-	assert(type(buffName) == "string", "TargetHaveBuff: wrong argument types (<string> expected for buffName)")
+	assert(type(buffName) == "string" or type(buffName) == "table", "TargetHaveBuff: wrong argument types (<string> or <table of string> expected for buffName)")
 	local target = target or player
 	for i = 1, target.buffCount do
-		if target:getBuff(i) == buffName then return true end
+		local tBuff = target:getBuff(i)
+		if type(buffName) == "string" then
+			if tBuff == buffName then return true end
+		else
+			for j,sBuff in ipairs(buffName) do
+				if tBuff == sBuff then return true end
+			end
+		end
 	end
 	return false
 end
@@ -152,28 +159,30 @@ end
 		VectorIntersection(a1,b1,a2,b2)			-- return the Intersection of 2 lines
 		VectorDirection(v1,v2,v)
 		VectorIntersectionFromPoint(v1, v2, v)  -- return a vector on line v1-v2 closest to v
-		Vector(a,b)								-- return a vector from x,y pos or from another vector
+		Vector(a,b,c)							-- return a vector from x,y,z pos or from another vector
 		
 		---- Vector Members ----
 		x
+		y
 		z
 		
 		---- Vector Functions ----
 		vector:clone()							-- return a new Vector from vector
 		vector:unpack()							-- x, z
-		vector:len2()
+		vector:len2()							-- return vector^2
+		vector:len2(v)							-- return vector^v
 		vector:len()							-- return vector length
 		vector:dist(v)							-- distance between 2 vectors (v and vector)
 		vector:normalize()						-- normalize vector
 		vector:normalized()						-- return a new Vector normalize from vector
-		vector:rotate(phi)						-- rotate the vector by phi angle
-		vector:rotated(phi)						-- return a new Vector rotate from vector by phi angle
-		vector:polar()							-- return the angle from axe
-		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
+		vector:rotate(phiX, phiY, phiZ)			-- rotate the vector by phi angle
+		vector:rotated(phiX, phiY, phiZ)		-- return a new Vector rotate from vector by phi angle
 		vector:projectOn(v)						-- return a new Vector from vector projected on v
 		vector:mirrorOn(v)						-- return a new Vector from vector mirrored on v
-		vector:cross(v)							-- return cross
 		vector:center(v)						-- return center between vector and v
+
+		vector:polar()							-- return the angle from axe
+		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
 		vector:compare(v)						-- compare vector and v
 		vector:perpendicular()					-- return new Vector rotated 90° rigth
 		vector:perpendicular2()					-- return new Vector rotated 90° left
@@ -181,7 +190,7 @@ end
 
 -- STAND ALONE FUNCTIONS
 function VectorType(v)
-	return (v ~= nil and type(v.x) == "number" and type(v.z) == "number")
+	return (v ~= nil and (type(v) == "Vector" or (type(v.x) == "number" and (type(v.y) == "number" or type(v.z) == "number"))))
 end
 
 function VectorIntersection(a1,b1,a2,b2)
@@ -211,105 +220,115 @@ function VectorIntersectionFromPoint(v1, v2, v)
 	return (line * t) + v1
 end
 
-
 class 'Vector'
 -- INSTANCED FUNCTIONS
-function Vector:__init(a,b)
+function Vector:__init(a,b,c)
 	if a == nil then
-		self.x, self.z = 0, 0
+		self.x, self.y, self.z = 0.0, 0.0, 0.0
 	elseif b == nil then
-		if VectorType(a) then
-			self.x, self.z = a.x, a.z
-		else
-			assert(type(a.x) == "number" and type(a.y) == "number", "Vector: wrong argument types (expected nil or <Vector> or 2 <number>)")
-			self.x, self.z = a.x, a.y
-		end
+		assert(VectorType(a), "Vector: wrong argument types (expected nil or <Vector> or 2 <number> or 3 <number>)")
+		self.x, self.y, self.z = a.x, a.y or 0.0, a.z or 0.0
+	elseif c == nil then
+		assert(type(a) == "number" and type(b) == "number", "Vector: wrong argument types (expected nil or <Vector> or 2 <number> or 3 <number>)")
+		-- TODO !! set y, not z !!! Only there because we were wrong first !
+		self.x, self.y, self.z = a, 0.0, b
 	else
-		assert(type(a) == "number" and type(b) == "number", "Vector: wrong argument types (expected nil or <Vector> or 2 <number>)")
-		self.x = a
-		self.z = b
+		assert(type(a) == "number" and type(b) == "number" and type(c) == "number", "Vector: wrong argument types (expected nil or <Vector> or 2 <number> or 3 <number>)")
+		self.x, self.y, self.z = a, b, c
 	end
+end
+
+function Vector:__type()
+	return "Vector"
 end
 
 function Vector:__add(v)
 	assert(VectorType(v), "add: wrong argument types (<Vector> expected)")
-	return Vector(self.x + v.x, self.z + v.z)
+	return Vector(self.x + v.x, self.y + (v.y or 0), self.z + (v.z or 0))
 end
 
 function Vector:__sub(v)
 	assert(VectorType(v), "Sub: wrong argument types (<Vector> expected)")
-	return Vector(self.x - v.x, self.z - v.z)
+	return Vector(self.x - v.x, self.y - (v.y or 0), self.z - (v.z or 0))
 end
 
 function Vector:__mul(v)
 	if type(v) == "number" then
-		return Vector(self.x * v, self.z * v)
+		return Vector(self.x * v, self.y * v, self.z * v)
 	else
 		assert(VectorType(v), "Mul: wrong argument types (<Vector> or <number> expected)")
-		return Vector(self.x * v.x, self.z * v.z)
+		return Vector(self.x * v.x, self.y * (v.y ~= nil and v.y or 1), self.z * (v.z ~= nil and v.z or 1))
 	end
 end
 
 function Vector:__div(v)
 	if type(v) == "number" then
-		assert(v ~= 0, "Div: wrong argument types (expected divider ~= 0)")
-		return Vector(self.x / v, self.z / v)
+		return Vector(self.x / (v or 1), self.y / (v or 1), self.z / (v or 1))
 	else
 		assert(VectorType(v), "Div: wrong argument types (<Vector> or <number> expected)")
-		assert(v.x ~= 0 and v.z ~= 0, "Div: wrong argument types (expected divider ~= 0)")
-		return Vector(self.x / v.x, self.z / v.z)
+		return Vector(self.x / (v.x or 1), self.y / (v.y or 1), self.z / (v.z or 1))
 	end
 end
-
+-- TODO
 function Vector:__lt(v)
 	assert(VectorType(v), "__lt: wrong argument types (<Vector> expected)")
-	return self.x < v.x or (self.x == v.x and self.z < v.z)
+	if self.x < v.x then return true end
+	if (v.y ~= nil and self.y < v.y) then return true end
+	if (v.z ~= nil and self.z < v.z) then return true end
+	return false
 end
-
+-- TODO
 function Vector:__le(v)
 	assert(VectorType(v), "__le: wrong argument types (<Vector> expected)")
-	return self.x <= v.x and self.z <= v.z
+	return self.x <= v.x and (v.y == nil or self.y <= v.y) and (v.z == nil or self.z <= v.z)
 end
 
 function Vector:__eq(v)
 	assert(VectorType(v), "__eq: wrong argument types (<Vector> expected)")
-	return self.x == v.x and self.z == v.z
+	return self.x == v.x  and self.y == (v.y or 0) and self.z == (v.z or 0)
 end
 
 function Vector:__unm()
-	return Vector(- self.x, - self.z)
+	return Vector(-self.x, -self.y, -self.z)
+end
+
+function Vector:__vector(v)
+	assert(VectorType(v), "__vector: wrong argument types (<Vector> expected)")
+	local x = self.y * (v.z or 1) - self.z * (v.y or 1)
+	local y = self.z * v.x - self.x * (v.z or 1)
+	local z = self.x * (v.y or 1) - self.y * v.x
+	return Vector(self.y * (v.z or 1) - self.z * (v.y or 1), self.z * v.x - self.x * (v.z or 1), self.x * (v.y or 1) - self.y * v.x)
 end
 
 function Vector:__tostring()
-	return "("..tostring(self.x)..","..tostring(self.z)..")"
+	return "("..tostring(self.x)..","..tostring(self.y)..","..tostring(self.z)..")"
 end
 
 function Vector:clone()
-	return Vector(self.x, self.z)
+	return Vector(self)
 end
 
 function Vector:unpack()
-	return self.x, self.z
+	return self.x, self.y, self.z
 end
 
--- old LengthSQ
-function Vector:len2()
-	return self.x * self.x + self.z * self.z
+function Vector:len2(v)
+	assert(v == nil or VectorType(v), "dist: wrong argument types (<Vector> expected)")
+	v = Vector(v) or self
+	return self.x * v.x + self.y * v.y + self.z * v.z
 end
-
--- old Length
 function Vector:len()
 	return math.sqrt(self:len2())
 end
 
 function Vector:dist(v)
 	assert(VectorType(v), "dist: wrong argument types (<Vector> expected)")
-	return self:__sub(v):len()
+	local a = self - v
+	return a:len()
 end
 
 function Vector:normalize()
-	local len = self:len()
-	if len ~= 0 then self.x, self.z = self.x / len, self.z / len end
+	self = self / self:len()
 end
 
 function Vector:normalized()
@@ -318,18 +337,90 @@ function Vector:normalized()
 	return a
 end
 
-function Vector:rotate(phi)
-	assert(type(phi) == "number", "Rotate: wrong argument types (expected <number> for phi)")
-	local c, s = math.cos(phi), math.sin(phi)
-	self.x, self.z = c * self.x - s * self.z, s * self.x + c * self.z
+function Vector:center(v)
+	assert(VectorType(v), "center: wrong argument types (<Vector> expected)")
+	return Vector((self + v) / 2)
 end
 
-function Vector:rotated(phi)
-	assert(type(phi) == "number", "Rotated: wrong argument types (expected <number> for phi)")
+function Vector:projectOn(v)
+	assert(VectorType(v), "projectOn: invalid argument: cannot project Vector on " .. type(v))
+	if type(v) ~= "Vector" then v = Vector(v) end
+	local s = self:len2(v) / v:len2()
+	return Vector(v * s)
+end
+
+function Vector:mirrorOn(v)
+	assert(VectorType(v), "mirrorOn: invalid argument: cannot mirror Vector on " .. type(v))
+	return self:projectOn(v) * 2
+end
+
+function Vector:sin(v)
+	assert(VectorType(v), "sin: wrong argument types (<Vector> expected)")
+	if type(v) ~= "Vector" then v = Vector(v) end
+	local a = self:__vector(v)
+	return math.sqrt(a:len2() / (self:len2() * v:len2()))
+end
+
+function Vector:cos(v)
+	assert(VectorType(v), "cos: wrong argument types (<Vector> expected)")
+	if type(v) ~= "Vector" then v = Vector(v) end
+	return self:len2(v) / math.sqrt(self:len2() * v:len2())
+end
+
+function Vector:angle(v)
+	assert(VectorType(v), "angle: wrong argument types (<Vector> expected)")
+	return math.acos(self:cos(v))
+end
+
+function Vector:affineArea(v)
+	assert(VectorType(v), "affineArea: wrong argument types (<Vector> expected)")
+	if type(v) ~= "Vector" then v = Vector(v) end
+	local a = self:__vector(v)
+	return math.sqrt(a:len2())
+end
+
+function Vector:triangleArea(v)
+	assert(VectorType(v), "triangleArea: wrong argument types (<Vector> expected)")
+	return self:affineArea(v) / 2
+end
+
+function Vector:rotateXaxis(phi)
+	assert(type(phi) == "number", "Rotate: wrong argument types (expected <number> for phi)")
+	local c, s = math.cos(phi), math.sin(phi)
+	self.y, self.z = self.y * c - self.z * s, self.z * c + self.y * s
+end
+
+function Vector:rotateYaxis(phi)
+	assert(type(phi) == "number", "Rotate: wrong argument types (expected <number> for phi)")
+	local c, s = math.cos(phi), math.sin(phi)
+	self.x, self.z = self.x * c + self.z * s, self.z * c - self.x * s
+end
+
+function Vector:rotateZaxis(phi)
+	assert(type(phi) == "number", "Rotate: wrong argument types (expected <number> for phi)")
+	local c, s = math.cos(phi), math.sin(phi)
+	self.x, self.y = self.x * c - self.z * s, self.y * c + self.x * s
+end
+
+-- TODO
+function Vector:rotate(phiX, phiY, phiZ)
+	assert(type(phiX) == "number" and type(phiY) == "number" and type(phiZ) == "number", "Rotate: wrong argument types (expected <number> for phi)")
+	if phiX ~= 0 then self:rotateXaxis(phiX) end
+	if phiY ~= 0 then self:rotateYaxis(phiY) end
+	if phiZ ~= 0 then self:rotateZaxis(phiZ) end
+end
+
+function Vector:rotated(phiX, phiY, phiZ)
+	assert(type(phiX) == "number" and type(phiY) == "number" and type(phiZ) == "number", "Rotated: wrong argument types (expected <number> for phi)")
 	local a = self:clone()
-	a:rotate(phi)
+	a:rotate(phiX, phiY, phiZ)
 	return a
 end
+
+
+
+
+-- not yet full 3D functions
 
 function Vector:polar()
 	if math.close(self.x, 0) then
@@ -354,28 +445,6 @@ function Vector:angleBetween(v1, v2)
 	return theta
 end
 
-function Vector:projectOn(v)
-	assert(VectorType(v), "projectOn: invalid argument: cannot project Vector on " .. type(v))
-	local s = (self.x * v.x + self.z * v.z) / (v.x * v.x + v.z * v.z)
-	return Vector(s * v.x, s * v.z)
-end
-
-function Vector:mirrorOn(v)
-	assert(VectorType(v), "mirrorOn: invalid argument: cannot mirror Vector on " .. type(v))
-	local s = 2 * (self.x * v.x + self.z * v.z) / (v.x * v.x + v.z * v.z)
-	return Vector(s * v.x - self.x, s * v.z - self.z)
-end
-
-function Vector:cross(v)
-	assert(VectorType(v), "cross: wrong argument types (<Vector> expected)")
-	return self.x * v.z - self.z * v.x
-end
-
-function Vector:center(v)
-	assert(VectorType(v), "center: wrong argument types (<Vector> expected)")
-	return Vector((self.x + v.x) / 2, (self.z + v.z) / 2)
-end
-
 function Vector:compare(v)
 	assert(VectorType(v), "compare: wrong argument types (<Vector> expected)")
 	local ret = self.x - v.x
@@ -384,11 +453,11 @@ function Vector:compare(v)
 end
 
 function Vector:perpendicular()
-	return Vector(-self.z, self.x)
+	return Vector(-self.z, self.y, self.x)
 end
 
 function Vector:perpendicular2()
-	return Vector(self.z, -self.x)
+	return Vector(self.z, self.y, -self.x)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1002,7 +1071,7 @@ end
 function TargetSelector:_targetSelectedByPlayer()
 	if self.targetSelected then
 		local currentTarget = GetTarget()
-		if ValidTarget(currentTarget, 2000, self.enemyTeam) and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
+		if ValidTarget(currentTarget, self.range, self.enemyTeam) and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
 			if self.target == nil or self.target.networkID ~= currentTarget.networkID then
 				self.target = currentTarget
 				self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
@@ -1041,7 +1110,7 @@ function TargetSelector:update()
 				nextPosition = _PredictionPosition(i, self._pDelay)
 				nextHealth = _PredictionHealth(i, self._pDelay)
 			end
-			if self._spellWidth then minionCollision = GetMinionCollision(nextPosition, self._spellWidth) end
+			if self._spellWidth then minionCollision = GetMinionCollision(player, nextPosition, self._spellWidth) end
 			if GetDistance(nextPosition) <= range and minionCollision == false then
 				if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 				-- Returns lowest effective HP target that is in range
@@ -1116,11 +1185,11 @@ end
 
 function TargetSelector:DrawMenu(x, y, name)
 	assert(type(x) == "number" and type(y) == "number" and type(name) == "string", "ts:DrawMenu: wrong argument types (<number>, <number>, <string> expected)")
-	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y, 0xFFFF9000)
-	DrawText( "o", 36, x+200-5,        y-13, 0xFF000000 )
-	DrawText( "<", 25, x+200,          y-6,  0xFFffa200)
-	DrawText( "o", 36, x+250-3,        y-13, 0xFF000000 )
-	DrawText( ">", 25, x+250,          y-4,  0xFF00FF33 )
+	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y, 4294938624) -- 0xFFFF9000
+	DrawText( "o", 36, x+195, y-13, 4278190080 ) -- 0xFF000000
+	DrawText( "<", 25, x+200, y-6, 4294943232) --0xFFFFA200
+	DrawText( "o", 36, x+247, y-13, 4278190080) -- 0xFF000000
+	DrawText( ">", 25, x+250, y-4, 4278255411 ) -- 0xFF00FF33
 	return y+21
 end
 
@@ -1213,14 +1282,15 @@ end
 	Goblal Function :
 	GetMinionCollision(posEnd, spellWidth)			-> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
-function GetMinionCollision(posEnd, spellWidth)
-	assert(VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <number> expected)")
+function GetMinionCollision(posStart, posEnd, spellWidth)
+	assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <number> expected)")
+	local distance = GetDistance(posStart, posEnd)
 	for i = 0, objManager.maxObjects, 1 do
-		local minion = objManager:getObject(i)
-		if minion and minion.ms == 325 and minion.team ~= player.team and not minion.dead and minion.visible and string.find(minion.name, "Minion_") then
-			if GetDistance(minion) < distance then
-				local closestPoint = VectorIntersectionFromPoint(player, posEnd, minion)
-				if GetDistance(closestPoint, minion) <= spellWidth / 2 then return true end
+		local object = objManager:getObject(i)
+		if object and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
+			if GetDistance(object) < distance then
+				local closestPoint = VectorIntersectionFromPoint(posStart, posEnd, object)
+				if GetDistance(closestPoint, object) <= spellWidth / 2 then return true end
 			end
 		end
 	end
@@ -1303,7 +1373,7 @@ function TargetPrediction:GetPrediction(target)
 		local osTime = os.clock()
         local delay = self.delay / 1000
 		local proj_speed = self.proj_speed and self.proj_speed * 1000
-        if player:GetDistance(selected) < self.range + 300 then
+        if GetDistance(selected) < self.range + 300 then
             if osTime - (_gameHeros[index].prediction.calculateTime or 0) > 0 then
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
@@ -1331,7 +1401,7 @@ function TargetPrediction:GetPrediction(target)
                     --update minions collision
 					self.minions = false
 					if self.width then
-						self.minions = GetMinionCollision(PositionPrediction, self.width)
+						self.minions = GetMinionCollision(player, PositionPrediction, self.width)
                     end
                 else return
                 end
