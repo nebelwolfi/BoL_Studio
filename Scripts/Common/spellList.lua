@@ -12,7 +12,7 @@ spellList = {
 	SummonerClairvoyance = {charName = "", range = 50000, spellType = 3, size = 1300, duration = 6000},
 
 	-- Ahri
-	AhriOrbOfDeception = {charName = "Ahri", range = 880, spellType = 1, size = 80, duration = 1000, speed = 1.17, delay = 300, spellKey = _Q, spammable = true},
+	AhriOrbofDeception = {charName = "Ahri", range = 880, spellType = 1, size = 80, duration = 1000, speed = 1.17, delay = 300, spellKey = _Q, spammable = true},
 	AhriSeduce = {charName = "Ahri", range = 975, spellType = 1, size = 80, duration = 1000, speed = 1.2, delay = 300, spellKey = _E, spammable = true},
 
 	-- Amumu
@@ -59,7 +59,7 @@ spellList = {
 
 	-- Cho'Gath
 	-- Rupture
-	Rupture = {charName = "ChoGath", range = 950, spellType = 3, size = 275, duration = 1500},
+	Rupture = {charName = "Chogath", range = 950, spellType = 3, size = 275, duration = 1500},
 
 	-- Corki
 	-- Phosphorus Bomb
