@@ -3,10 +3,9 @@
 	Author: SurfaceS
 
 	Based on mixed ideas from :
-	Kilua -> Kilia UI, minimap Hack
+	Kilua -> Kilia UI
 	Manciuszz -> Low Awareness SCRIPT
 
-	required libs : 		common, gameOver, minimap (if minimapHack)
 	exposed variables : 	-
 
 	UPDATES :
@@ -15,14 +14,12 @@
 ]]
 
 do
-	require "common"
-	require "gameOver"
+	require "AllClass"
+
 	local ennemyControl = {}
 	ennemyControl.alert = {}
 
 	--[[      CONFIG      ]]
-	ennemyControl.minimapHack = false					-- Show last position of enemy champions hidden. (not more needed, included in BoL Studio)
-
 	ennemyControl.alert.active = true					-- Draw cricle on approching enemy champions hidden for defined time.
 	ennemyControl.alert.range = 2500 					-- Distance that the script will consider worthy of alerting you of incoming enemy champions.
 	ennemyControl.alert.missTime = 10000 				-- How long, in ms, enemy champion has to be missing in order for the script to alert of his arrival. (10s)
@@ -34,7 +31,6 @@ do
 	ennemyControl.ennemyHeros = {}
 	ennemyControl.herosSprite = {}
 	ennemyControl.summonerSprite = {}
-	ennemyControl.minimapSprite = {}
 	ennemyControl.shiftKeyPressed = false
 	ennemyControl.spells = {SPELL_1, SPELL_2, SPELL_3, SPELL_4}
 	ennemyControl.summoners = {SUMMONER_1, SUMMONER_2}
@@ -101,9 +97,6 @@ do
 				ennemyHero.missing = true
 				if ennemyHero.missStart == nil then
 					ennemyHero.missStart = tick
-					if ennemyControl.minimapHack then
-						ennemyHero.missMinimap = miniMap.ToMinimapPoint(ennemyHero.hero.x,ennemyHero.hero.z)
-					end
 				end
 				ennemyHero.missTimer = tick - ennemyHero.missStart
 				if ennemyControl.alert.active and ennemyHero.missTimer > ennemyControl.alert.missTime then
@@ -113,7 +106,7 @@ do
 			else
 				ennemyHero.missing = false
 				ennemyHero.missStart = nil
-				if ennemyControl.alert.active and ennemyHero.alertActive and ennemyHero.drawAlertCircle == false and GetDistance2D(player, ennemyHero.hero) < ennemyControl.alert.range then
+				if ennemyControl.alert.active and ennemyHero.alertActive and ennemyHero.drawAlertCircle == false and GetDistance(ennemyHero.hero) < ennemyControl.alert.range then
 					ennemyHero.alertTick = tick
 					ennemyHero.drawAlertCircle = true
 				end
@@ -190,7 +183,7 @@ do
 	end
 
 	function OnDraw()
-		if gameOver.gameIsOver() == true then return end
+		if gameState:gameIsOver() then return end
 		for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
 			if ennemyHero.hero ~= nil then
 				--ennemyControl["teamFrameBG"..ennemyHero.teamFrame.name]:Draw(ennemyHero.teamFrame.x,ennemyHero.teamFrame.y,0xFF)	-- CASE BG
@@ -209,9 +202,6 @@ do
 				elseif ennemyHero.missing == true then
 					DrawLine(ennemyHero.display.timerMask.x, ennemyHero.display.timerMask.y, ennemyHero.display.timerMask.x + 25, ennemyHero.display.timerMask.y, 11, 4281221816)
 					DrawText(ennemyHero.missTimerText,15,ennemyHero.display.timer.x,ennemyHero.display.timer.y,4294967295)
-					if ennemyControl.minimapHack then
-						ennemyControl.minimapSprite[ennemyHero.charName]:Draw(ennemyHero.missMinimap.x, ennemyHero.missMinimap.y,0xFF)
-					end
 				end
 				
 				if ennemyHero.healthPart >= 1 then
@@ -260,19 +250,19 @@ do
 	end
 
 	function OnTick()
-		if gameOver.gameIsOver() == true then return end
+		if gameState:gameIsOver() then return end
 		-- walkaround OnWndMsg bug
 		ennemyControl.shiftKeyPressed = IsKeyDown(16)
 		if ennemyControl.shiftKeyPressed and IsKeyDown(1) then
-			if cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
+			if CursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
 				ennemyControl.display.move = true
-			elseif cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
+			elseif CursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
 				ennemyControl.display.rotation = ennemyControl.display.rotation + 1
 				if ennemyControl.display.rotation > 3 then ennemyControl.display.rotation = 0 end
 				ennemyControl.writeConfigs()
 			else
 				for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
-					if cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
+					if CursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
 						ennemyHero.extended = (ennemyHero.extended == false)
 						break
 					end
@@ -301,11 +291,7 @@ do
 	end
 	
 	function OnLoad()
-		gameOver.OnLoad()
-		if ennemyControl.minimapHack and minimap == nil then
-			require "minimap"
-			miniMap.OnLoad()
-		end
+		gameState = GameState()
 		if file_exists(ennemyControl.configFile) then ennemyControl.display = assert(loadfile(ennemyControl.configFile))() end
 		local ennemyHerosCount = 0
 		for i = 1, heroManager.iCount, 1 do
@@ -326,26 +312,23 @@ do
 				if hero.isAI then
 					ennemyControl.ennemyHeros[ennemyHerosCount].spellLearned = {false, false, false, false}
 				end
-				ennemyControl.herosSprite[hero.charName] = returnSprite("Characters/"..hero.charName.."_Square_40.dds", "empty_Square_40.dds")
-				if ennemyControl.minimapHack then
-					ennemyControl.minimapSprite[hero.charName] = returnSprite("Characters/"..hero.charName.."_Square_16.dds", "empty_Square_16.dds")
-				end
+				ennemyControl.herosSprite[hero.charName] = GetSprite("Characters/"..hero.charName.."_Square_40.dds", "empty_Square_40.dds")
 				-- SPELL SUMMONERS SPRITES
 				ennemyControl.ennemyHeros[ennemyHerosCount].summonerSpellName = {}
 				for j = 1, 2 do
 					local summonerSpellName = hero:GetSpellData(ennemyControl.summoners[j]).name
 					ennemyControl.ennemyHeros[ennemyHerosCount].summonerSpellName[j] = summonerSpellName
 					if ennemyControl.summonerSprite[summonerSpellName] == nil then
-						ennemyControl.summonerSprite[summonerSpellName] = returnSprite("Spells/"..summonerSpellName.."_20.dds", "empty_Square_20.dds")
+						ennemyControl.summonerSprite[summonerSpellName] = GetSprite("Spells/"..summonerSpellName.."_20.dds", "empty_Square_20.dds")
 					end
 				end
 				ennemyControl.refreshDrawPositions(ennemyHerosCount)
 				ennemyControl.updateEnnemyData(ennemyHerosCount)
 			end
 		end
-		ennemyControl.teamFrame = returnSprite("ennemyControl/TeamFrame_80.dds")
-		ennemyControl.teamFrameR = returnSprite("ennemyControl/TeamFrame_80_R.dds")
-		ennemyControl.champInfos = returnSprite("ennemyControl/Champ_Infos_50.dds")
-		ennemyControl.spriteultiready = returnSprite("ennemyControl/UltiReady_12.dds")
+		ennemyControl.teamFrame = GetSprite("ennemyControl/TeamFrame_80.dds")
+		ennemyControl.teamFrameR = GetSprite("ennemyControl/TeamFrame_80_R.dds")
+		ennemyControl.champInfos = GetSprite("ennemyControl/Champ_Infos_50.dds")
+		ennemyControl.spriteultiready = GetSprite("ennemyControl/UltiReady_12.dds")
 	end
 end

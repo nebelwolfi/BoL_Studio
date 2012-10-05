@@ -254,15 +254,15 @@ do
 		-- walkaround OnWndMsg bug
 		ennemyControl.shiftKeyPressed = IsKeyDown(16)
 		if ennemyControl.shiftKeyPressed and IsKeyDown(1) then
-			if cursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
+			if CursorIsUnder(ennemyControl.display.x + 10, ennemyControl.display.y, 50, 10) then
 				ennemyControl.display.move = true
-			elseif cursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
+			elseif CursorIsUnder(ennemyControl.display.x, ennemyControl.display.y + 10, 10, ennemyControl.case_gap - 10) then
 				ennemyControl.display.rotation = ennemyControl.display.rotation + 1
 				if ennemyControl.display.rotation > 3 then ennemyControl.display.rotation = 0 end
 				ennemyControl.writeConfigs()
 			else
 				for i,ennemyHero in pairs(ennemyControl.ennemyHeros) do
-					if cursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
+					if CursorIsUnder(ennemyHero.display.icon.x, ennemyHero.display.icon.y, 40, 40) then
 						ennemyHero.extended = (ennemyHero.extended == false)
 						break
 					end

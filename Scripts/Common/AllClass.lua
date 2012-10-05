@@ -1,7 +1,7 @@
 if player == nil then player = GetMyHero() end
-if LIB_PATH == nil then LIB_PATH = debug.getinfo(1).source:sub(debug.getinfo(1).source:find(".*\\")):sub(2) end
-if SCRIPT_PATH == nil then SCRIPT_PATH = LIB_PATH:gsub("\\", "/"):gsub("/Common", "") end
-if SPRITE_PATH == nil then SPRITE_PATH = SCRIPT_PATH:gsub("\\", "/"):gsub("/Scripts", "").."Sprites/" end
+LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
+SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
+SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
 
