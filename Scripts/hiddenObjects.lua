@@ -1,10 +1,10 @@
 --[[
-	Script: Hidden Objects Display v0.2
+	Script: Hidden Objects Display v0.3
 	Author: SurfaceS
 	
 	required libs : 		
 	required sprites : 		Hidden Objects Sprites (if used)
-	exposed variables : 	file_exists
+	exposed variables : 	hiddenObjects
 	
 	UPDATES :
 	v0.1				initial release
@@ -12,6 +12,7 @@
 	v0.1c				change spells names for teemo
 	v0.1d				fix the perma show
 	v0.2				BoL Studio Version
+	v0.3				AllClass use
 	
 	USAGE :
 	Hold shift key to see the hidden object's range.
