@@ -1783,7 +1783,7 @@ end
 -- Class : ChampionLane
 --[[
 Goblal Function :
-ChampionLane__OnLoad() 		-- OnLoad()
+_ChampionLane__OnLoad() 		-- OnLoad()
 ChampionLane__OnTick()			-- OnTick()
 
 Method :
@@ -1804,10 +1804,10 @@ CL:GetJungler()			-- return the object of the enemy jungler or nil
 CL:GetJungler(team)		-- return the object of the team jungler or nil
 ]]
 
-_championLane = {init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, myLane = "unknow", nextUpdate = 0, tickUpdate = 250,}
+_championLane = {savedFile = LIB_PATH.."championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, myLane = "unknow", nextUpdate = 0, tickUpdate = 250}
 
 -- init values
-function ChampionLane__OnLoad()
+function _ChampionLane__OnLoad()
 	if _championLane.init then
 		_championLane.init = nil
 		_championLane.mapIndex = GetMap().index
@@ -1825,6 +1825,7 @@ function ChampionLane__OnLoad()
 		if _championLane.mapIndex == 1 or _championLane.mapIndex == 2 then
 			_championLane.startTime = start.tick + 120000 --2 min from start
 			_championLane.stopTime = start.tick + 600000 --10 min from start
+			_championLane.nextSave = start.tick + 150000 --2 min 30 from start
 			if _championLane.mapIndex == 1 then
 				_championLane.top = {point = {x = 1900, y = 0, z = 12600} }
 				_championLane.mid = {point = {x = 7100, y = 0, z = 7100} }
@@ -1833,10 +1834,40 @@ function ChampionLane__OnLoad()
 				_championLane.top = {point = {x = 6700, y = 0, z = 7100} }
 				_championLane.bot = {point = {x = 6700, y = 0, z = 3100} }
 			end
-		else
-			
 		end
+		-- reload saved value if exist
+		_championLane.save = {}
+		if file_exists(_championLane.savedFile) then dofile(_championLane.savedFile) end
+		if _championLane.save.startTime ~= nil and _championLane.startTime == _championLane.save.startTime then
+			for j, team in pairs({"ally", "enemy"}) do
+				for i, champion in pairs(_championLane.save[team]) do
+					_championLane[team].champions[i].top = champion.top
+					_championLane[team].champions[i].mid = champion.mid
+					_championLane[team].champions[i].bot = champion.bot
+					_championLane[team].champions[i].jungle = champion.jungle
+				end
+			end
+			_championLane.nextSave = GetTickCount() + 30000
+		end
+		--clean
+		_championLane.save = nil
 	end
+end
+
+function _ChampionLane__Save()
+	_championLane.nextSave = GetTickCount() + 30000
+	local file = io.open(_championLane.savedFile, "w")
+	if file then
+		file:write("_championLane.save.startTime = ".._championLane.startTime.."\n")
+		for j, team in pairs({"ally", "enemy"}) do
+			file:write("_championLane.save.".. team .." = {}\n")
+			for i, champion in pairs(_championLane[team].champions) do
+				file:write("_championLane.save.".. team .."["..i.."] = {top = ".._championLane[team].champions[i].top..", mid = ".._championLane[team].champions[i].mid..", bot = ".._championLane[team].champions[i].bot..", jungle = ".._championLane[team].champions[i].jungle.." }\n")
+			end
+		end
+		file:close()
+	end
+	file = nil
 end
 
 function ChampionLane__OnTick()
@@ -1844,9 +1875,10 @@ function ChampionLane__OnTick()
 	local tick = GetTickCount()
 	if tick < _championLane.startTime or tick < _championLane.nextUpdate then return end
 	if tick > _championLane.stopTime then _championLane.startTime = nil return end
+	if tick > _championLane.nextSave then _ChampionLane__Save() end
 	_championLane.nextUpdate = tick + _championLane.tickUpdate
 	-- team update
-	for i, team in pairs({"ally", "enemy"}) do
+	for j, team in pairs({"ally", "enemy"}) do
 		local update = {top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }
 		for i, champion in pairs(_championLane[team].champions) do
 			-- update champ pos
@@ -1897,7 +1929,7 @@ end
 class 'ChampionLane'
 
 function ChampionLane:__init()
-	ChampionLane__OnLoad()
+	_ChampionLane__OnLoad()
 end
 
 function ChampionLane:GetPoint(lane)
