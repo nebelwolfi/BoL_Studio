@@ -9,7 +9,7 @@
 	v0.1 	initial release
 	v0.2	BoL Studio Version
 ]]
-
+require "AllClass"
 do
 	--[[ 		Globals		]]
 	local autoSummonerExhaust = {
@@ -23,7 +23,6 @@ do
 --[[ 		Code		]]
 	function OnLoad()
 		--[[            Conditional            ]]
-		if player == nil then player = GetMyHero() end
 		if string.find(player:GetSpellData(SUMMONER_1).name..player:GetSpellData(SUMMONER_2).name, "SummonerExhaust") ~= nil then
 			if player:GetSpellData(SUMMONER_1).name == "SummonerExhaust" then
 				autoSummonerExhaust.slot = SUMMONER_1
@@ -31,8 +30,7 @@ do
 				autoSummonerExhaust.slot = SUMMONER_2
 			end
 			function autoSummonerExhaust.ready()
-				if autoSummonerExhaust.slot ~= nil and autoSummonerExhaust.castDelay < GetTickCount() and player:CanUseSpell(autoSummonerExhaust.slot) == READY then return true end
-				return false
+				return autoSummonerExhaust.slot ~= nil and autoSummonerExhaust.castDelay < GetTickCount() and player:CanUseSpell(autoSummonerExhaust.slot) == READY
 			end
 			function OnWndMsg(msg,wParam)
 				if msg == KEY_DOWN and wParam == autoSummonerExhaust.activeKey and autoSummonerExhaust.ready() then
@@ -49,17 +47,14 @@ do
 						local maxDPS = 0
 						for i = 1, heroManager.iCount, 1 do
 							local hero = heroManager:getHero(i)
-							if hero ~= nil and hero.team ~= player.team and not hero.dead and hero.visible and player:GetDistance(hero) <= autoSummonerExhaust.range + 100 then
+							if ValidTarget(hero,autoSummonerExhaust.range + 100) then
 								local dps = hero.totalDamage * hero.attackSpeed
-								if maxDPShero == nil or maxDPS < dps then
-									maxDPS = dps
-									maxDPShero = hero
-								end
+								if maxDPShero == nil or maxDPS < dps then maxDPS, maxDPShero = dps, hero end
 							end
 						end
 						if maxDPShero ~= nil then
 							autoSummonerExhaust.active = false
-							autoSummonerExhaust.castDelay = GetTickCount() + 500
+							autoSummonerExhaust.castDelay = tick + 500
 							CastSpell(autoSummonerExhaust.slot, maxDPShero)
 						end
 					end

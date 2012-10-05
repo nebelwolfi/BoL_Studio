@@ -4,6 +4,7 @@
 
 	required libs : 		gameOver
 	required sprites : 		-
+	exposed variables : 	player, LIB_PATH and lib ones
 	
 	v0.1 	initial release
 	v0.2	BoL Studio Version
@@ -11,6 +12,8 @@
 	Displays the original enemy with a circle for enemies who can clone
 ]]
 
+--[[            Globals         ]]
+if player == nil then player = GetMyHero() end
 
 --[[            Code            ]]
 do
@@ -28,10 +31,10 @@ do
 			end
 		end
 		if #cloneRevealer.heros > 0 then
-			require "AllClass"
-			gameState = GameState()
+			require "gameOver"
+			gameOver.OnLoad()
 			function OnDraw()
-				if gameState:gameIsOver() then return end
+				if gameOver.gameIsOver() == true then return end
 				for index,hero in pairs(cloneRevealer.heros) do
 					if hero.dead == false and hero.visible then DrawCircle(hero.x, hero.y, hero.z, 100, 0xFFFFFF) end
 				end

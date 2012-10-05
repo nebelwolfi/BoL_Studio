@@ -11,7 +11,8 @@
 	v0.2b 	added mana and Elixir
 	Automatically take an health potion if your champ health drop under configurated percent
 ]]
-require "AllClass"
+if player == nil then player = GetMyHero() end
+require "inventory"
 
 do
 	--[[         Globals       ]]
@@ -25,7 +26,7 @@ do
 				minValue = 0.25,	-- Minimum HP ratio for taking an elixir
 				itemID	= 2037,		-- item ID of Elixir Of Fortitude (2037)
 				compareValue = function() return (player.health / player.maxHealth) end,
-				buff = "PotionOfGiantStrengt",
+				buff = "PotionOfGiantStrength",
 			},
 			healthPotion = {
 				slot = nil,
@@ -58,7 +59,7 @@ do
 					end
 				end
 			end
-			if CastItem(potion.itemID) then
+			if inventory.castItem(potion.itemID) then
 				autoPotion.useTimer = GetTickCount() + autoPotion.tickUpdate
 			end
 		end
@@ -74,7 +75,7 @@ do
 		end
 		if tick > autoPotion.useTimer then
 			for name,potion in pairs(autoPotion.potions) do
-				if updateSlot then potion.slot = GetInventorySlotItem(potion.itemID) end
+				if updateSlot then potion.slot = inventory.slotItem(potion.itemID) end
 				autoPotion.castPotion(potion)
 			end
 		end

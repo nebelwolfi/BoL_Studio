@@ -2,7 +2,7 @@
 	Script: Tower Range v0.2
 	Author: SurfaceS
 
-	required libs : 		
+	required libs : 		gameOver, common
 	required sprites : 		-
 	exposed variables : 	only libs variables
 
@@ -20,7 +20,8 @@
 ]]
 
 do
-	require "AllClass"
+	require "common"
+	require "gameOver"
 	--[[         Globals        ]]
 	local towerRange = {
 		turrets = {},
@@ -56,14 +57,15 @@ do
 	end
 	
 	function OnDraw()
-		if gameState:gameIsOver() then return end
+		if gameOver.gameIsOver() then return end
 		if towerRange.activeType > 0 then
 			for name, turret in pairs(towerRange.turrets) do
+				--if turret ~= nil and turret.object ~= nil and turret.object.type == "obj_AI_Turret" then
 				if turret ~= nil then
-					if (towerRange.activeType == 1 and turret.team ~= player.team and player.dead == false and GetDistance(turret) < 2000)
+					if (towerRange.activeType == 1 and turret.team ~= player.team and player.dead == false and GetDistance2D(player, turret) < 2000)
 					or (towerRange.activeType == 2 and turret.team ~= player.team)
 					or (towerRange.activeType == 3)
-					or (towerRange.activeType == 4 and player.dead == false and GetDistance(turret) < 2000) then
+					or (towerRange.activeType == 4 and player.dead == false and GetDistance2D(player, turret) < 2000) then
 						DrawCircle(turret.x, turret.y, turret.z, turret.range, turret.color)
 					end
 				end
@@ -92,7 +94,7 @@ do
         end
 	end
 	function OnLoad()
-		gameState = GameState()
+		gameOver.OnLoad()
 		for i = 1, objManager.maxObjects do
 			local object = objManager:getObject(i)
 			if object ~= nil and object.type == "obj_AI_Turret" then
@@ -111,7 +113,7 @@ do
 					towerRange.turrets[turretName].range = towerRange.fountainRange
 					for j = 1, objManager.maxObjects do
 						local object2 = objManager:getObject(j)
-						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance(object, object2) < 1000 then
+						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance2D(object, object2) < 1000 then
 							towerRange.turrets[turretName].x = object2.x
 							towerRange.turrets[turretName].z = object2.z
 						elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then

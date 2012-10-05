@@ -10,9 +10,6 @@
 	v0.2		BoL Studio Version
 ]]
 
-require "AllClass"
-require "spellList"
-
 do
 	local spellAvoider = {
 		--[[         Config          ]]
@@ -30,6 +27,8 @@ do
 	
 	--[[         Code          ]]
 	function OnLoad()
+		require "common"
+		require "spellList"
 		for i = 1, heroManager.iCount, 1 do 
 			local hero = heroManager:getHero(i)
 			if hero ~= nil and hero.team ~= player.team then

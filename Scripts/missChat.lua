@@ -10,37 +10,46 @@
 	v0.2				BoL Studio Version
 ]]
 
+require "AllClass"
+
 do
-	require "common"
-	require "championLane"
 	local missChat = {
 		HK = 96,			-- key 0 on keypad
+		miss = {top = 0, mid = 0, bot = 0}
 	}
 	function missChat.sendLaneState()
-		if championLane.myLane ~= "unknow" then
-			local heroCount = #championLane.ennemy[championLane.myLane]
+		local myLane = CL:GetMyLane()
+		if myLane ~= "unknow" then
+			local heroArray = CL:GetHeroArray(myLane)
+			local heroCount = #heroArray
 			local heroInLane = 0
-			for i, hero in pairs(championLane.ennemy[championLane.myLane]) do
-				if hero.visible and GetDistance2D(hero, championLane[championLane.myLane].point) < 3000 then heroInLane = heroInLane + 1
+			local point = CL:GetPoint(myLane)
+			for i, hero in pairs(heroArray) do
+				if hero.visible and GetDistance(hero, point) < 3000 then heroInLane = heroInLane + 1
 				elseif hero.dead then heroCount = heroCount - 1
 				end
 			end
-			if heroCount ~= heroInLane then
-				championLane[championLane.myLane].underSS = true
-				SendChat("ss"..(heroCount > 1 and heroCount - heroInLane or "").." "..championLane.myLane)
-			elseif championLane[championLane.myLane].underSS then
-				championLane[championLane.myLane].underSS = false
-				if heroCount > 0 then
-					SendChat("re "..championLane.myLane)
+			if heroCount > heroInLane then
+				local miss = heroCount - heroInLane
+				if missChat.miss[myLane] > miss then
+					SendChat("re"..(heroCount > 1 and heroInLane or "").." "..myLane)
+				elseif missChat.miss[myLane] < miss then
+					SendChat("ss"..(heroCount > 1 and miss or "").." "..myLane)
+				else
+					SendChat("still under ss"..(heroCount > 1 and miss or "").." "..myLane)
 				end
+				missChat.miss[myLane] = miss
+			elseif missChat.miss[myLane] > 0 then
+				missChat.miss[myLane] = 0
+				if heroCount > 0 then SendChat("re "..myLane) end
 			end
 		end
 	end
 	function OnTick()
 		if IsKeyPressed(missChat.HK) then missChat.sendLaneState() end
-		championLane.OnTick()
+		ChampionLane__OnTick()
 	end
 	function OnLoad()
-		championLane.OnLoad()
+		CL = ChampionLane()
 	end
 end
