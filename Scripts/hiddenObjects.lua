@@ -17,10 +17,7 @@
 	Hold shift key to see the hidden object's range.
 ]]
 
-
 do
-	require "AllClass"
-	
 	local hiddenObjects = {
 		--[[      CONFIG      ]]
 		showOnMiniMap = true,			-- show objects on minimap
@@ -48,9 +45,9 @@ do
 	}
 
 	--[[      CODE      ]]
-	function hiddenObjects.objectExist(spellName, pos)
+	function hiddenObjects.objectExist(spellName, pos, tick)
 		for i,obj in pairs(hiddenObjects.objects) do
-			if obj.object == nil and obj.spellName == spellName and GetDistance(obj.pos, pos) < 200 then
+			if obj.object == nil and obj.spellName == spellName and GetDistance(obj.pos, pos) < 200 and tick < obj.seenTick then
 				return i
 			end
 		end	
@@ -59,15 +56,14 @@ do
 
 	function hiddenObjects.addObject(objectToAdd, pos, fromSpell, object)
 		-- add the object
+		local tick = GetTickCount()
 		local objId = objectToAdd.spellName..(math.floor(pos.x) + math.floor(pos.z))
 		--check if exist
-		local objectExist = hiddenObjects.objectExist(objectToAdd.spellName, {x = pos.x, z = pos.z,})
+		local objectExist = hiddenObjects.objectExist(objectToAdd.spellName, {x = pos.x, z = pos.z,}, tick - 500)
 		if objectExist ~= nil then
-			hiddenObjects.objects[objId] = hiddenObjects.objects[objectExist]
-			hiddenObjects.objects[objectExist] = nil
+			objId = objectExist
 		end
 		if hiddenObjects.objects[objId] == nil then
-			local tick = GetTickCount()
 			hiddenObjects.objects[objId] = {
 				object = object,
 				color = objectToAdd.color,
@@ -92,6 +88,7 @@ do
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if object.charName == objectToAdd.charName then
 					-- add the object
+					PrintChat("added object")
 					hiddenObjects.addObject(objectToAdd, object, false, object)
 				end
 			end
@@ -120,8 +117,6 @@ do
 							return
 						end
 					end
-					local objId = objectToAdd.spellName..(math.floor(object.x) + math.floor(object.z))
-					if objId ~= nil and hiddenObjects.objects[objId] ~= nil then hiddenObjects.objects[objId] = nil return end
 				end
 			end
 		end
