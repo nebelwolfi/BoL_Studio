@@ -390,6 +390,9 @@ do
 			end
 			
 			if jungle.useMiniMapVersion then
+				-- test the minimap working
+				if GetMinimapX(0) == -100 then PrintChat("Minimap not working, please reload") end
+				--
 				function OnDraw()
 					if gameState:gameIsOver() then return end
 					for i,monster in pairs(jungle.monsters[mapName]) do

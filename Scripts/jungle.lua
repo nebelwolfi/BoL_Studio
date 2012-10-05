@@ -2,7 +2,7 @@
         Script: Jungle Display v0.1d
 		Author: SurfaceS
 		
-		required libs : 		common, map, start, gameOver, minimap (if jungle.useMiniMapVersion = true)
+		required libs : 		
 		required sprites : 		Jungle Sprites (if jungle.useSprites = true)
 		exposed variables : 	-
 		
@@ -36,10 +36,7 @@
 
 do
 	--[[      GLOBAL      ]]
-	require "common"
-	require "map"
-	require "start"
-	require "gameOver"
+	require "AllClass"
 
 	local jungle = {}
 
@@ -279,9 +276,7 @@ do
 
 	jungle.shiftKeyPressed = false
 
-	if jungle.useMiniMapVersion == true then
-		if minimap == nil then require "minimap" end
-	else
+	if not jungle.useMiniMapVersion then
 		jungle.configFile = LIB_PATH.."jungle.cfg"
 		jungle.display = {}
 		jungle.display.x = 500
@@ -292,12 +287,6 @@ do
 		jungle.display.rotateUnder = false
 		jungle.display.size = 64
 		
-		-- need to be on a lib
-		function file_exists(name)
-		   local f=io.open(name,"r")
-		   if f~=nil then io.close(f) return true else return false end
-		end
-
 		if file_exists(jungle.configFile) then jungle.display = assert(loadfile(jungle.configFile))() end
 
 		function jungle.writeConfigs()
@@ -321,14 +310,6 @@ do
 				team200 = {	spriteFile = "TeamRed_64",},
 				team300 = {	spriteFile = "TeamNeutral_64", },
 			}
-			-- need to be on a lib
-			function jungle.returnSprite(file)
-				if file_exists(SPRITE_PATH..file) == true then
-					return createSprite(file)
-				end
-				return createSprite("empty.dds")
-			end
-			
 		end
 	end
 	
@@ -337,34 +318,9 @@ do
 		return math.ceil(math.max(0, respawn - (tick - deathTick) / 1000))
 	end
 	
-	-- Need to be on a lib
-	function jungle.timerText(seconds)
-		local minutes = seconds / 60
-		if minutes > 59 then
-			return string.format("%i:%02i:%02i", minutes / 60, minutes % 60, seconds % 60)
-		else
-			return string.format("%i:%02i", minutes, seconds % 60)
-		end
-	end
-
-	-- Need to be on a lib
-	function jungle.cursorIsUnder(x, y, sizeX, sizeY)
-		local posX, posY = GetCursorPos().x, GetCursorPos().y
-		if sizeY == nil then sizeY = sizeX end
-		if sizeX < 0 then
-			x = x + sizeX
-			sizeX = - sizeX
-		end
-		if sizeY < 0 then
-			y = y + sizeY
-			sizeY = - sizeY
-		end
-		return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
-	end
-
 	function jungle.addCampAndCreep(object)
 		if object ~= nil and object.name ~= nil then
-			for i,monster in pairs(jungle.monsters[map.shortName]) do
+			for i,monster in pairs(jungle.monsters[mapName]) do
 				for j,camp in pairs(monster.camps) do
 					if camp.name == object.name then
 						camp.object = object
@@ -387,7 +343,7 @@ do
 
 	function jungle.removeCreep(object)
 		if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil then
-			for i,monster in pairs(jungle.monsters[map.shortName]) do
+			for i,monster in pairs(jungle.monsters[mapName]) do
 				for j,camp in pairs(monster.camps) do
 					for k,creepPack in ipairs(camp.creeps) do
 						for l,creep in ipairs(creepPack) do
@@ -403,28 +359,24 @@ do
 	end
 
 	function OnLoad()
-		start.OnLoad()
-		gameOver.OnLoad()
-		map.OnLoad()
-		if jungle.monsters[map.shortName] == nil then
+		startTick = GetStart().tick
+		mapName = GetMap().shortName
+		gameState = GameState()
+		if jungle.monsters[mapName] == nil then
 			jungle = nil
 		else
 			if jungle.useSprites and jungle.useMiniMapVersion == false then
 				-- load icons drawing sprites
-				for i,icon in pairs(jungle.icon) do
-					icon.sprite = jungle.returnSprite("jungle/"..icon.spriteFile..".dds")
-				end
+				for i,icon in pairs(jungle.icon) do icon.sprite = GetSprite("jungle/"..icon.spriteFile..".dds") end
 				-- load side drawing sprites
-				for i,camps in pairs(jungle.teams) do
-					camps.sprite = jungle.returnSprite("jungle/"..camps.spriteFile..".dds")
-				end
+				for i,camps in pairs(jungle.teams) do camps.sprite = GetSprite("jungle/"..camps.spriteFile..".dds") end
 			end
 			-- load monster sprites and init values
-			for i,monster in pairs(jungle.monsters[map.shortName]) do
-				if jungle.useSprites and jungle.useMiniMapVersion == false then monster.sprite = jungle.returnSprite("Characters/"..monster.spriteFile..".dds") end
+			for i,monster in pairs(jungle.monsters[mapName]) do
+				if jungle.useSprites and jungle.useMiniMapVersion == false then monster.sprite = GetSprite("Characters/"..monster.spriteFile..".dds") end
 				monster.isSeen = false
 				for j,camp in pairs(monster.camps) do
-					camp.enemyTeam = (camp.team == start.teamEnnemy)
+					camp.enemyTeam = (camp.team == TEAM_ENEMY)
 					camp.status = 0
 					camp.drawText = ""
 					camp.drawColor = 0xFF00FF00
@@ -438,10 +390,12 @@ do
 			end
 			
 			if jungle.useMiniMapVersion then
-				miniMap.OnLoad()
+				-- test the minimap working
+				if GetMinimapX(0) == -100 then PrintChat("Minimap not working, please reload") end
+				--
 				function OnDraw()
-					if gameOver.gameIsOver() then return end
-					for i,monster in pairs(jungle.monsters[map.shortName]) do
+					if gameState:gameIsOver() then return end
+					for i,monster in pairs(jungle.monsters[mapName]) do
 						if monster.isSeen == true then
 							for j,camp in pairs(monster.camps) do
 								if camp.status == 2 then
@@ -455,11 +409,11 @@ do
 				end
 			elseif jungle.useSprites then
 				function OnDraw()
-					if gameOver.gameIsOver() then return end
+					if gameState:gameIsOver() then return end
 					local monsterCount = 0
-					for i,monster in pairs(jungle.monsters[map.shortName]) do
+					for i,monster in pairs(jungle.monsters[mapName]) do
 						if monster.isSeen == true then
-							jungle.monsters[map.shortName][i].sprite:Draw(jungle.display.x + monster.shift.x,jungle.display.y + monster.shift.y,0xFF)
+							jungle.monsters[mapName][i].sprite:Draw(jungle.display.x + monster.shift.x,jungle.display.y + monster.shift.y,0xFF)
 							if monster.advise then jungle.icon.advise.sprite:Draw(jungle.display.x + monster.shift.x + jungle.display.size - 18,jungle.display.y - 2,0xFF) end
 							for j,camp in pairs(monster.camps) do
 								if camp.status ~= 0 then
@@ -477,9 +431,9 @@ do
 				end
 			else
 				function OnDraw()
-					if gameOver.gameIsOver() then return end
+					if gameState:gameIsOver() then return end
 					local monsterCount = 0
-					for i,monster in pairs(jungle.monsters[map.shortName]) do
+					for i,monster in pairs(jungle.monsters[mapName]) do
 						if monster.isSeen == true then
 							DrawText(monster.name..(monster.advise and " *" or ""),17,jungle.display.x + monster.shift.x,jungle.display.y + monster.shift.y,0xFFFF0000)
 							for j,camp in pairs(monster.camps) do
@@ -498,31 +452,10 @@ do
 					jungle.addCampAndCreep(object)
 				end
 			end
-	
-			function OnDeleteObj(object)
-				if object ~= nil then
-					jungle.removeCreep(object)
-				end
-			end
 			
-			function OnTick()
-				if gameOver.gameIsOver() then return end
-				-- walkaround OnWndMsg bug
-				jungle.shiftKeyPressed = IsKeyDown(16)
-				if jungle.useMiniMapVersion == false then
-					if jungle.display.moveUnder and IsKeyDown(1) then
-						jungle.display.move = true
-					elseif jungle.display.move and IsKeyDown(1) == false then
-						jungle.display.move = false
-						jungle.display.moveUnder = false
-						jungle.display.cursorShift = nil
-						jungle.writeConfigs()
-					elseif jungle.display.rotateUnder and IsKeyDown(1) then
-						jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
-						jungle.writeConfigs()
-					end
-				elseif jungle.shiftKeyPressed and IsKeyPressed(1) then
-					for i,monster in pairs(jungle.monsters[map.shortName]) do
+			function OnWndMsg(msg,key)
+				if msg == WM_LBUTTONDOWN and IsKeyDown(16) then
+					for i,monster in pairs(jungle.monsters[mapName]) do
 						if monster.isSeen == true then
 							if monster.iconUnder then
 								monster.advise = not monster.advise
@@ -538,9 +471,32 @@ do
 						end
 					end
 				end
+			end
+			
+			function OnDeleteObj(object)
+				if object ~= nil then
+					jungle.removeCreep(object)
+				end
+			end
+			
+			function OnTick()
+				if gameState:gameIsOver() then return end
+				-- walkaround OnWndMsg bug
+				jungle.shiftKeyPressed = IsKeyDown(16)
+				if jungle.useMiniMapVersion == false and jungle.display.moveUnder and IsKeyDown(1) then
+					jungle.display.move = true
+				elseif jungle.useMiniMapVersion == false and jungle.display.move and IsKeyDown(1) == false then
+					jungle.display.move = false
+					jungle.display.moveUnder = false
+					jungle.display.cursorShift = nil
+					jungle.writeConfigs()
+				elseif jungle.useMiniMapVersion == false and jungle.display.rotateUnder and IsKeyDown(1) then
+					jungle.display.rotation = (jungle.display.rotation == 3 and 0 or jungle.display.rotation + 1)
+					jungle.writeConfigs()
+				end
 				local tick = GetTickCount()
 				local monsterCount = 0
-				for i,monster in pairs(jungle.monsters[map.shortName]) do
+				for i,monster in pairs(jungle.monsters[mapName]) do
 					for j,camp in pairs(monster.camps) do
 						local campStatus = 0
 						for k,creepPack in ipairs(camp.creeps) do
@@ -567,17 +523,15 @@ do
 						]]
 						-- temp fix until camp.showOnMinimap work
 						-- not so good
-						if jungle.useMiniMapVersion and camp.object ~= nil then
-							camp.minimap = miniMap.ToMinimapPoint(camp.object.x,camp.object.z)
-						end
+						if jungle.useMiniMapVersion and camp.object ~= nil then camp.minimap = GetMinimap(camp.object) end
 						if camp.object ~= nil and campStatus == 0 then
 							if (camp.status == 1 or camp.status == 2) then
 								campStatus = 4
 								camp.deathTick = tick
 								camp.advisedBefore = false
 								camp.advised = false
-								camp.respawnTime = math.ceil((tick - start.tick) / 1000) + monster.respawn
-								camp.respawnText = (camp.enemyTeam and "Enemy " or "")..monster.name.." respawn at "..jungle.timerText(camp.respawnTime)
+								camp.respawnTime = math.ceil((tick - startTick) / 1000) + monster.respawn
+								camp.respawnText = (camp.enemyTeam and "Enemy " or "")..monster.name.." respawn at "..TimerText(camp.respawnTime)
 							elseif (camp.status == 4) then
 								campStatus = 4
 							else
@@ -626,7 +580,7 @@ do
 								if secondLeft == 0 then
 									camp.status = 0
 								end
-								camp.drawText = " "..jungle.timerText(secondLeft)
+								camp.drawText = " "..TimerText(secondLeft)
 								camp.drawColor = 0xFFFFFF00
 							elseif camp.status == 5 then			-- camp found empty (not using yet)
 								camp.drawText = "   -"
@@ -634,11 +588,11 @@ do
 							end
 						end
 						if jungle.shiftKeyPressed and camp.status == 4 then
-							camp.drawText = " "..(camp.respawnTime ~= nil and jungle.timerText(camp.respawnTime) or "")
+							camp.drawText = " "..(camp.respawnTime ~= nil and TimerText(camp.respawnTime) or "")
 							if jungle.useMiniMapVersion then 
-								camp.textUnder = (jungle.cursorIsUnder(camp.minimap.x - 9, camp.minimap.y - 5, 20, 8))
+								camp.textUnder = (CursorIsUnder(camp.minimap.x - 9, camp.minimap.y - 5, 20, 8))
 							else
-								camp.textUnder = (jungle.display.move == false and jungle.display.moveUnder == false and jungle.display.rotateUnder == false and jungle.cursorIsUnder(jungle.display.x + camp.shift.x, jungle.display.y + camp.shift.y, jungle.display.size, 16))
+								camp.textUnder = (jungle.display.move == false and jungle.display.moveUnder == false and jungle.display.rotateUnder == false and CursorIsUnder(jungle.display.x + camp.shift.x, jungle.display.y + camp.shift.y, jungle.display.size, 16))
 							end
 						else
 							camp.textUnder = false
@@ -651,7 +605,7 @@ do
 						else
 							monster.shift = { x = 0, y = monsterCount * jungle.display.size, }
 						end
-						monster.iconUnder = (jungle.shiftKeyPressed and jungle.display.move == false and jungle.display.moveUnder == false and jungle.display.rotateUnder == false and jungle.cursorIsUnder(jungle.display.x + monster.shift.x, jungle.display.y + monster.shift.y, jungle.display.size, jungle.display.size))
+						monster.iconUnder = (jungle.shiftKeyPressed and jungle.display.move == false and jungle.display.moveUnder == false and jungle.display.rotateUnder == false and CursorIsUnder(jungle.display.x + monster.shift.x, jungle.display.y + monster.shift.y, jungle.display.size, jungle.display.size))
 						monsterCount = monsterCount + 1
 					end
 				end
@@ -665,8 +619,8 @@ do
 							jungle.display.y = GetCursorPos().y - jungle.display.cursorShift.y
 						end
 					else
-						jungle.display.moveUnder = (jungle.shiftKeyPressed and jungle.cursorIsUnder(jungle.display.x, jungle.display.y, 16, 16))
-						jungle.display.rotateUnder = (jungle.shiftKeyPressed and jungle.cursorIsUnder(jungle.display.x + 16, jungle.display.y, 16, 16))
+						jungle.display.moveUnder = (jungle.shiftKeyPressed and CursorIsUnder(jungle.display.x, jungle.display.y, 16, 16))
+						jungle.display.rotateUnder = (jungle.shiftKeyPressed and CursorIsUnder(jungle.display.x + 16, jungle.display.y, 16, 16))
 					end
 				end
 			end
