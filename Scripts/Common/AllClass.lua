@@ -950,39 +950,53 @@ function TS_Ignore(target, enemyTeam)
 	end
 end
 
--- just here for chat way
+function _TS_Draw_Init()
+	if not _TS_Draw then
+		if not WINDOW_H or not WINDOW_W then PrintChat("WINDOW value not good, please reload") end
+		_TS_Draw = {y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, redColor = 1422721024, greenColor = 1409321728, blueColor = 2684354716}
+		_TS_Draw.cellSize, _TS_Draw.midSize, _TS_Draw.row1, _TS_Draw.row2, _TS_Draw.row3, _TS_Draw.row4 = _TS_Draw.fontSize + _TS_Draw.border, _TS_Draw.fontSize / 2, _TS_Draw.width * 0.6, _TS_Draw.width * 0.7, _TS_Draw.width * 0.8, _TS_Draw.width * 0.9
+	end
+end
+
 function TS__DrawMenu(x, y, enemyTeam)
 	assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
+	_TS_Draw_Init()
 	local enemyTeam = (enemyTeam ~= false)
+	local y1 = y
 	for index,_gameHero in ipairs(_gameHeros) do
 		if _gameHero.enemy == enemyTeam then
-			local y1 = y-21+(21)*_gameHero.tIndex
-			DrawText(_gameHero.hero.charName.." priority: ".._gameHero.priority, 20, x, y1, (_gameHero.ignore and 0xFFFF3300 or 0xFF00FF33))
-			DrawText( "o", 36, x+200-5,        y1-13, 0xFF000000 )
-			DrawText( "-", 25, x+200,          y1-6,  0xFFffa200)
-			DrawText( "o", 36, x+250-3,        y1-13, 0xFF000000 )
-			DrawText( "+", 25, x+250,          y1-4,  0xFF00FF33 )
-			DrawText( "o", 36, x+300-3,        y1-13, 0xFF000000 )
-			DrawText( "x", 25, x+300,          y1-6,  0xFFFF0000 )
+			DrawLine(x - _TS_Draw.border, y1 + _TS_Draw.midSize, x + _TS_Draw.row1 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, (_gameHero.ignore and _TS_Draw.redColor or _TS_Draw.background))
+			DrawText(_gameHero.hero.charName, _TS_Draw.fontSize, x, y1, _TS_Draw.textColor)
+			DrawLine(x + _TS_Draw.row1, y1 + _TS_Draw.midSize, x + _TS_Draw.row2 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.background)
+			DrawText("   "..(_gameHero.ignore and "-" or tostring(_gameHero.priority)), _TS_Draw.fontSize, x + _TS_Draw.row1, y1, _TS_Draw.textColor)
+			DrawLine(x + _TS_Draw.row2, y1 + _TS_Draw.midSize, x + _TS_Draw.row3 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.blueColor)
+			DrawText("   -", _TS_Draw.fontSize, x + _TS_Draw.row2, y1, _TS_Draw.textColor)
+			DrawLine(x + _TS_Draw.row3, y1 + _TS_Draw.midSize, x + _TS_Draw.row4 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.blueColor)
+			DrawText("   +", _TS_Draw.fontSize, x + _TS_Draw.row3, y1, _TS_Draw.textColor)
+			DrawLine(x + _TS_Draw.row4, y1 + _TS_Draw.midSize, x + _TS_Draw.width, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.redColor)
+			DrawText("   X", _TS_Draw.fontSize, x + _TS_Draw.row4, y1, _TS_Draw.textColor)
+			y1 = y1 + _TS_Draw.cellSize
 		end
 	end
-	return y+(21)*(enemyTeam and _gameEnemyCount or _gameAllyCount)
+	return y1
 end
 
 function TS_ClickMenu(x, y, enemyTeam)
 	assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
+	_TS_Draw_Init()
 	local enemyTeam = (enemyTeam ~= false)
+	local y1 = y
 	for index,_gameHero in ipairs(_gameHeros) do
 		if _gameHero.enemy == enemyTeam then
-			local y1 = y-21+(21)*_gameHero.tIndex
-			if CursorIsUnder(x+195, y1, 18, 18) then
+			if CursorIsUnder(x + _TS_Draw.row2, y1, _TS_Draw.fontSize, _TS_Draw.fontSize) then
 				TS_SetHeroPriority(math.max(1, _gameHero.priority - 1), index)
-			elseif CursorIsUnder(x+247, y1, 18, 18) then
+			elseif CursorIsUnder(x + _TS_Draw.row3, y1, _TS_Draw.fontSize, _TS_Draw.fontSize) then
 				TS_SetHeroPriority(math.min((enemyTeam and _gameEnemyCount or _gameAllyCount), _gameHero.priority + 1), index)
-			elseif CursorIsUnder(x+297, y1, 18, 18) then TS_Ignore(index) end
+			elseif CursorIsUnder(x + _TS_Draw.row4, y1, _TS_Draw.fontSize, _TS_Draw.fontSize) then TS_Ignore(index) end
+			y1 = y1 + _TS_Draw.cellSize
 		end
 	end
-	return y+(21)*(enemyTeam and _gameEnemyCount or _gameAllyCount)
+	return y1
 end
 
 function TargetSelector__OnSendChat(msg)
@@ -1183,24 +1197,27 @@ function TargetSelector:OnSendChat(msg, prefix)
     end
 end
 
-function TargetSelector:DrawMenu(x, y, name)
-	assert(type(x) == "number" and type(y) == "number" and type(name) == "string", "ts:DrawMenu: wrong argument types (<number>, <number>, <string> expected)")
-	DrawText(name.." Mode : ".._TargetSelector__texted[self.mode], 20, x, y, 4294938624) -- 0xFFFF9000
-	DrawText( "o", 36, x+195, y-13, 4278190080 ) -- 0xFF000000
-	DrawText( "<", 25, x+200, y-6, 4294943232) --0xFFFFA200
-	DrawText( "o", 36, x+247, y-13, 4278190080) -- 0xFF000000
-	DrawText( ">", 25, x+250, y-4, 4278255411 ) -- 0xFF00FF33
-	return y+21
+function TargetSelector:DrawMenu(x, y)
+	assert(type(x) == "number" and type(y) == "number", "ts:DrawMenu: wrong argument types (<number>, <number> expected)")
+	_TS_Draw_Init()
+	DrawLine(x - _TS_Draw.border, y + _TS_Draw.midSize, x + _TS_Draw.row3 - _TS_Draw.border, y + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.background)
+	DrawText((self.name or "ts").." Mode : ".._TargetSelector__texted[self.mode], _TS_Draw.fontSize, x, y, _TS_Draw.textColor)
+	DrawLine(x + _TS_Draw.row3, y + _TS_Draw.midSize, x + _TS_Draw.row4 - _TS_Draw.border, y + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.blueColor)
+	DrawText( "   <", _TS_Draw.fontSize, x + _TS_Draw.row3, y, _TS_Draw.textColor)
+	DrawLine(x + _TS_Draw.row4, y + _TS_Draw.midSize, x + _TS_Draw.width, y + _TS_Draw.midSize, _TS_Draw.cellSize, _TS_Draw.blueColor)
+	DrawText( "   >", _TS_Draw.fontSize, x + _TS_Draw.row4, y, _TS_Draw.textColor)
+	return y + _TS_Draw.cellSize
 end
 
 function TargetSelector:ClickMenu(x, y)
 	assert(type(x) == "number" and type(y) == "number", "ts:ClickMenu: wrong argument types (<number>, <number>, <string> expected)")
-	if CursorIsUnder(x+195, y-4, 18, 18) then
+	_TS_Draw_Init()
+	if CursorIsUnder(x + _TS_Draw.row3, y, _TS_Draw.fontSize, _TS_Draw.fontSize) then
 		self.mode = (self.mode == 1 and #_TargetSelector__texted or self.mode - 1)
-	elseif CursorIsUnder(x+245, y-4, 18, 18) then
+	elseif CursorIsUnder(x + _TS_Draw.row4, y, _TS_Draw.fontSize, _TS_Draw.fontSize) then
 		self.mode = (self.mode == #_TargetSelector__texted and 1 or self.mode + 1)
 	end
-	return y+21
+	return y + _TS_Draw.cellSize
 end
 
 -- Prediction Functions
@@ -1645,6 +1662,8 @@ MINION_SORT_HEALTH_ASC = 1
 MINION_SORT_HEALTH_DEC = 2
 MINION_SORT_MAXHEALTH_ASC = 3
 MINION_SORT_MAXHEALTH_DEC = 4
+MINION_SORT_AD_ASC = 5
+MINION_SORT_AD_DEC = 6
 
 function minionManager__OnCreateObj(object)
 	if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil and not object.dead then
@@ -1722,6 +1741,10 @@ function minionManager:update()
 			table.sort(self.objects, function(a,b) return a.maxHealth<b.maxHealth end)
 		elseif self.sortMode == MINION_SORT_MAXHEALTH_DEC then
 			table.sort(self.objects, function(a,b) return a.maxHealth>b.maxHealth end)
+		elseif self.sortMode == MINION_SORT_AD_ASC then
+			table.sort(self.objects, function(a,b) return a.ad<b.ad end)
+		elseif self.sortMode == MINION_SORT_AD_DEC then
+			table.sort(self.objects, function(a,b) return a.ad>b.ad end)
 		end
 	end
 	self.iCount = # self.objects
@@ -2085,4 +2108,232 @@ end
 function autoLevelSetFunction(func)
 	assert (func == nil or type(func) == "function", "autoLevelSetFunction : wrong argument types (<function> or nil expected)")
 	_autoLevel.onChoiceFunction = func
+end
+
+--	scriptConfig
+--[[
+function OnWndMsg(msg,key)
+	myConfig:OnWndMsg(msg,key)
+end
+
+function OnLoad()
+	myConfig = scriptConfig("My Script Config", "thisScript.cfg")
+	myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
+	myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	myConfig:permaShow("harass")
+	myConfig:permaShow("combo")
+	ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
+	ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
+	myConfig:addTS(ts)
+end
+
+function OnDraw()
+	myConfig:OnDraw()
+end
+
+function OnTick()
+	if myConfig.combo == true then
+		-- bla
+	elseif myConfig.harass then
+		-- bla
+	end
+end
+]]
+
+SCRIPT_PARAM_ONOFF = 1
+SCRIPT_PARAM_ONKEYDOWN = 2
+SCRIPT_PARAM_ONKEYTOGGLE = 3
+
+class 'scriptConfig'
+
+function scriptConfig:__init(header, file)
+	assert((type(header) == "string" or header == nil) and (type(file) == "string" or file == nil), "scriptConfig: expected <string>, <string>)")
+	self.header = header or "Menu"
+	self.configFile = file and LIB_PATH..file
+	self.menuKey = 16							-- shift
+	self._tsInstances = {}
+	self._tsNames = {}
+	self._param = {}
+	self._permaShow = {}
+	self._draw = {x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
+	self._draw.cellSize, self._draw.midSize, self._draw.row, self._draw.keyX = self._draw.fontSize + self._draw.border, self._draw.fontSize / 2, self._draw.width * 0.7, self._draw.width * 0.6
+	self._permaDraw = {x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
+	self._permaDraw.cellSize, self._permaDraw.midSize, self._permaDraw.row = self._permaDraw.fontSize + self._permaDraw.border, self._permaDraw.fontSize / 2, self._permaDraw.width * 0.7
+	--self.configSave = {}
+	if self.configFile and file_exists(self.configFile) then
+		self.configSave = dofile(self.configFile)
+		if self.configSave.menuKey then
+			self.menuKey = self.configSave.menuKey
+			self._permaDraw.x = self.configSave._permaDraw.x
+			self._permaDraw.y = self.configSave._permaDraw.y
+			self._draw.x = self.configSave._draw.x
+			self._draw.y = self.configSave._draw.y
+		end
+	end
+end
+
+function scriptConfig:addParam(pVar, pText, pType, defaultValue, pKey)
+	assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
+	assert(string.find(pVar,"[^%a%d]") == nil, "addParam: pVar should contain only char and number")
+	assert(self[pVar] == nil, "addParam: pVar should be unique, already existing "..pVar)
+	-- add a key
+	self._param[pVar] = {text = pText, pType = pType, key = pKey }
+	self[pVar] = defaultValue and true or false
+	if self.configSave and self.configSave[pVar] then
+		self._param[pVar].key = self.configSave[pVar].key
+		self[pVar] = self.configSave[pVar].value
+	end
+end
+
+function scriptConfig:addTS(tsInstance)
+	assert(type(tsInstance.mode) == "number", "addTS: expected TargetSelector)")
+	table.insert(self._tsInstances, tsInstance)
+end
+
+function scriptConfig:permaShow(pVar)
+	assert(type(pVar) == "string" and self[pVar] ~= nil, "permaShow: existing pVar expected)")
+	table.insert(self._permaShow, pVar)
+end
+
+function scriptConfig:_txtKey(key)
+	return (key > 32 and key < 96 and " "..string.char(key).." " or "("..tostring(key)..")")
+end
+
+function scriptConfig:OnDraw()
+	if IsKeyDown(self.menuKey) or self._changeKey then
+		if self._draw.move then
+			local cursor = GetCursorPos()
+			self._draw.x = cursor.x - self._draw.offset.x
+			self._draw.y = cursor.y - self._draw.offset.y
+		elseif self._permaDraw.move then
+			local cursor = GetCursorPos()
+			self._permaDraw.x = cursor.x - self._permaDraw.offset.x
+			self._permaDraw.y = cursor.y - self._permaDraw.offset.y
+		end
+		DrawLine(self._draw.x + self._draw.width / 2, self._draw.y, self._draw.x + self._draw.width / 2, self._draw.y + self._draw.heigth, self._draw.width + self._draw.border * 2, 1414812756) -- grey
+		self._draw.y1 = self._draw.y
+		local menuText = self._changeKey and "press key for "..(self._changeKeyVar or "Menu") or self.header
+		DrawText(menuText, self._draw.fontSize, self._draw.x, self._draw.y1, 4294967280) -- ivory
+		DrawText(self:_txtKey(self.menuKey), self._draw.fontSize, self._draw.x + self._draw.width * 0.9, self._draw.y1, self._draw.textColor) -- ivory
+		self._draw.y1 = self._draw.y1 + self._draw.cellSize
+		if # self._tsInstances > 0 then
+			self._draw.y1 = TS__DrawMenu(self._draw.x, self._draw.y1)
+			for i,tsInstance in pairs(self._tsInstances) do
+				self._draw.y1 = tsInstance:DrawMenu(self._draw.x, self._draw.y1)
+			end
+		end
+		for pVar,param in pairs(self._param) do
+			self:_DrawParam(pVar, "_draw")
+		end
+		self._draw.heigth = self._draw.y1 - self._draw.y
+	end
+	if #self._permaShow > 0 then
+		self._permaDraw.y1 = self._permaDraw.y
+		-- draw header
+		for i,pVar in pairs(self._permaShow) do
+			self:_DrawParam(pVar, "_permaDraw")
+		end
+		self._permaDraw.heigth = self._permaDraw.y1 - self._permaDraw.y
+	end
+end
+
+function scriptConfig:_DrawParam(pVar, drawer)
+	DrawLine(self[drawer].x - self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].row - self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, self[drawer].background)
+	DrawText(self._param[pVar].text, self[drawer].fontSize, self[drawer].x, self[drawer].y1, self[drawer].textColor)
+	if drawer == "_draw" and (self._param[pVar].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[pVar].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
+		DrawText(self:_txtKey(self._param[pVar].key), self._draw.fontSize, self._draw.x + self._draw.keyX, self._draw.y1, self._draw.textColor)
+	end
+	DrawLine(self[drawer].x + self[drawer].row, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].width + self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, (self[pVar] and self[drawer].trueColor or self[drawer].falseColor))
+	DrawText((self[pVar] and "         ON" or "         OFF"), self[drawer].fontSize, self[drawer].x + self[drawer].row + self[drawer].border, self[drawer].y1, self[drawer].textColor)
+	self[drawer].y1 = self[drawer].y1 + self[drawer].cellSize
+end
+
+function scriptConfig:save()
+	if self.configFile then
+		local file = io.open(self.configFile, "w")
+		if file then
+			file:write("return { menuKey = "..self.menuKey..", _draw = { x = "..self._draw.x..", y = "..self._draw.y.." }, _permaDraw = { x = "..self._permaDraw.x..", y = "..self._permaDraw.y.." }, ")
+			for pVar,param in pairs(self._param) do
+				file:write(pVar.." = {key = "..tostring(param.key)..", value = "..tostring(self[pVar]).."}, ")
+			end
+			file:write("}\n")
+			file:close()
+		end
+		file = nil
+	end
+end
+
+function scriptConfig:OnWndMsg(msg,key)
+	if self._changeKey then
+		if msg == KEY_DOWN then
+			if self._changeKeyMenu then return end
+			self._changeKey = false
+			if self._changeKeyVar ~= nil then
+				self._param[self._changeKeyVar].key = key
+			else
+				self.menuKey = key
+			end
+			self:save()
+			return
+		else
+			if self._changeKeyMenu and key == self.menuKey then self._changeKeyMenu = false end
+		end
+	end
+	if msg == WM_LBUTTONDOWN and IsKeyDown(self.menuKey) then
+		if CursorIsUnder(self._draw.x, self._draw.y, self._draw.width, self._draw.heigth) then
+			if CursorIsUnder(self._draw.x + self._draw.width - self._draw.fontSize * 1.5, self._draw.y, self._draw.fontSize, self._draw.cellSize) then
+				self._changeKey, self._changeKeyVar, self._changeKeyMenu = true, nil, true
+				return
+			elseif CursorIsUnder(self._draw.x, self._draw.y, self._draw.width, self._draw.cellSize) then
+				self._draw.offset = Vector(GetCursorPos()) - self._draw
+				self._draw.move = true
+				return
+			else
+				local y1 = self._draw.y + self._draw.cellSize
+				if # self._tsInstances > 0 then
+					y1 = TS_ClickMenu(self._draw.x, y1)
+					for i,tsInstance in pairs(self._tsInstances) do
+						y1 = ts:ClickMenu(self._draw.x, y1)
+					end
+				end
+				for pVar,param in pairs(self._param) do
+					if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
+						if CursorIsUnder(self._draw.x + self._draw.keyX, y1, self._draw.fontSize, self._draw.fontSize) then
+							self._changeKey, self._changeKeyVar, self._changeKeyMenu = true, pVar, true
+							return
+						end
+					end
+					if param.pType == SCRIPT_PARAM_ONOFF or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
+						if CursorIsUnder(self._draw.x + self._draw.row, y1, self._draw.width - self._draw.x, self._draw.fontSize) then
+							self[pVar] = not self[pVar]
+							self:save()
+							return
+						end
+					end
+					y1 = y1 + self._draw.cellSize
+				end
+			end
+		elseif CursorIsUnder(self._permaDraw.x, self._permaDraw.y, self._permaDraw.width, self._permaDraw.heigth) then
+			self._permaDraw.offset = Vector(GetCursorPos()) - self._permaDraw
+			self._permaDraw.move = true
+			return
+		end
+	elseif msg == WM_LBUTTONUP then
+		if self._draw.move or self._permaDraw.move then
+			self._draw.move = false
+			self._permaDraw.move = false
+			self:save()
+			return
+		end
+	else
+		for pVar,param in pairs(self._param) do
+			if key == param.key then
+				if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and msg == KEY_DOWN then
+					self[pVar] = not self[pVar]
+				elseif param.pType == SCRIPT_PARAM_ONKEYDOWN then
+					self[pVar] = (msg == KEY_DOWN)
+				end
+			end
+		end
+	end
 end
