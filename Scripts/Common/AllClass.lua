@@ -27,14 +27,15 @@ function GetDistanceFromMouse(object)
 	return 100000
 end
 
--- Round a number
-if math.round == nil then
-	function math.round(num, idp)
-		assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
-		local mult = 10^(idp or 0)
-		return math.floor(num * mult + 0.5) / mult
-	end
+-- Round a number corrected by surface
+function math.round(num, idp)
+	assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
+	assert(type(idp) == "number" or idp == nil, "math.round: wrong argument types (<integer> expected for idp)")
+	local mult = math.floor(10^(idp or 0))
+	local value = (num >= 0 and math.floor(num * mult + 0.5) / mult or math.ceil(num * mult - 0.5) / mult)
+	return tonumber(string.format("%." .. (idp or 0) .. "f", value))
 end
+
 if math.close == nil then
 	function math.close(a,b,eps)
 		assert(type(a) == "number" and type(b) == "number", "math.close: wrong argument types (at least 2 <number> expected)")
@@ -2143,6 +2144,7 @@ end
 SCRIPT_PARAM_ONOFF = 1
 SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
+SCRIPT_PARAM_SLICE = 4
 
 class 'scriptConfig'
 
@@ -2159,7 +2161,6 @@ function scriptConfig:__init(header, file)
 	self._draw.cellSize, self._draw.midSize, self._draw.row, self._draw.keyX = self._draw.fontSize + self._draw.border, self._draw.fontSize / 2, self._draw.width * 0.7, self._draw.width * 0.6
 	self._permaDraw = {x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
 	self._permaDraw.cellSize, self._permaDraw.midSize, self._permaDraw.row = self._permaDraw.fontSize + self._permaDraw.border, self._permaDraw.fontSize / 2, self._permaDraw.width * 0.7
-	--self.configSave = {}
 	if self.configFile and file_exists(self.configFile) then
 		self.configSave = dofile(self.configFile)
 		if self.configSave.menuKey then
@@ -2172,17 +2173,37 @@ function scriptConfig:__init(header, file)
 	end
 end
 
-function scriptConfig:addParam(pVar, pText, pType, defaultValue, pKey)
+function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
 	assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
 	assert(string.find(pVar,"[^%a%d]") == nil, "addParam: pVar should contain only char and number")
 	assert(self[pVar] == nil, "addParam: pVar should be unique, already existing "..pVar)
-	-- add a key
-	self._param[pVar] = {text = pText, pType = pType, key = pKey }
-	self[pVar] = defaultValue and true or false
-	if self.configSave and self.configSave[pVar] then
-		self._param[pVar].key = self.configSave[pVar].key
-		self[pVar] = self.configSave[pVar].value
+	local newParam = {var = pVar, text = pText, pType = pType}
+	if pType == SCRIPT_PARAM_ONOFF then
+		assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
+	elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
+		assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
+		newParam.key = a
+	elseif pType == SCRIPT_PARAM_SLICE then
+		assert(type(defaultValue) == "number" and type(a) == "number" and type(b) == "number" and (type(c) == "number" or c == nil), "addParam: wrong argument types (pVar, pText, pType, defaultValue, valMin, valMax, decimal) expected")
+		newParam.min = a
+		newParam.max = b
+		newParam.idc = c or 0
+		newParam.cursor = 0
 	end
+	self[pVar] = defaultValue
+	if self.configSave and self.configSave[pVar] then
+		newParam.key = self.configSave[pVar].key
+		if self.configSave[pVar].value then
+			if pType == SCRIPT_PARAM_SLICE then
+				if self.configSave[pVar].value >= a and self.configSave[pVar].value <= b then
+					self[pVar] = self.configSave[pVar].value
+				end
+			else
+				self[pVar] = self.configSave[pVar].value
+			end
+		end
+	end
+	table.insert(self._param, newParam)
 end
 
 function scriptConfig:addTS(tsInstance)
@@ -2192,7 +2213,11 @@ end
 
 function scriptConfig:permaShow(pVar)
 	assert(type(pVar) == "string" and self[pVar] ~= nil, "permaShow: existing pVar expected)")
-	table.insert(self._permaShow, pVar)
+	for index,param in ipairs(self._param) do
+		if param.var == pVar then
+			table.insert(self._permaShow, index)
+		end
+	end
 end
 
 function scriptConfig:_txtKey(key)
@@ -2209,6 +2234,10 @@ function scriptConfig:OnDraw()
 			local cursor = GetCursorPos()
 			self._permaDraw.x = cursor.x - self._permaDraw.offset.x
 			self._permaDraw.y = cursor.y - self._permaDraw.offset.y
+		elseif self._slice then
+			-- to correct
+			local cursorX = math.min(math.max(0, GetCursorPos().x - self._draw.x - self._draw.row), self._draw.width - self._draw.row)
+			self[self._param[self._slice].var] = math.round(cursorX / (self._draw.width - self._draw.row) * (self._param[self._slice].max - self._param[self._slice].min),self._param[self._slice].idc)
 		end
 		DrawLine(self._draw.x + self._draw.width / 2, self._draw.y, self._draw.x + self._draw.width / 2, self._draw.y + self._draw.heigth, self._draw.width + self._draw.border * 2, 1414812756) -- grey
 		self._draw.y1 = self._draw.y
@@ -2218,32 +2247,43 @@ function scriptConfig:OnDraw()
 		self._draw.y1 = self._draw.y1 + self._draw.cellSize
 		if # self._tsInstances > 0 then
 			self._draw.y1 = TS__DrawMenu(self._draw.x, self._draw.y1)
-			for i,tsInstance in pairs(self._tsInstances) do
+			for i,tsInstance in ipairs(self._tsInstances) do
 				self._draw.y1 = tsInstance:DrawMenu(self._draw.x, self._draw.y1)
 			end
 		end
-		for pVar,param in pairs(self._param) do
-			self:_DrawParam(pVar, "_draw")
+		for index,param in ipairs(self._param) do
+			self:_DrawParam(index, "_draw")
 		end
 		self._draw.heigth = self._draw.y1 - self._draw.y
 	end
 	if #self._permaShow > 0 then
 		self._permaDraw.y1 = self._permaDraw.y
-		for i,pVar in pairs(self._permaShow) do
-			self:_DrawParam(pVar, "_permaDraw")
+		for i,varIndex in ipairs(self._permaShow) do
+			self:_DrawParam(varIndex, "_permaDraw")
 		end
 		self._permaDraw.heigth = self._permaDraw.y1 - self._permaDraw.y
 	end
 end
 
-function scriptConfig:_DrawParam(pVar, drawer)
+function scriptConfig:_DrawParam(varIndex, drawer)
+	local pVar = self._param[varIndex].var
 	DrawLine(self[drawer].x - self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].row - self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, self[drawer].background)
-	DrawText(self._param[pVar].text, self[drawer].fontSize, self[drawer].x, self[drawer].y1, self[drawer].textColor)
-	if drawer == "_draw" and (self._param[pVar].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[pVar].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
-		DrawText(self:_txtKey(self._param[pVar].key), self._draw.fontSize, self._draw.x + self._draw.keyX, self._draw.y1, self._draw.textColor)
+	DrawText(self._param[varIndex].text, self[drawer].fontSize, self[drawer].x, self[drawer].y1, self[drawer].textColor)
+	if drawer == "_draw" and (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
+		DrawText(self:_txtKey(self._param[varIndex].key), self._draw.fontSize, self._draw.x + self._draw.keyX, self._draw.y1, self._draw.textColor)
 	end
-	DrawLine(self[drawer].x + self[drawer].row, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].width + self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, (self[pVar] and self[drawer].trueColor or self[drawer].falseColor))
-	DrawText((self[pVar] and "         ON" or "         OFF"), self[drawer].fontSize, self[drawer].x + self[drawer].row + self[drawer].border, self[drawer].y1, self[drawer].textColor)
+	if drawer == "_draw" and self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
+		DrawText(tostring(self[pVar]), self._draw.fontSize, self._draw.x + self._draw.keyX, self._draw.y1, self._draw.textColor)
+	end
+	if self._param[varIndex].pType ~= SCRIPT_PARAM_SLICE then
+		DrawLine(self[drawer].x + self[drawer].row, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].width + self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, (self[pVar] and self[drawer].trueColor or self[drawer].falseColor))
+		DrawText((self[pVar] and "         ON" or "         OFF"), self[drawer].fontSize, self[drawer].x + self[drawer].row + self[drawer].border, self[drawer].y1, self[drawer].textColor)
+	else
+		DrawLine(self[drawer].x + self[drawer].row, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].width + self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, self[drawer].background)
+		-- cursor
+		self._param[varIndex].cursor =  self[pVar] / (self._param[varIndex].max - self._param[varIndex].min) * (self[drawer].width - self[drawer].row)
+		DrawLine(self[drawer].x + self[drawer].row + self._param[varIndex].cursor - self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].x + self[drawer].row + self._param[varIndex].cursor + self[drawer].border, self[drawer].y1 + self[drawer].midSize, self[drawer].cellSize, 4292598640)
+	end
 	self[drawer].y1 = self[drawer].y1 + self[drawer].cellSize
 end
 
@@ -2252,8 +2292,12 @@ function scriptConfig:save()
 		local file = io.open(self.configFile, "w")
 		if file then
 			file:write("return { menuKey = "..self.menuKey..", _draw = { x = "..self._draw.x..", y = "..self._draw.y.." }, _permaDraw = { x = "..self._permaDraw.x..", y = "..self._permaDraw.y.." }, ")
-			for pVar,param in pairs(self._param) do
-				file:write(pVar.." = {key = "..tostring(param.key)..", value = "..tostring(self[pVar]).."}, ")
+			for i,param in ipairs(self._param) do
+				if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
+					file:write(param.var.." = {key = "..tostring(param.key)..", value = "..tostring(self[param.var]).."}, ")
+				else
+					file:write(param.var.." = {value = "..tostring(self[param.var]).."}, ")
+				end
 			end
 			file:write("}\n")
 			file:close()
@@ -2292,21 +2336,27 @@ function scriptConfig:OnWndMsg(msg,key)
 				local y1 = self._draw.y + self._draw.cellSize
 				if # self._tsInstances > 0 then
 					y1 = TS_ClickMenu(self._draw.x, y1)
-					for i,tsInstance in pairs(self._tsInstances) do
+					for i,tsInstance in ipairs(self._tsInstances) do
 						y1 = tsInstance:ClickMenu(self._draw.x, y1)
 					end
 				end
-				for pVar,param in pairs(self._param) do
+				for i,param in ipairs(self._param) do
 					if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
 						if CursorIsUnder(self._draw.x + self._draw.keyX, y1, self._draw.fontSize, self._draw.fontSize) then
-							self._changeKey, self._changeKeyVar, self._changeKeyMenu = true, pVar, true
+							self._changeKey, self._changeKeyVar, self._changeKeyMenu = true, param.var, true
 							return
 						end
 					end
 					if param.pType == SCRIPT_PARAM_ONOFF or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
 						if CursorIsUnder(self._draw.x + self._draw.row, y1, self._draw.width - self._draw.x, self._draw.fontSize) then
-							self[pVar] = not self[pVar]
+							self[param.var] = not self[param.var]
 							self:save()
+							return
+						end
+					end
+					if param.pType == SCRIPT_PARAM_SLICE then
+						if CursorIsUnder(self._draw.x + self._draw.row + param.cursor - self._draw.border, y1, self._draw.border * 2, self._draw.fontSize) then
+							self._slice = i
 							return
 						end
 					end
@@ -2319,19 +2369,20 @@ function scriptConfig:OnWndMsg(msg,key)
 			return
 		end
 	elseif msg == WM_LBUTTONUP then
-		if self._draw.move or self._permaDraw.move then
+		if self._draw.move or self._permaDraw.move or self._slice then
 			self._draw.move = false
 			self._permaDraw.move = false
+			self._slice = false
 			self:save()
 			return
 		end
 	else
-		for pVar,param in pairs(self._param) do
+		for i,param in ipairs(self._param) do
 			if key == param.key then
 				if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and msg == KEY_DOWN then
-					self[pVar] = not self[pVar]
+					self[param.var] = not self[param.var]
 				elseif param.pType == SCRIPT_PARAM_ONKEYDOWN then
-					self[pVar] = (msg == KEY_DOWN)
+					self[param.var] = (msg == KEY_DOWN)
 				end
 			end
 		end
