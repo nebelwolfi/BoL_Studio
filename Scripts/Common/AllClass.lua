@@ -2218,7 +2218,7 @@ function scriptConfig:OnDraw()
 		self._draw.y1 = self._draw.y1 + self._draw.cellSize
 		if # self._tsInstances > 0 then
 			self._draw.y1 = TS__DrawMenu(self._draw.x, self._draw.y1)
-			for i,tsInstance in ipairs(self._tsInstances) do
+			for i,tsInstance in pairs(self._tsInstances) do
 				self._draw.y1 = tsInstance:DrawMenu(self._draw.x, self._draw.y1)
 			end
 		end
@@ -2229,8 +2229,7 @@ function scriptConfig:OnDraw()
 	end
 	if #self._permaShow > 0 then
 		self._permaDraw.y1 = self._permaDraw.y
-		-- draw header
-		for i,pVar in ipairs(self._permaShow) do
+		for i,pVar in pairs(self._permaShow) do
 			self:_DrawParam(pVar, "_permaDraw")
 		end
 		self._permaDraw.heigth = self._permaDraw.y1 - self._permaDraw.y
@@ -2264,6 +2263,7 @@ function scriptConfig:save()
 end
 
 function scriptConfig:OnWndMsg(msg,key)
+	local msg, key = msg, key
 	if self._changeKey then
 		if msg == KEY_DOWN then
 			if self._changeKeyMenu then return end
@@ -2292,8 +2292,8 @@ function scriptConfig:OnWndMsg(msg,key)
 				local y1 = self._draw.y + self._draw.cellSize
 				if # self._tsInstances > 0 then
 					y1 = TS_ClickMenu(self._draw.x, y1)
-					for i,tsInstance in ipairs(self._tsInstances) do
-						y1 = ts:ClickMenu(self._draw.x, y1)
+					for i,tsInstance in pairs(self._tsInstances) do
+						y1 = tsInstance:ClickMenu(self._draw.x, y1)
 					end
 				end
 				for pVar,param in pairs(self._param) do
