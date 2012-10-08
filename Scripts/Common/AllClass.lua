@@ -2113,14 +2113,34 @@ end
 
 --	scriptConfig
 --[[
+
+myConfig = scriptConfig("My Script Config Header", "myfilenametosave.cfg")
+
+myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONOFF, defaultValue)
+myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
+myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
+myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
+
+myConfig:permaShow(pvar)	-- show this var in perma menu
+
+myConfig:addTS(ts)			-- add a ts instance
+
+myConfig:OnWndMsg(msg,key)	-- to put on OnWndMsg(msg,key)
+myConfig:OnDraw()			-- to put on OnDraw()
+
+var are myConfig.var
+
+
 function OnWndMsg(msg,key)
 	myConfig:OnWndMsg(msg,key)
 end
 
 function OnLoad()
 	myConfig = scriptConfig("My Script Config", "thisScript.cfg")
-	myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
 	myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
+	myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
+	myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
 	myConfig:permaShow("harass")
 	myConfig:permaShow("combo")
 	ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
