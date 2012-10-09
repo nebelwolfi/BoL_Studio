@@ -34,7 +34,7 @@ do
 			local hero = heroManager:getHero(i)
 			if hero ~= nil and hero.team ~= player.team then
 				for i, spell in pairs(spellList) do
-					if spell.charName == hero.charName or (spell.charName == "" and (string.find(hero:GetSpellData(SUMMONER_1).name..hero:GetSpellData(SUMMONER_2).name, i))) then
+					if string.lower(spell.charName) == string.lower(hero.charName) or (spell.charName == "" and (string.find(hero:GetSpellData(SUMMONER_1).name..hero:GetSpellData(SUMMONER_2).name, i))) then
 						spellAvoider.spellArrayCount = spellAvoider.spellArrayCount + 1
 						spellAvoider.spellArray[i] = spellList[i]
 						spellAvoider.spellArray[i].color = spellAvoider.colors[spellAvoider.spellArray[i].spellType]
