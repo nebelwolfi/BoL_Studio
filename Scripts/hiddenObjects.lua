@@ -89,7 +89,6 @@ do
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if object.charName == objectToAdd.charName then
 					-- add the object
-					PrintChat("added object")
 					hiddenObjects.addObject(objectToAdd, object, false, object)
 				end
 			end
