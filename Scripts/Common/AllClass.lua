@@ -2238,7 +2238,7 @@ function __SC__init()
 		_SC.color = {lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280}
 		_SC.draw.cellSize, _SC.draw.midSize, _SC.draw.row4, _SC.draw.row3, _SC.draw.row2, _SC.draw.row1 = _SC.draw.fontSize + _SC.draw.border, _SC.draw.fontSize / 2, _SC.draw.width * 0.9, _SC.draw.width * 0.8, _SC.draw.width * 0.7, _SC.draw.width * 0.6
 		_SC.pDraw.cellSize, _SC.pDraw.midSize, _SC.pDraw.row = _SC.pDraw.fontSize + _SC.pDraw.border, _SC.pDraw.fontSize / 2, _SC.pDraw.width * 0.7
-		_SC._Idraw = {x = _SC.draw.x + _SC.draw.width ,y = _SC.draw.y, heigth = 0}
+		_SC._Idraw = {x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2 ,y = _SC.draw.y, heigth = 0}
 	end
 end
 
@@ -2253,7 +2253,7 @@ function SC__OnDraw()
 			local cursor = GetCursorPos()
 			_SC.draw.x = cursor.x - _SC.draw.offset.x
 			_SC.draw.y = cursor.y - _SC.draw.offset.y
-			_SC._Idraw.x = _SC.draw.x + _SC.draw.width
+			_SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
 		elseif _SC.pDraw.move then
 			local cursor = GetCursorPos()
 			_SC.pDraw.x = cursor.x - _SC.pDraw.offset.x
@@ -2292,7 +2292,7 @@ function SC__OnDraw()
 					DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
 				else
 					DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.red or _SC.color.green))
-					DrawText((instance[pVar] and "         ON" or "         OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
+					DrawText((instance[pVar] and "      ON" or "      OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
 				end
 				y1 = y1 + _SC.pDraw.cellSize
 			end
@@ -2406,18 +2406,6 @@ function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
 		newParam.cursor = 0
 	end
 	self[pVar] = defaultValue
-	if self.configSave and self.configSave[pVar] then
-		newParam.key = self.configSave[pVar].key
-		if self.configSave[pVar].value then
-			if pType == SCRIPT_PARAM_SLICE then
-				if self.configSave[pVar].value >= a and self.configSave[pVar].value <= b then
-					self[pVar] = self.configSave[pVar].value
-				end
-			else
-				self[pVar] = self.configSave[pVar].value
-			end
-		end
-	end
 	table.insert(self._param, newParam)
 	self:load()
 end
@@ -2477,8 +2465,8 @@ function scriptConfig:_DrawParam(varIndex)
 		if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
 			DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
 		end
-		DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, (self[pVar] and _SC.color.red or _SC.color.green))
-		DrawText((self[pVar] and "         ON" or "         OFF"), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
+		DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, (self[pVar] and _SC.color.green or _SC.color.lgrey))
+		DrawText((self[pVar] and "        ON" or "        OFF"), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
 	end
 	_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
 end
