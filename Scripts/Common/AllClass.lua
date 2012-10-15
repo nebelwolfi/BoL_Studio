@@ -741,6 +741,7 @@ ts:SetMinionCollision()						-- minion colission off
 ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
 ts:SetConditional()							-- erase external function use
 ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
+ts:SetParticuleSpeed(pSpeed)				-- set particule speed (need Prediction__OnTick())
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -1079,6 +1080,12 @@ function TargetSelector:SetPrediction(delay)
 	self._pDelay = ((delay ~= nil and delay > 0) and delay or nil)
 end
 
+function TargetSelector:SetParticuleSpeed(pSpeed)
+	assert(delay == nil or type(delay) == "number", "SetParticuleSpeed: wrong argument types (<number> or nil expected)")
+	_Prediction__OnLoad()
+	self._pSpeed = ((pSpeed ~= nil and pSpeed > 0) and pSpeed or nil)
+end
+
 function TargetSelector:SetConditional(func)
 	assert (func == nil or type(func) == "function", "SetConditional : wrong argument types (<function> or nil expected)")
 	self._conditional = func
@@ -1118,13 +1125,19 @@ function TargetSelector:update()
     for i, _gameHero in ipairs(_gameHeros) do
         local hero = _gameHero.hero
         if ValidTarget(hero, range, self.enemyTeam) and not _gameHero.ignore and (self._conditional == nil or self._conditional(hero, i)) then
-			nextPosition, nextHealth = Vector(hero), hero.health
-			nextPosition.y = hero.y
 			local minionCollision = false
-			nextPosition.y = hero.y
-			if self._pDelay ~= nil then
-				nextPosition = _PredictionPosition(i, self._pDelay)
-				nextHealth = _PredictionHealth(i, self._pDelay)
+			local delay = 0
+			if self._pDelay ~= nil and self._pDelay > 0 then
+				delay = self._pDelay
+			end
+			if self._pSpeed ~= nil and self._pSpeed > 0 then
+				delay = delay + (GetDistance(hero) / self._pSpeed)
+			end
+			if delay > 0 then
+				nextPosition = _PredictionPosition(i, self.delay)
+				nextHealth = _PredictionHealth(i, self.delay)
+			else
+				nextPosition, nextHealth = Vector(hero), hero.health
 			end
 			if self._spellWidth then minionCollision = GetMinionCollision(player, nextPosition, self._spellWidth) end
 			if GetDistance(nextPosition) <= range and minionCollision == false then
