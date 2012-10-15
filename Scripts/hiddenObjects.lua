@@ -35,6 +35,7 @@ do
 			-- to confirm spell
 			{ name = "DoABarrelRoll", objectType = "boxes", spellName = "MaokaiSapling2", charName = "MaokaiSproutling", color = 0x00FF0000, range = 300, duration = 35000, sprite = "redPoint"},
 		},
+		tmpObjects = {},
 		sprites = {
 			cyanPoint = { spriteFile = "PingMarkerCyan_8", }, 
 			redPoint = { spriteFile = "PingMarkerRed_8", }, 
@@ -60,7 +61,7 @@ do
 		local tick = GetTickCount()
 		local objId = objectToAdd.spellName..(math.floor(pos.x) + math.floor(pos.z))
 		--check if exist
-		local objectExist = hiddenObjects.objectExist(objectToAdd.spellName, {x = pos.x, z = pos.z,}, tick - 500)
+		local objectExist = hiddenObjects.objectExist(objectToAdd.spellName, {x = pos.x, z = pos.z,}, tick - 2000)
 		if objectExist ~= nil then
 			objId = objectExist
 		end
@@ -79,27 +80,28 @@ do
 			}
 		elseif hiddenObjects.objects[objId].object == nil and object ~= nil then
 			hiddenObjects.objects[objId].object = object
+			hiddenObjects.objects[objId].fromSpell = false
 		end
 		hiddenObjects.objects[objId].pos = {x = pos.x, y = pos.y, z = pos.z, }
 		if hiddenObjects.showOnMiniMap == true then hiddenObjects.objects[objId].minimap = GetMinimap(pos) end
 	end
 
 	function OnCreateObj(object)
-		if object ~= nil and object.type == "obj_AI_Minion" and object.team ~= player.team then
+		if object ~= nil and object.type == "obj_AI_Minion" then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
-				if object.charName == objectToAdd.charName then
-					-- add the object
-					hiddenObjects.addObject(objectToAdd, object, false, object)
+				if object.name == objectToAdd.name then
+					local tick = GetTickCount()
+					table.insert(hiddenObjects.tmpObjects, {tick = tick, object = object})
 				end
 			end
 		end
 	end
 
 	function OnProcessSpell(object,spell)
-		if object ~= nil and object.team ~= player.team then
+		if object ~= nil and object.team == TEAM_ENEMY then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if spell.name == objectToAdd.spellName then
-					-- add the object
+					ticked = GetTickCount()
 					hiddenObjects.addObject(objectToAdd, spell.endPos, true)
 				end
 			end
@@ -107,7 +109,7 @@ do
 	end
 
 	function OnDeleteObj(object)
-		if object ~= nil and object.name ~= nil and object.team ~= player.team then
+		if object ~= nil and object.name ~= nil and object.type == "obj_AI_Minion" then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if object.charName == objectToAdd.charName then
 					-- remove the object
@@ -147,11 +149,24 @@ do
 	function OnTick()
 		if gameState:gameIsOver() then return end
 		local tick = GetTickCount()
+		for i,obj in pairs(hiddenObjects.tmpObjects) do
+			if tick > obj.tick + 1000 or obj.object == nil or obj.object.team == player.team then
+				hiddenObjects.tmpObjects[i] = nil
+			else
+				for j,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
+					if obj.object ~= nil and obj.object.charName == objectToAdd.charName and obj.object.team == TEAM_ENEMY then
+						hiddenObjects.addObject(objectToAdd, obj.object, false, obj.object)
+						hiddenObjects.tmpObjects[i] = nil
+						break
+					end
+				end
+			end
+		end
 		for i,obj in pairs(hiddenObjects.objects) do
-			if tick > obj.endTick or (obj.object ~= nil and obj.object.team == player.team) then
+			if tick > obj.endTick or (obj.object ~= nil) and false then
 				hiddenObjects.objects[i] = nil
 			else
-				if obj.object == nil or (obj.object ~= nil and obj.object.team == TEAM_ENEMY and obj.object.dead == false) then
+				if obj.object == nil or (obj.object ~= nil and obj.object.dead == false) then
 					obj.visible = true
 				else
 					obj.visible = false
@@ -159,7 +174,7 @@ do
 				-- cursor pos
 				if obj.visible and GetDistanceFromMouse(obj.pos) < 150 then
 					local cursor = GetCursorPos()
-					obj.display.color = (obj.fromSpell and 0xFF00FF00 or 0xFFFF0000)
+					obj.display.color = (obj.fromSpell and 0xFFFF0000 or 0xFF00FF00)
 					obj.display.text = timerText((obj.endTick-tick)/1000)
 					obj.display.x = cursor.x - 50
 					obj.display.y = cursor.y - 50

@@ -51,11 +51,6 @@ do
 		if spellAvoider.spellArrayCount == 0 then
 			spellAvoider = nil
 		else
-			-- load the script
-			function spellAvoider.vectorLenght(pos1, pos2)
-				return (math.floor(math.sqrt((pos2.x-pos1.x)^2 + (pos2.z-pos1.z)^2)))
-			end
-			
 			function spellAvoider.setGlobalspacing(up)
 				local value = (up and 50 or -50)
 				spellAvoider.globalspacing = math.max(100, spellAvoider.globalspacing + value)
@@ -74,68 +69,42 @@ do
 				end
 			end
 			
-			function spellAvoider.calculateLinepass(pos1, pos2, spacing, maxDist)
-				local calc = spellAvoider.vectorLenght(pos1, pos2)
-				-- put the max range on
+			function spellAvoider.calculateLinepass(pos1, pos2, maxDist)
+				local spellVector = Vector(pos2) - pos1
+				spellVector = spellVector / spellVector:len() * maxDist
 				local line = {}
-				local averagesteps = maxDist/spacing
-				local steps = round(averagesteps,0) -1
-				for i = 0, steps, 1 do
-					local point = {}
-					point.x = pos1.x + (maxDist - (i*spacing))/calc*(pos2.x-pos1.x)
-					point.y = pos2.y
-					point.z = pos1.z + (maxDist - (i*spacing))/calc*(pos2.z-pos1.z)
-					table.insert(line, point)
+				local steps = math.round(maxDist/spellAvoider.globalspacing)
+				for i = 0, steps do
+					table.insert(line, spellVector / steps * i + pos1)
 				end
 				return line
 			end
 
-			function spellAvoider.calculateLinepoint(pos1, pos2, spacing, maxDist)
-				local calc = spellAvoider.vectorLenght(pos1, pos2)
+			function spellAvoider.calculateLinepoint(pos1, pos2, maxDist)
+				local spellVector = Vector(pos2) - pos1
+				if spellVector:len() > maxDist then
+					spellVector = spellVector / spellVector:len() * maxDist
+				end
 				local line = {}
-				local averagesteps = (calc > maxDist and maxDist/spacing or calc/spacing)
-				local steps = round(averagesteps,0) -1
-				for i = 0, steps, 1 do
-					local point = {}
-					if calc > maxDist then
-						point.x = pos1.x + (maxDist - (i*spacing))/calc*(pos2.x-pos1.x)
-						point.y = pos2.y
-						point.z = pos1.z + (maxDist - (i*spacing))/calc*(pos2.z-pos1.z)
-					elseif calc <= maxDist then
-						point.x = pos1.x + (calc - (i*spacing))/calc*(pos2.x-pos1.x)
-						point.y = pos2.y
-						point.z = pos1.z + (calc - (i*spacing))/calc*(pos2.z-pos1.z)
-					end
-					table.insert(line, point)
+				local steps = math.round(maxDist/spellAvoider.globalspacing)
+				for i = 0, steps do
+					table.insert(line, spellVector / steps * i + pos1)
 				end
 				return line
 			end
 
 			function spellAvoider.calculateLineaoe(pos1, pos2, maxDist)
-				local line = {}
-				local point = {}
-				point.x = pos2.x
-				point.y = pos2.y
-				point.z = pos2.z
-				table.insert(line, point)
-				return line
+				return {Vector(pos2)}
 			end
 
 			function spellAvoider.calculateLineaoe2(pos1, pos2, maxDist)
-				local calc = spellAvoider.vectorLenght(pos1, pos2)
-				local line = {}
-				local point = {}
-				if calc < maxDist then
-					point.x = pos2.x
-					point.y = pos2.y
-					point.z = pos2.z
+				local spellVector = Vector(pos2) - pos1
+				if spellVector:len() > maxDist then
+					spellVector = spellVector / spellVector:len() * maxDist
+					return {spellVector + pos1}
 				else
-					point.x = pos1.x + maxDist/calc*(pos2.x-pos1.x)
-					point.z = pos1.z + maxDist/calc*(pos2.z-pos1.z)
-					point.y = pos2.y
+					return {Vector(pos2)}
 				end
-				table.insert(line, point)
-				return line
 			end
 
 			function spellAvoider.dodgeAOE(pos1, pos2, radius)
@@ -197,10 +166,10 @@ do
 					spellAvoider.spellArray[spell.name].shot = true
 					spellAvoider.spellArray[spell.name].lastshot = GetTickCount()
 					if spellAvoider.spellArray[spell.name].spellType == 1 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.startPos, spell.endPos} or spellAvoider.calculateLinepass(spell.startPos, spell.endPos, spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range))
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepass(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
 						spellAvoider.dodgeLinePass(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
 					elseif spellAvoider.spellArray[spell.name].spellType == 2 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepoint(spell.startPos, spell.endPos, spellAvoider.globalspacing, spellAvoider.spellArray[spell.name].range)
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepoint(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
 						spellAvoider.dodgeLinePoint(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size)
 					elseif spellAvoider.spellArray[spell.name].spellType == 3 then
 						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
@@ -208,7 +177,7 @@ do
 							spellAvoider.dodgeAOE(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size)
 						end
 					elseif spellAvoider.spellArray[spell.name].spellType == 4 then
-						spellAvoider.spellArray[spell.name].skillshotpoint = (spellAvoider.useWorldToScreen and {spell.startPos, spell.endPos} or spellAvoider.calculateLinepass(spell.startPos, spell.endPos, 1000, spellAvoider.spellArray[spell.name].range))
+						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLinepass(spell.startPos, spell.endPos, 1000, spellAvoider.spellArray[spell.name].range)
 						spellAvoider.dodgeLinePass(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].size, spellAvoider.spellArray[spell.name].range)
 					elseif spellAvoider.spellArray[spell.name].spellType == 5 then
 						spellAvoider.spellArray[spell.name].skillshotpoint = spellAvoider.calculateLineaoe2(spell.startPos, spell.endPos, spellAvoider.spellArray[spell.name].range)
@@ -221,14 +190,8 @@ do
 				for i, spell in pairs(spellAvoider.spellArray) do
 					if spell.shot then
 						--when WorldToScreen work, use DrawLine
-						if spellAvoider.useWorldToScreen and (spell.spellType == 1 or spell.spellType == 4) then
-							local point1 = WorldToScreen(spell.skillshotpoint[1])
-							local point2 = WorldToScreen(spell.skillshotpoint[2])
-							DrawLine(point1.x, point1.y, point2.x, point2.y, spell.size, 0x33FF0000) -- red
-						else
-							for j, point in pairs(spell.skillshotpoint) do
-								DrawCircle(point.x, point.y, point.z, spell.size, spell.color)
-							end
+						for j, point in pairs(spell.skillshotpoint) do
+							DrawCircle(point.x, point.y, point.z, spell.size, spell.color)
 						end
 					end
 				end
