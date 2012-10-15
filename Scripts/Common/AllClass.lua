@@ -159,7 +159,7 @@ end
 		VectorType(v)							-- return if as vector
 		VectorIntersection(a1,b1,a2,b2)			-- return the Intersection of 2 lines
 		VectorDirection(v1,v2,v)
-		VectorIntersectionFromPoint(v1, v2, v)  -- return a vector on line v1-v2 closest to v
+		VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
 		Vector(a,b,c)							-- return a vector from x,y,z pos or from another vector
 		
 		---- Vector Members ----
@@ -195,7 +195,7 @@ function VectorType(v)
 end
 
 function VectorIntersection(a1,b1,a2,b2)
-	assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "direction: wrong argument types (4 <Vector> expected)")
+	assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
 	if math.close(b1.x, 0) and math.close(b2.z, 0) then return Vector(a1.x, a2.z) end
 	if math.close(b1.z, 0) and math.close(b2.x, 0) then return Vector(a2.x, a1.z) end
 	local m1 = (not math.close(b1.x, 0)) and b1.z / b1.x or 0
@@ -215,7 +215,8 @@ function VectorDirection(v1,v2,v)
 	return (v1.x - v2.x) * (v.z - v2.z) - (v.x - v2.x) * (v1.z - v2.z)
 end
 
-function VectorIntersectionFromPoint(v1, v2, v)
+function VectorPointProjectionOnLine(v1, v2, v)
+	assert(VectorType(v1) and VectorType(v2) and VectorType(v), "VectorPointProjectionOnLine: wrong argument types (3 <Vector> expected)")
 	local line = Vector(v2) - v1
 	local t = ((-(v1.x * line.x - line.x * v.x + (v1.z - v.z) * line.z)) / line:len2())
 	return (line * t) + v1
@@ -315,7 +316,7 @@ end
 
 function Vector:len2(v)
 	assert(v == nil or VectorType(v), "dist: wrong argument types (<Vector> expected)")
-	v = Vector(v) or self
+	local v = v and Vector(v) or self
 	return self.x * v.x + self.y * v.y + self.z * v.z
 end
 function Vector:len()
@@ -590,7 +591,7 @@ function MEC:Compute()
 	elseif #self.points == 2 then
 		local a = self.points
 		self.circle.center = a[1]:center(a[2])
-		self.circle.radius = a[1]:Distance(self.circle.center)
+		self.circle.radius = a[1]:dist(self.circle.center)
 		self.circle.radiusPoint = a[1]
 	else
 		local a = self:ConvexHull()
@@ -621,7 +622,7 @@ function MEC:Compute()
 			-- so we can return.
 			if best_theta >= 90.0 or (not point_b) then
 				self.circle.center = point_a:center(point_c)
-				self.circle.radius = point_a:Distance(self.circle.center)
+				self.circle.radius = point_a:dist(self.circle.center)
 				self.circle.radiusPoint = point_a
 				return self.circle
 			end
@@ -666,7 +667,7 @@ function _CalcSpellPosForGroup(radius, points)
 	elseif #points == 1 then
         return Circle(Vector(points[1]))
     end
-	mec = MEC()
+	local mec = MEC()
 	local combos = {}
     for j = #points,2,-1 do
 		local spellPos = nil
@@ -1301,13 +1302,13 @@ end
 	GetMinionCollision(posEnd, spellWidth)			-> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
 function GetMinionCollision(posStart, posEnd, spellWidth)
-	assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <number> expected)")
+	assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
 	local distance = GetDistance(posStart, posEnd)
 	for i = 0, objManager.maxObjects, 1 do
 		local object = objManager:getObject(i)
 		if object and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
-			if GetDistance(object) < distance then
-				local closestPoint = VectorIntersectionFromPoint(posStart, posEnd, object)
+			if GetDistance(object, posStart) < distance and GetDistance(object, posEnd) < distance then
+				local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, object)
 				if GetDistance(closestPoint, object) <= spellWidth / 2 then return true end
 			end
 		end
