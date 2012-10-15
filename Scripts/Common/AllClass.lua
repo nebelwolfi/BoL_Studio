@@ -741,7 +741,7 @@ ts:SetMinionCollision()						-- minion colission off
 ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
 ts:SetConditional()							-- erase external function use
 ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
-ts:SetProjectileSpeedd(pSpeed)				-- set projectile speed (need Prediction__OnTick())
+ts:SetProjectileSpeed(pSpeed)				-- set projectile speed (need Prediction__OnTick())
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -1099,9 +1099,16 @@ function TargetSelector:_targetSelectedByPlayer()
 				self.target = currentTarget
 				self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
 			end
-			if self.index and self._pDelay then
-				self.nextPosition = _PredictionPosition(self.index, self._pDelay)
-				self.nextHealth = _PredictionHealth(self.index, self._pDelay)
+			local delay = 0
+			if self._pDelay ~= nil and self._pDelay > 0 then
+				delay = delay + self._pDelay
+			end
+			if self._pSpeed ~= nil and self._pSpeed > 0 then
+				delay = delay + (GetDistance(currentTarget) / self._pSpeed)
+			end
+			if self.index and delay > 0 then
+				self.nextPosition = _PredictionPosition(self.index, delay)
+				self.nextHealth = _PredictionHealth(self.index, delay)
 			else
 				self.nextPosition = Vector(currentTarget)
 				self.nextHealth = currentTarget.health
@@ -1128,14 +1135,14 @@ function TargetSelector:update()
 			local minionCollision = false
 			local delay = 0
 			if self._pDelay ~= nil and self._pDelay > 0 then
-				delay = self._pDelay
+				delay = delay + self._pDelay
 			end
 			if self._pSpeed ~= nil and self._pSpeed > 0 then
 				delay = delay + (GetDistance(hero) / self._pSpeed)
 			end
 			if delay > 0 then
-				nextPosition = _PredictionPosition(i, self.delay)
-				nextHealth = _PredictionHealth(i, self.delay)
+				nextPosition = _PredictionPosition(i, delay)
+				nextHealth = _PredictionHealth(i, delay)
 			else
 				nextPosition, nextHealth = Vector(hero), hero.health
 			end
