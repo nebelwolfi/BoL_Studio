@@ -211,7 +211,7 @@ function VectorIntersection(a1,b1,a2,b2)
 end
 
 function VectorDirection(v1,v2,v)
-	assert(VectorType(v1) and VectorType(v2) and VectorType(v), "direction: wrong argument types (3 <Vector> expected)")
+	assert(VectorType(v1) and VectorType(v2) and VectorType(v), "VectorDirection: wrong argument types (3 <Vector> expected)")
 	return (v1.x - v2.x) * (v.z - v2.z) - (v.x - v2.x) * (v1.z - v2.z)
 end
 
@@ -532,7 +532,7 @@ function MEC:SetPoints(points)
 	-- Set the points
 	self.points = {}
 	for i, p in ipairs(points) do
-		table.insert(self.points, {Vector(p)})
+		table.insert(self.points, Vector(p))
 	end
 end
 
@@ -562,6 +562,7 @@ function MEC:ConvexHull()
 	local upper, lower, ret = {}, {}, {}
 	-- Partition remaining points into upper and lower buckets.
 	for i = 2, #self.points-1 do
+		if VectorType(self.points[i]) == false then PrintChat("self.points[i]") end
 		table.insert((VectorDirection(left, right, self.points[i]) < 0 and upper or lower), self.points[i])
 	end
 	local upperHull = self:HalfHull(left, right, upper, -1)
@@ -654,14 +655,14 @@ function GetMEC(radius, range, target)
 	local points = {}
     for i = 1, heroManager.iCount do
         local object = heroManager:GetHero(i)
-		if (target and (ValidTargetNear(object,radius*2,target) or object.networkID == target.networkID)) or (target == nil and ValidTarget(object, (range + radius))) then
+		if (target == nil and ValidTarget(object,(range + radius))) or (target and ValidTarget(object,(range + radius), (target.team~=player.team)) and (ValidTargetNear(object,radius*2,target) or object.networkID == target.networkID)) then
 			table.insert(points, Vector(object))
 		end
     end
-    return _CalcSpellPosForGroup(radius,points)
+    return _CalcSpellPosForGroup(radius,range,points)
 end
 
-function _CalcSpellPosForGroup(radius, points)
+function _CalcSpellPosForGroup(radius, range, points)
     if #points == 0 then
 		return nil
 	elseif #points == 1 then
@@ -674,9 +675,9 @@ function _CalcSpellPosForGroup(radius, points)
 		combos[j] = {}
         _CalcCombos(j,points,combos[j])
         for i,v in ipairs(combos[j]) do
-            mec:SetPoints(v)
+			mec:SetPoints(v)
             local c = mec:Compute()
-            if c.radius <= radius and (spellPos == nil or c.radius < spellPos.radius) then
+            if c~= nil and c.radius <= radius and c.center:dist(player) <= range and (spellPos == nil or c.radius < spellPos.radius) then
                 spellPos = Circle(c.center, c.radius)
             end
         end
@@ -687,7 +688,6 @@ end
 function _CalcCombos(comboSize,targetsTable,comboTableToFill,comboString,index_number)
     local comboString = comboString or ""
 	local index_number = index_number or 1
-	local ret = comboTableToFill or {}
 	if string.len(comboString) == comboSize then
         local b = {}
         for i=1,string.len(comboString),1 do
