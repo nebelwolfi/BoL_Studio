@@ -741,7 +741,7 @@ ts:SetMinionCollision()						-- minion colission off
 ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
 ts:SetConditional()							-- erase external function use
 ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
-ts:SetParticuleSpeed(pSpeed)				-- set particule speed (need Prediction__OnTick())
+ts:SetProjectileSpeedd(pSpeed)				-- set projectile speed (need Prediction__OnTick())
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -1080,8 +1080,8 @@ function TargetSelector:SetPrediction(delay)
 	self._pDelay = ((delay ~= nil and delay > 0) and delay or nil)
 end
 
-function TargetSelector:SetParticuleSpeed(pSpeed)
-	assert(delay == nil or type(delay) == "number", "SetParticuleSpeed: wrong argument types (<number> or nil expected)")
+function TargetSelector:SetProjectileSpeed(pSpeed)
+	assert(delay == nil or type(delay) == "number", "SetProjectileSpeed: wrong argument types (<number> or nil expected)")
 	_Prediction__OnLoad()
 	self._pSpeed = ((pSpeed ~= nil and pSpeed > 0) and pSpeed or nil)
 end
