@@ -46,9 +46,9 @@ do
 			function OnTick()
 				local tick = GetTickCount()
 				if autoSummonerHeal.toggled == false then autoSummonerHeal.active = IsKeyDown(autoSummonerHeal.activeKey) end
-				if autoSummonerHeal.active and autoSummonerHeal.ready() and player.maxHealth / player.health < autoSummonerHeal.minValue then
+				if autoSummonerHeal.active and autoSummonerHeal.ready() and player.health / player.maxHealth < autoSummonerHeal.minValue then
 					CastSpell(autoSummonerHeal.slot)
-					autoSummonerHeal.castDelay = tick + 500
+					autoSummonerHeal.castDelay = tick + 300
 				end
 			end
 		else

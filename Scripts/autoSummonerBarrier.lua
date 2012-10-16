@@ -46,7 +46,7 @@ do
 			function OnTick()
 				local tick = GetTickCount()
 				if autoSummonerBarrier.toggled == false then autoSummonerBarrier.active = IsKeyDown(autoSummonerBarrier.activeKey) end
-				if autoSummonerBarrier.active and autoSummonerBarrier.ready() and player.maxHealth / player.health < autoSummonerBarrier.minValue then
+				if autoSummonerBarrier.active and autoSummonerBarrier.ready() and player.health / player.maxHealth < autoSummonerBarrier.minValue then
 					CastSpell(autoSummonerBarrier.slot)
 					autoSummonerBarrier.castDelay = tick + 500
 				end
