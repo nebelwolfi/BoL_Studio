@@ -741,7 +741,6 @@ ts:SetMinionCollision()						-- minion colission off
 ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
 ts:SetConditional()							-- erase external function use
 ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
-ts:SetProjectileSpeed(pSpeed)				-- set projectile speed (need Prediction__OnTick())
 
 Members:
 ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
@@ -1080,12 +1079,6 @@ function TargetSelector:SetPrediction(delay)
 	self._pDelay = ((delay ~= nil and delay > 0) and delay or nil)
 end
 
-function TargetSelector:SetProjectileSpeed(pSpeed)
-	assert(delay == nil or type(delay) == "number", "SetProjectileSpeed: wrong argument types (<number> or nil expected)")
-	_Prediction__OnLoad()
-	self._pSpeed = ((pSpeed ~= nil and pSpeed > 0) and pSpeed or nil)
-end
-
 function TargetSelector:SetConditional(func)
 	assert (func == nil or type(func) == "function", "SetConditional : wrong argument types (<function> or nil expected)")
 	self._conditional = func
@@ -1099,16 +1092,9 @@ function TargetSelector:_targetSelectedByPlayer()
 				self.target = currentTarget
 				self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
 			end
-			local delay = 0
-			if self._pDelay ~= nil and self._pDelay > 0 then
-				delay = delay + self._pDelay
-			end
-			if self._pSpeed ~= nil and self._pSpeed > 0 then
-				delay = delay + (GetDistance(currentTarget) / self._pSpeed)
-			end
-			if self.index and delay > 0 then
-				self.nextPosition = _PredictionPosition(self.index, delay)
-				self.nextHealth = _PredictionHealth(self.index, delay)
+			if self.index and self._pDelay then
+				self.nextPosition = _PredictionPosition(self.index, self._pDelay)
+				self.nextHealth = _PredictionHealth(self.index, self._pDelay)
 			else
 				self.nextPosition = Vector(currentTarget)
 				self.nextHealth = currentTarget.health
@@ -1132,19 +1118,13 @@ function TargetSelector:update()
     for i, _gameHero in ipairs(_gameHeros) do
         local hero = _gameHero.hero
         if ValidTarget(hero, range, self.enemyTeam) and not _gameHero.ignore and (self._conditional == nil or self._conditional(hero, i)) then
+			nextPosition, nextHealth = Vector(hero), hero.health
+			nextPosition.y = hero.y
 			local minionCollision = false
-			local delay = 0
-			if self._pDelay ~= nil and self._pDelay > 0 then
-				delay = delay + self._pDelay
-			end
-			if self._pSpeed ~= nil and self._pSpeed > 0 then
-				delay = delay + (GetDistance(hero) / self._pSpeed)
-			end
-			if delay > 0 then
-				nextPosition = _PredictionPosition(i, delay)
-				nextHealth = _PredictionHealth(i, delay)
-			else
-				nextPosition, nextHealth = Vector(hero), hero.health
+			nextPosition.y = hero.y
+			if self._pDelay ~= nil then
+				nextPosition = _PredictionPosition(i, self._pDelay)
+				nextHealth = _PredictionHealth(i, self._pDelay)
 			end
 			if self._spellWidth then minionCollision = GetMinionCollision(player, nextPosition, self._spellWidth) end
 			if GetDistance(nextPosition) <= range and minionCollision == false then
@@ -2219,10 +2199,10 @@ function __SC__load(name)
 			key = key:find('^%s*$') and '' or key:match('^%s*(.*%S)')
 			value = value:find('^%s*$') and '' or value:match('^%s*(.*%S)')
 			if value == "false" or value == "true" then value = (value == "true") 
-			elseif value:gsub("%d+", ""):gsub("-", ""):gsub(".", "") == "" then
+			elseif string.gsub(value,"%d+", ""):gsub("%-", ""):gsub("%.", "") == "" then
 				value = tonumber(value)
 			end
-			config[key..'.'] = value
+			if name ~= "Master" then config[key..'.'] = value else config[key] = value end
 		end
 	end
 	return config
@@ -2240,9 +2220,56 @@ end
 
 function __SC__saveMenu()
 	__SC__save("Menu", {"menuKey = "..tostring(_SC.menuKey), "draw.x = "..tostring(_SC.draw.x), "draw.y = "..tostring(_SC.draw.y), "pDraw.x = "..tostring(_SC.pDraw.x), "pDraw.y = "..tostring(_SC.pDraw.y)})
+	_SC.master.x = _SC.draw.x
+	_SC.master.y = _SC.draw.y
+	_SC.master.px = _SC.pDraw.x
+	_SC.master.py = _SC.pDraw.y
+	__SC__saveMaster()
 end
 
-function __SC__init()
+function __SC__saveMaster()
+	local config = {}
+	local P, PS, I = 0, 0, 0
+	for index, instance in pairs(_SC.instances) do
+		I = I + 1
+		P = P + #instance._param
+		PS = PS + #instance._permaShow
+	end
+	_SC.master["I".._SC.masterIndex] = I
+	_SC.master["P".._SC.masterIndex] = P
+	_SC.master["PS".._SC.masterIndex] = PS
+	if not _SC.master.useTS and _SC.useTS then _SC.master.useTS = true end
+	for var, value in pairs(_SC.master) do
+		table.insert(config, tostring(var).." = "..tostring(value))
+	end
+	__SC__save("Master", config)
+end
+
+function __SC__updateMaster()
+	_SC.master = __SC__load("Master")
+	_SC.masterY, _SC.masterYp = 1, 0
+	if _SC.masterIndex > 1 then
+		_SC.masterY = (_SC.master.useTS and 1 or 0)
+		for i = 1, _SC.masterIndex - 1 do
+			_SC.masterY = _SC.masterY + _SC.master["I"..i]
+			_SC.masterYp = _SC.masterYp + _SC.master["PS"..i]
+		end
+	end
+	local size, sizep = (_SC.master.useTS and 2 or 1), 0
+	for i = 1, _SC.master.iCount do
+		size = size + _SC.master["I"..i]
+		sizep = sizep + _SC.master["PS"..i]
+	end
+	_SC.draw.heigth = size * _SC.draw.cellSize
+	_SC.pDraw.heigth = sizep * _SC.pDraw.cellSize
+	_SC.draw.x = _SC.master.x
+	_SC.draw.y = _SC.master.y
+	_SC.pDraw.x = _SC.master.px
+	_SC.pDraw.y = _SC.master.py
+	_SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
+end
+
+function __SC__init(name)
 	if _SC.init then
 		_SC.init = nil
 		_SC.draw = {x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
@@ -2260,7 +2287,33 @@ function __SC__init()
 		_SC.draw.cellSize, _SC.draw.midSize, _SC.draw.row4, _SC.draw.row3, _SC.draw.row2, _SC.draw.row1 = _SC.draw.fontSize + _SC.draw.border, _SC.draw.fontSize / 2, _SC.draw.width * 0.9, _SC.draw.width * 0.8, _SC.draw.width * 0.7, _SC.draw.width * 0.6
 		_SC.pDraw.cellSize, _SC.pDraw.midSize, _SC.pDraw.row = _SC.pDraw.fontSize + _SC.pDraw.border, _SC.pDraw.fontSize / 2, _SC.pDraw.width * 0.7
 		_SC._Idraw = {x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2 ,y = _SC.draw.y, heigth = 0}
+		local gameStart = GetStart()
+		_SC.master = __SC__load("Master")
+		if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
+			for i = 1, _SC.master.iCount do
+				if _SC.master["name"..i] == name then _SC.masterIndex = i end
+			end
+			if _SC.masterIndex == nil then
+				_SC.masterIndex = _SC.master.iCount + 1
+				_SC.master["name".._SC.masterIndex] = name
+				_SC.master.iCount = _SC.masterIndex
+				__SC__saveMaster()
+			end
+		else
+			__SC__remove("Master")
+			_SC.masterIndex = 1
+			_SC.master.useTS = false
+			_SC.master.x = _SC.draw.x
+			_SC.master.y = _SC.draw.y
+			_SC.master.px = _SC.pDraw.x
+			_SC.master.py = _SC.pDraw.y
+			_SC.master.osTime = gameStart.osTime
+			_SC.master.name1 = name
+			_SC.master.iCount = 1
+			__SC__saveMaster()
+		end
 	end
+	__SC__updateMaster()
 end
 
 function __SC__txtKey(key)
@@ -2280,28 +2333,31 @@ function SC__OnDraw()
 			_SC.pDraw.x = cursor.x - _SC.pDraw.offset.x
 			_SC.pDraw.y = cursor.y - _SC.pDraw.offset.y
 		end
-		DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-		_SC.draw.y1 = _SC.draw.y
-		local menuText = _SC._changeKey and "press key for "..(_SC._changeKeyVar and _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or "Menu") or "Menu"
-		DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
-		DrawText(__SC__txtKey(_SC.menuKey), _SC.draw.fontSize, _SC.draw.x + _SC.draw.width * 0.9, _SC.draw.y1, _SC.color.grey)
-		_SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
-		if _SC.useTS then
-			__SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
-			if _SC.menuIndex == 0 then
-				DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-				DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
-				_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-				_SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+		if _SC.masterIndex == 1 then
+			DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+			_SC.draw.y1 = _SC.draw.y
+			local menuText = _SC._changeKey and not _SC._changeKeyVar and "press key for Menu" or "Menu"
+			DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
+			DrawText(__SC__txtKey(_SC.menuKey), _SC.draw.fontSize, _SC.draw.x + _SC.draw.width * 0.9, _SC.draw.y1, _SC.color.grey)
+			_SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
+			if _SC.master.useTS then
+				__SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
+				if _SC.menuIndex == 0 then
+					DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+					DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
+					_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
+					_SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+				end
 			end
+		else
+			_SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
 		end
 		for index,instance in ipairs(_SC.instances) do
 			__SC__DrawInstance(instance.header, (_SC.menuIndex == index))
 			if _SC.menuIndex == index then instance:OnDraw() end
 		end
-		_SC.draw.heigth = _SC.draw.y1 - _SC.draw.y
 	end
-	local y1 = _SC.pDraw.y
+	local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
 	for index,instance in ipairs(_SC.instances) do
 		if #instance._permaShow > 0 then
 			for i,varIndex in ipairs(instance._permaShow) do
@@ -2312,14 +2368,13 @@ function SC__OnDraw()
 					DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
 					DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
 				else
-					DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.red or _SC.color.green))
+					DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.green or _SC.color.lgrey))
 					DrawText((instance[pVar] and "      ON" or "      OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
 				end
 				y1 = y1 + _SC.pDraw.cellSize
 			end
 		end
 	end
-	_SC.pDraw.heigth = y1 - _SC.pDraw.y
 end
 
 function __SC__DrawInstance(header, selected)
@@ -2329,14 +2384,19 @@ function __SC__DrawInstance(header, selected)
 end
 
 function SC__OnWndMsg(msg,key)
+	if _SC.init then return end
 	local msg, key = msg, key
+	if key == _SC.menuKey and _SC.lastKeyState ~= msg then
+		_SC.lastKeyState = msg
+		__SC__updateMaster()
+	end
 	if _SC._changeKey then
 		if msg == KEY_DOWN then
 			if _SC._changeKeyMenu then return end
 			_SC._changeKey = false
 			if _SC._changeKeyVar == nil then
 				_SC.menuKey = key
-				__SC__saveMenu()
+				if _SC.masterIndex == 1 then __SC__saveMenu() end
 			else
 				_SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].key = key
 				_SC.instances[_SC.menuIndex]:save()
@@ -2348,6 +2408,7 @@ function SC__OnWndMsg(msg,key)
 	end
 	if msg == WM_LBUTTONDOWN and IsKeyDown(_SC.menuKey) then
 		if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.heigth) then
+			_SC.menuIndex = -1
 			if CursorIsUnder(_SC.draw.x + _SC.draw.width - _SC.draw.fontSize * 1.5, _SC.draw.y, _SC.draw.fontSize, _SC.draw.cellSize) then
 				_SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, nil, true
 				return
@@ -2356,13 +2417,13 @@ function SC__OnWndMsg(msg,key)
 				_SC.draw.move = true
 				return
 			else
-				local y1 = _SC.draw.y + _SC.draw.cellSize
-				if _SC.useTS then
-					if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = (_SC.menuIndex == 0 and -1 or 0) end
+				local y1 = _SC.draw.y + (_SC.draw.cellSize * _SC.masterY)
+				if _SC.master.useTS then
+					if _SC.masterIndex == 1 and CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
 					y1 = y1 + _SC.draw.cellSize
 				end
 				for index,instance in ipairs(_SC.instances) do
-					if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = (_SC.menuIndex == index and -1 or index) end
+					if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
 					y1 = y1 + _SC.draw.cellSize
 				end
 			end
@@ -2378,7 +2439,7 @@ function SC__OnWndMsg(msg,key)
 		if _SC.draw.move or _SC.pDraw.move then
 			_SC.draw.move = false
 			_SC.pDraw.move = false
-			__SC__saveMenu()
+			if _SC.masterIndex == 1 then __SC__saveMenu() end
 			return
 		elseif _SC._slice then
 			_SC._slice = false
@@ -2400,7 +2461,7 @@ end
 
 function scriptConfig:__init(header, name)
 	assert((type(header) == "string") and (type(name) == "string"), "scriptConfig: expected <string>, <string>)")
-	__SC__init()
+	__SC__init(name)
 	self.header = header
 	self.name = name
 	self._tsInstances = {}
@@ -2428,6 +2489,7 @@ function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
 	end
 	self[pVar] = defaultValue
 	table.insert(self._param, newParam)
+	__SC__saveMaster()
 	self:load()
 end
 
@@ -2435,6 +2497,7 @@ function scriptConfig:addTS(tsInstance)
 	assert(type(tsInstance.mode) == "number", "addTS: expected TargetSelector)")
 	_SC.useTS = true
 	table.insert(self._tsInstances, tsInstance)
+	__SC__saveMaster()
 	self:load()
 end
 
@@ -2445,6 +2508,7 @@ function scriptConfig:permaShow(pVar)
 			table.insert(self._permaShow, index)
 		end
 	end
+	__SC__saveMaster()
 end
 
 function scriptConfig:_txtKey(key)
@@ -2458,7 +2522,8 @@ function scriptConfig:OnDraw()
 	end
 	_SC._Idraw.y = _SC.draw.y
 	DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-	DrawText(self.header, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
+	local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for ".._SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
+	DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
 	_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
 	if # self._tsInstances > 0 then
 		--_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
