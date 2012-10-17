@@ -2620,4 +2620,3 @@ function scriptConfig:OnWndMsg()
 		y1 = y1 + _SC.draw.cellSize
 	end
 end
-
