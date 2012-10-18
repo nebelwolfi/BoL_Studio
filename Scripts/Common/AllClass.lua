@@ -908,7 +908,7 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
 			if _gameHero.enemy == enemyTeam then
 				if index == selected then
 					_gameHero.priority = priority
-					PrintChat("[TS] "..(enemyTeam and "Enemy " or "Ally ").._gameHero.tIndex.." (".._gameHero.index..") : " .. _gameHero.hero.charName .. " Mode=" .. (_gameHero.ignore and "ignore" or "target") .." Priority=" .. _gameHero.priority)
+					--PrintChat("[TS] "..(enemyTeam and "Enemy " or "Ally ").._gameHero.tIndex.." (".._gameHero.index..") : " .. _gameHero.hero.charName .. " Mode=" .. (_gameHero.ignore and "ignore" or "target") .." Priority=" .. _gameHero.priority)
 				end
 			end
 		end
@@ -946,7 +946,7 @@ function TS_Ignore(target, enemyTeam)
 		for index,_gameHero in ipairs(_gameHeros) do
 			if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
 				_gameHero.ignore = not _gameHero.ignore
-				PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
+				--PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
 				break
 			end
 		end
@@ -2268,12 +2268,10 @@ end
 function __SC__updateMaster()
 	_SC.master = __SC__load("Master")
 	_SC.masterY, _SC.masterYp = 1, 0
-	if _SC.masterIndex > 1 then
-		_SC.masterY = (_SC.master.useTS and 1 or 0)
-		for i = 1, _SC.masterIndex - 1 do
-			_SC.masterY = _SC.masterY + _SC.master["I"..i]
-			_SC.masterYp = _SC.masterYp + _SC.master["PS"..i]
-		end
+	_SC.masterY = (_SC.master.useTS and 1 or 0)
+	for i = 1, _SC.masterIndex - 1 do
+		_SC.masterY = _SC.masterY + _SC.master["I"..i]
+		_SC.masterYp = _SC.masterYp + _SC.master["PS"..i]
 	end
 	local size, sizep = (_SC.master.useTS and 2 or 1), 0
 	for i = 1, _SC.master.iCount do
@@ -2437,7 +2435,7 @@ function SC__OnWndMsg(msg,key)
 				return
 			else
 				if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
-				local y1 = _SC.draw.y + (_SC.draw.cellSize * _SC.masterY)
+				local y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
 				for index,instance in ipairs(_SC.instances) do
 					if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
 					y1 = y1 + _SC.draw.cellSize
