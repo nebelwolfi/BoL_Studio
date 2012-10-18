@@ -2359,19 +2359,18 @@ function SC__OnDraw()
 			local menuText = _SC._changeKey and not _SC._changeKeyVar and "press key for Menu" or "Menu"
 			DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
 			DrawText(__SC__txtKey(_SC.menuKey), _SC.draw.fontSize, _SC.draw.x + _SC.draw.width * 0.9, _SC.draw.y1, _SC.color.grey)
-			_SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
-			if _SC.master.useTS then
-				__SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
-				if _SC.menuIndex == 0 then
-					DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-					DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
-					_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-					_SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
-				end
-			end
-		else
-			_SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
 		end
+		_SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize
+		if _SC.useTS then
+			__SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
+			if _SC.menuIndex == 0 then
+				DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+				DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
+				_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
+				_SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+			end
+		end
+		_SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
 		for index,instance in ipairs(_SC.instances) do
 			__SC__DrawInstance(instance.header, (_SC.menuIndex == index))
 			if _SC.menuIndex == index then instance:OnDraw() end
@@ -2437,11 +2436,8 @@ function SC__OnWndMsg(msg,key)
 				_SC.draw.move = true
 				return
 			else
+				if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
 				local y1 = _SC.draw.y + (_SC.draw.cellSize * _SC.masterY)
-				if _SC.master.useTS then
-					if _SC.masterIndex == 1 and CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
-					y1 = y1 + _SC.draw.cellSize
-				end
 				for index,instance in ipairs(_SC.instances) do
 					if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
 					y1 = y1 + _SC.draw.cellSize
@@ -2567,6 +2563,8 @@ function scriptConfig:_DrawParam(varIndex)
 		-- cursor
 		self._param[varIndex].cursor =  self[pVar] / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
 		DrawLine(_SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
+	elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
+		DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
 	else
 		if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
 			DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
