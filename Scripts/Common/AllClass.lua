@@ -128,11 +128,22 @@ function TargetHaveBuff(buffName, target)
 	local target = target or player
 	for i = 1, target.buffCount do
 		local tBuff = target:getBuff(i)
-		if type(buffName) == "string" then
-			if tBuff == buffName then return true end
-		else
-			for j,sBuff in ipairs(buffName) do
-				if tBuff == sBuff then return true end
+		if type(tBuff) ~= "nil" then
+			if type(buffName) == "string" then
+				if type(tBuff) == "string" then 
+					if tBuff == buffName then return true end
+				else
+					PrintChat(type(tBuff))
+					if (tBuff.name == buffName and tBuff.valid) then return true end
+				end
+			else
+				for j,sBuff in ipairs(buffName) do
+					if type(tBuff) == "string" then 
+						if tBuff == sBuff then return true end
+					else
+						if (tBuff.name == sBuff and tBuff.valid) then return true end
+					end
+				end
 			end
 		end
 	end
@@ -1051,7 +1062,7 @@ function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTea
 	self.enemyTeam = (enemyTeam ~= false)
 	self.target = nil
 	self._conditional = nil
-	self._spellWidth = nil
+	self._castWidth = nil
 	self._pDelay = nil
 end
 
@@ -1069,9 +1080,9 @@ function TargetSelector:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
 	self._tDmg = trueDmg or 0
 end
 
-function TargetSelector:SetMinionCollision(spellWidth)
-	assert(spellWidth == nil or type(spellWidth) == "number", "SetMinionCollision: wrong argument types (<number> or nil expected)")
-	self._spellWidth = ((spellWidth ~= nil or spellWidth > 0) and spellWidth or nil)
+function TargetSelector:SetMinionCollision(castWidth)
+	assert(castWidth == nil or type(castWidth) == "number", "SetMinionCollision: wrong argument types (<number> or nil expected)")
+	self._castWidth = ((castWidth ~= nil or castWidth > 0) and castWidth or nil)
 end
 
 function TargetSelector:SetPrediction(delay)
@@ -1146,7 +1157,7 @@ function TargetSelector:update()
 			else
 				nextPosition, nextHealth = Vector(hero), hero.health
 			end
-			if self._spellWidth then minionCollision = GetMinionCollision(player, nextPosition, self._spellWidth) end
+			if self._castWidth then minionCollision = GetMinionCollision(player, nextPosition, self._castWidth) end
 			if GetDistance(nextPosition) <= range and minionCollision == false then
 				if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
 				-- Returns lowest effective HP target that is in range
@@ -1465,6 +1476,16 @@ Members :
 	map{x, y} -> return map size x, y
 ]]
 
+
+-- map 1 = summonerRift
+
+-- map 4 = twistedTreeline
+-- map 10 = twistedTreelineBeta
+
+-- map 8 = odin unranked
+
+-- map 7 = The Proving Grounds
+
 _gameMap = {index = 0, name = "unknown", shortName = "unknown", min = {x = 0, y = 0}, max = {x = 0, y = 0}, x = 0, y = 0}
 function GetMap()
 	if _gameMap.index == 0 then
@@ -1476,13 +1497,16 @@ function GetMap()
 						_gameMap = {index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = {x = -538, y = -165}, max = {x = 14279, y = 14527}, x = 14817, y = 14692}
 						break
 					elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-						_gameMap = {index = 2, name = "The Twisted Treeline", shortName = "twistedTreeline", min = {x = -996, y = -1239}, max = {x = 14120, y = 13877}, x = 15116, y = 15116}
+						_gameMap = {index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = {x = -996, y = -1239}, max = {x = 14120, y = 13877}, x = 15116, y = 15116}
 						break
 					elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-						_gameMap = {index = 3, name = "The Proving Grounds", shortName = "provingGrounds", min = {x = -56, y = -38}, max = {x = 12820, y = 12839}, x = 12876, y = 12877}
+						_gameMap = {index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = {x = -56, y = -38}, max = {x = 12820, y = 12839}, x = 12876, y = 12877}
 						break
 					elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-						_gameMap = {index = 4, name = "The Crystal Scar", shortName = "crystalScar", min = {x = -15, y = 0}, max = {x = 13911, y = 13703}, x = 13926, y = 13703}
+						_gameMap = {index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = {x = -15, y = 0}, max = {x = 13911, y = 13703}, x = 13926, y = 13703}
+						break
+					elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
+						_gameMap = {index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreelineBeta", min = {x = -996, y = -1239}, max = {x = 14120, y = 13877}, x = 15116, y = 15116}
 						break
 					end
 				end
@@ -1786,28 +1810,32 @@ GetInventorySlotIsEmpty(slot)		-- return true/false
 GetInventoryItemIsCastable(itemID)	-- return true/false
 ]]
 
-function GetInventorySlotItem(itemID)
+function GetInventorySlotItem(itemID, target)
 	assert(type(itemID) == "number", "GetInventorySlotItem: wrong argument types (<number> expected)")
+	local target = target or player
     for i,j in pairs({ITEM_1,ITEM_2,ITEM_3,ITEM_4,ITEM_5,ITEM_6}) do
-        if player:getInventorySlot(j) == itemID then return j end
+        if target:getInventorySlot(j) == itemID then return j end
     end
 	return nil
 end
 
-function GetInventoryHaveItem(itemID)
+function GetInventoryHaveItem(itemID, target)
 	assert(type(itemID) == "number", "GetInventoryHaveItem: wrong argument types (<number> expected)")
-	return (GetInventorySlotItem(itemID) ~= nil)
+	local target = target or player
+	return (GetInventorySlotItem(itemID, target) ~= nil)
 end
 
-function GetInventorySlotIsEmpty(slot)
-    return (player:getInventorySlot(slot) == 0)
+function GetInventorySlotIsEmpty(slot, target)
+	local target = target or player
+    return (target:getInventorySlot(slot) == 0)
 end
 
-function GetInventoryItemIsCastable(itemID)
+function GetInventoryItemIsCastable(itemID, target)
 	assert(type(itemID) == "number", "GetInventoryItemIsCastable: wrong argument types (<number> expected)")
-	local slot = GetInventorySlotItem(itemID)
+	local target = target or player
+	local slot = GetInventorySlotItem(itemID, target)
 	if slot == nil then return false end
-	return (player:CanUseSpell(slot) == READY)
+	return (target:CanUseSpell(slot) == READY)
 end
 
 function CastItem(itemID, var1, var2)
