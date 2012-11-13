@@ -133,7 +133,6 @@ function TargetHaveBuff(buffName, target)
 				if type(tBuff) == "string" then 
 					if tBuff == buffName then return true end
 				else
-					PrintChat(type(tBuff))
 					if (tBuff.name == buffName and tBuff.valid) then return true end
 				end
 			else
