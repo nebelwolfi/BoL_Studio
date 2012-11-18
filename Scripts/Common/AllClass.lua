@@ -965,7 +965,7 @@ end
 
 function _TS_Draw_Init()
 	if not _TS_Draw then
-		if not WINDOW_H or not WINDOW_W then PrintChat("WINDOW value not good, please reload") end
+		UpdateWindow()
 		_TS_Draw = {y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, redColor = 1422721024, greenColor = 1409321728, blueColor = 2684354716}
 		_TS_Draw.cellSize, _TS_Draw.midSize, _TS_Draw.row1, _TS_Draw.row2, _TS_Draw.row3, _TS_Draw.row4 = _TS_Draw.fontSize + _TS_Draw.border, _TS_Draw.fontSize / 2, _TS_Draw.width * 0.6, _TS_Draw.width * 0.7, _TS_Draw.width * 0.8, _TS_Draw.width * 0.9
 	end
@@ -1605,6 +1605,7 @@ _gameStart = {configFile = LIB_PATH.."gameStart.cfg", init = true}
 function GetStart()
 	if _gameStart.init then
 		-- init values
+		UpdateWindow()
 		_gameStart.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
 		_gameStart.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
 		_gameStart.tick = tonumber(GetTickCount())
@@ -2084,10 +2085,7 @@ end
 function _miniMap__OnLoad()
 	if _miniMap.init then
 		local map = GetMap()
-		if not WINDOW_W or not WINDOW_H then
-			WINDOW_H = GetStart().WINDOW_H
-			WINDOW_W = GetStart().WINDOW_W
-		end
+		UpdateWindow()
 		if WINDOW_H < 500 or WINDOW_W < 500 then return true end
 		local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
 		_miniMap.step = {x = 290*percent/map.x, y = -290*percent/map.y}
@@ -2213,7 +2211,7 @@ SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
 
-_SC = {init = true, menuKey = 16, configFile = LIB_PATH.."scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false}
+_SC = {init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH.."scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false}
 
 class 'scriptConfig'
 
@@ -2314,9 +2312,9 @@ function __SC__updateMaster()
 	_SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
 end
 
-function __SC__init(name)
-	if _SC.init then
-		_SC.init = nil
+function __SC__init_draw()
+	if _SC.initDraw then
+		UpdateWindow()
 		_SC.draw = {x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
 		_SC.pDraw = {x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false}
 		local menuConfig = __SC__load("Menu")
@@ -2332,6 +2330,19 @@ function __SC__init(name)
 		_SC.draw.cellSize, _SC.draw.midSize, _SC.draw.row4, _SC.draw.row3, _SC.draw.row2, _SC.draw.row1 = _SC.draw.fontSize + _SC.draw.border, _SC.draw.fontSize / 2, _SC.draw.width * 0.9, _SC.draw.width * 0.8, _SC.draw.width * 0.7, _SC.draw.width * 0.6
 		_SC.pDraw.cellSize, _SC.pDraw.midSize, _SC.pDraw.row = _SC.pDraw.fontSize + _SC.pDraw.border, _SC.pDraw.fontSize / 2, _SC.pDraw.width * 0.7
 		_SC._Idraw = {x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2 ,y = _SC.draw.y, heigth = 0}
+		if WINDOW_H < 500 or WINDOW_W < 500 then return true end
+		_SC.initDraw = nil
+	end
+	return _SC.initDraw
+end
+
+function __SC__init(name)
+	if name == nil then
+		return (_SC.init or __SC__init_draw())
+	end
+	if _SC.init then
+		_SC.init = nil
+		__SC__init_draw()
 		local gameStart = GetStart()
 		_SC.master = __SC__load("Master")
 		if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
@@ -2366,7 +2377,7 @@ function __SC__txtKey(key)
 end
 
 function SC__OnDraw()
-	if _SC.init then return end
+	if __SC__init() then return end
 	if IsKeyDown(_SC.menuKey) or _SC._changeKey then
 		if _SC.draw.move then
 			local cursor = GetCursorPos()
@@ -2428,7 +2439,7 @@ function __SC__DrawInstance(header, selected)
 end
 
 function SC__OnWndMsg(msg,key)
-	if _SC.init then return end
+	if __SC__init() then return end
 	local msg, key = msg, key
 	if key == _SC.menuKey and _SC.lastKeyState ~= msg then
 		_SC.lastKeyState = msg
