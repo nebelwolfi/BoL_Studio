@@ -195,8 +195,8 @@ end
 		vector:polar()							-- return the angle from axe
 		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
 		vector:compare(v)						-- compare vector and v
-		vector:perpendicular()					-- return new Vector rotated 90° rigth
-		vector:perpendicular2()					-- return new Vector rotated 90° left
+		vector:perpendicular()					-- return new Vector rotated 90ï¿½ rigth
+		vector:perpendicular2()					-- return new Vector rotated 90ï¿½ left
 ]]
 
 -- STAND ALONE FUNCTIONS
@@ -340,7 +340,10 @@ function Vector:dist(v)
 end
 
 function Vector:normalize()
-	self = self / self:len()
+   local len = self:len()
+   self.x = self.x / len
+   self.y = self.y / len
+   self.z = self.z / len
 end
 
 function Vector:normalized()
