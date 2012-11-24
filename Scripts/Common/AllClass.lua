@@ -161,6 +161,28 @@ function CountEnemyHeroInRange(range)
 	return enemyInRange
 end
 
+function DrawArrows(posStart, posEnd, size, color, splitSize)
+	assert(VectorType(posStart) and VectorType(posEnd) and type(size) == "number" and type(color) == "number" and (splitSize == nil or type(splitSize) == "number"), "DrawArrows: wrong argument types (<Vector>, <Vector>, integer, integer (, integer) expected)")
+	--DrawArrow do not use y diff. We better to use the endpos y.
+	local p1 = D3DXVECTOR3(posStart.x, posEnd.y, posStart.z)
+	local p2 = D3DXVECTOR3(posEnd.x, posEnd.y, posEnd.z)
+	local p12 = Vector(p2-p1)
+	local distarrow = p12:len() + 200 --200 is the arrow size
+	p3 = D3DXVECTOR3(p12.x,0,p12.z)
+	--split if need
+	if splitSize ~= nil and splitSize > 200 and distarrow > splitSize then
+		p12:normalize()
+		while distarrow > splitSize do
+			DrawArrow(p1,p3,splitSize,size,1000000000000000000000,color)
+			local p11 = Vector(p1) + (p12 * (splitSize - 400))
+			distarrow = distarrow - splitSize + 400
+			p1 = D3DXVECTOR3(p11.x,posEnd.y,p11.z)
+		end
+	end
+	DrawArrow(p1,p3,distarrow,size,1000000000000000000000,color)
+	DrawCircle(p2.x, p2.y, p2.z,size,color)
+end
+
 --[[
         Class: Vector
 
@@ -195,8 +217,8 @@ end
 		vector:polar()							-- return the angle from axe
 		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
 		vector:compare(v)						-- compare vector and v
-		vector:perpendicular()					-- return new Vector rotated 90ï¿½ rigth
-		vector:perpendicular2()					-- return new Vector rotated 90ï¿½ left
+		vector:perpendicular()					-- return new Vector rotated 90° rigth
+		vector:perpendicular2()					-- return new Vector rotated 90° left
 ]]
 
 -- STAND ALONE FUNCTIONS
@@ -340,10 +362,10 @@ function Vector:dist(v)
 end
 
 function Vector:normalize()
-   local len = self:len()
-   self.x = self.x / len
-   self.y = self.y / len
-   self.z = self.z / len
+	local a = self:len()
+	self.x = self.x / a
+	self.y = self.y / a
+	self.z = self.z / a
 end
 
 function Vector:normalized()
