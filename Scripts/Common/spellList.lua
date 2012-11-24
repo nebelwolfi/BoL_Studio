@@ -23,17 +23,15 @@ spellList = {
 	-- Flash Frost
 	-- check wich one is working
 	FlashFrostSpell = {charName = "Anivia", range = 1100, spellType = 1, size = 90, duration = 2000, speed = 0.845, delay = 300, spellKey = _Q, spammable = true},
-	FlashFrost = {charName = "Anivia", range = 1100, spellType = 1, size = 90, duration = 2000, speed = 0.845, delay = 300, spellKey = _Q, spammable = true},
 	-- Glacial Storm 
 	GlacialStorm = {charName = "Anivia", range = 625, spellType = 3, size = 300, duration = 4000},
 
 	-- Ashe
 	-- Enchanted Crystal Arrow
-	EnchantedCrystalArrow = {charName = "Ashe", range = 50000, spellType = 4, size = 120, duration = 4000},
+	EnchantedCrystalArrow = {charName = "Ashe", range = 50000, spellType = 1, size = 120, duration = 4000},
 
 	-- Blitzcrank
 	-- Rocket Grab
-	RocketGrab = {charName = "Blitzcrank", range = 925, spellType = 1, size = 80, duration = 1000, speed = 1.7, delay = 300, spellKey = _Q, spammable = true},
 	RocketGrabMissile = {charName = "Blitzcrank", range = 925, spellType = 1, size = 80, duration = 1000, speed = 1.7, delay = 300, spellKey = _Q, spammable = true},
 				
 	-- Brand
@@ -46,7 +44,6 @@ spellList = {
 	-- Piltover Peacemaker 
 	CaitlynPiltoverPeacemaker = {charName = "Caitlyn", range = 1300, spellType = 1, size = 80, duration = 1000},
 	-- 90 Caliber Net
-	CaitlynEntrapment = {charName = "Caitlyn", range = 1000, spellType = 1, size = 50, duration = 1000},
 	CaitlynEntrapmentMissile = {charName = "Caitlyn", range = 1000, spellType = 1, size = 50, duration = 1000},
 
 	-- Cassiopeia
@@ -55,7 +52,7 @@ spellList = {
 	-- Miasma
 	CassiopeiaMiasma = {charName = "Cassiopeia", range = 850, spellType = 3, size = 175, duration = 1000},
 	-- Petrifying Gaze
-	CassiopeiaPetrifyingGaze = {charName = "Cassiopeia", range = 850, spellType = 6, size = 0, duration = 1000},
+	CassiopeiaPetrifyingGaze = {charName = "Cassiopeia", range = 850, spellType = 6, size = 300, duration = 1000},
 
 	-- Cho'Gath
 	-- Rupture
@@ -102,7 +99,7 @@ spellList = {
 
 	-- Galio
 	-- Resolute Smite
-	GalioResoluteSmite = {charName = "Galio", range = 905, spellType = 3, size = 200, duration = 1500},
+	GalioResoluteSmite = {charName = "Galio", range = 900, spellType = 3, size = 200, duration = 1500},
 	-- Righteous Gust
 	GalioRighteousGust = {charName = "Galio", range = 1000, spellType = 1, size = 200, duration = 1500},
 
@@ -303,5 +300,4 @@ spellList = {
 	-- Zyra
 	ZyraQFissure = {charName = "Zyra", range = 825, spellType = 3, size = 275, duration = 1500, spellKey = _Q},
 	ZyraGraspingRoots = {charName = "Zyra", range = 1100, spellType = 1, size = 90, duration = 1500, spellKey = _E},
-		
 }
