@@ -219,19 +219,19 @@ end
 		vector:dist(v)							-- distance between 2 vectors (v and vector)
 		vector:normalize()						-- normalize vector
 		vector:normalized()						-- return a new Vector normalize from vector
-		vector:rotate(phiX, phiY, phiZ)			-- rotate the vector by phi angle
-		vector:rotated(phiX, phiY, phiZ)		-- return a new Vector rotate from vector by phi angle
+		vector:rotate(phiX, phiY, phiZ)					-- rotate the vector by phi angle
+		vector:rotated(phiX, phiY, phiZ)				-- return a new Vector rotate from vector by phi angle
 		vector:projectOn(v)						-- return a new Vector from vector projected on v
 		vector:mirrorOn(v)						-- return a new Vector from vector mirrored on v
 		vector:center(v)						-- return center between vector and v
-        vector:crossP()                         -- return cross product of vector
-        vector:dotP()                           -- return dot product of vector
+        	vector:crossP()                         			-- return cross product of vector
+        	vector:dotP()                           			-- return dot product of vector
 
 		vector:polar()							-- return the angle from axe
-		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
+		vector:angleBetween(v1, v2)					-- return the angle formed from vector to v1,v2
 		vector:compare(v)						-- compare vector and v
-		vector:perpendicular()					-- return new Vector rotated 90� rigth
-		vector:perpendicular2()					-- return new Vector rotated 90� left
+		vector:perpendicular()						-- return new Vector rotated 90° rigth
+		vector:perpendicular2()						-- return new Vector rotated 90° left
 ]]
 
 -- STAND ALONE FUNCTIONS
@@ -278,8 +278,8 @@ function Vector:__init(a, b, c)
     else
         assert(type(a) == "number" and (type(b) == "number" or type(c) == "number"), "Vector: wrong argument types (<Vector> or 2 <number> or 3 <number>)")
         if type(a) == "number" then self.x = a.x end
-        if type(b) == "number" then self.x = a.y end
-        if type(c) == "number" then self.x = a.z end
+        if type(b) == "number" then self.y = a.y end
+        if type(c) == "number" then self.z = a.z end
     end
 end
 
