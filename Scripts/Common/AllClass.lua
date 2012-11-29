@@ -325,7 +325,7 @@ end
 
 function Vector.__le(a, b)
     assert(VectorType(a) and VectorType(b), "__le: wrong argument types (<Vector> expected)")
-    return a:Length() <= b:Length()
+    return a:len() <= b:len()
 end
 
 function Vector:__eq(v)
