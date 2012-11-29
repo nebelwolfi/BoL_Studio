@@ -1884,6 +1884,8 @@ GetInventorySlotItem(itemID)		-- return the slot or nil
 GetInventoryHaveItem(itemID)		-- return true/false
 GetInventorySlotIsEmpty(slot)		-- return true/false
 GetInventoryItemIsCastable(itemID)	-- return true/false
+
+InShop()				-- return true/false, x, y, z, range
 ]]
 
 function GetInventorySlotItem(itemID, target)
@@ -1926,6 +1928,22 @@ function CastItem(itemID, var1, var2)
         return true
     end
     return false
+end
+
+function InShop()
+    local function getShop()
+        for i = 1, objManager.maxObjects, 1 do
+            local object = objManager:getObject(i)
+            if object and object.type == "obj_Shop" and object.team == player.team then return object end
+        end
+    end
+    if not _shop then
+        local shop = getShop()
+        assert(shop~=nil, "InShop: Could not get Shop Coordinates")
+        _shop = { x = shop.x, y = shop.y, z = shop.z }
+    end
+    if math.sqrt((_shop.x - player.x) ^ 2 + (_shop.z - player.z) ^ 2) < 1250 then return true, _shop.x, _shop.y, _shop.z, 1250 end
+    return false, _shop.x, _shop.y, _shop.z, 1250
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
