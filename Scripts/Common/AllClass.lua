@@ -194,6 +194,29 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
     DrawCircle(p2.x, p2.y, p2.z, size, color)
 end
 
+local mem = {}
+function get2DFrom3D(x, y, z)
+    local obj = Vector({ x = x - cameraPos.x, y = y - cameraPos.y, z = z - cameraPos.z })
+    if mem.camHeigth ~= cameraPos.y then
+        mem.camHeigth = cameraPos.y
+        local beta, gamma = 9 * math.pi / 180, 50 * math.pi / 180
+        local P3_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta) * math.abs(obj.y) })
+        local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) });P1_5 = P1_5 * P3_5:len()/ P1_5:len()
+        mem.absHeight = math.sqrt((P1_5.z - P3_5.z) ^ 2 + (P1_5.y - P3_5.y) ^ 2)
+        mem.absWidth = mem.absHeight * WINDOW_W / WINDOW_H
+        mem.P3 = P3_5 - Vector({ x = mem.absWidth / 2, y = 0, z = 0 })
+        mem.P2 = P1_5 + Vector({ x = mem.absWidth / 2, y = 0, z = 0 })
+        mem.n = (mem.P2 - P3_5):crossP(mem.P3 - P3_5)
+    end
+    obj = obj * (mem.n.x * mem.P2.x + mem.n.y * mem.P2.y + mem.n.z * mem.P2.z) / (mem.n.x * obj.x + mem.n.y * obj.y + mem.n.z * obj.z)
+    local curHeight = math.sqrt((mem.P2.z - obj.z) ^ 2 + (mem.P2.y - obj.y) ^ 2) * ((mem.P2.z - obj.z) / math.abs(mem.P2.z - obj.z))
+    local curWidth = obj.x - mem.P3.x
+    local x2d = WINDOW_W * curWidth / mem.absWidth
+    local y2d = WINDOW_H * curHeight / mem.absHeight
+    local onScreen = x2d <= WINDOW_W and x2d >= -WINDOW_W / 3 and y2d >= -50 and y2d <= WINDOW_H + 50
+    return x2d, y2d, onScreen
+end
+
 --[[
         Class: Vector
 
@@ -236,7 +259,7 @@ end
 
 -- STAND ALONE FUNCTIONS
 function VectorType(v)
-    return (v ~= nil and (type(v) == "Vector" or (type(v.x) == "number" and (type(v.y) == "number" or type(v.z) == "number"))))
+    return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and  type(v.z) == "number"))
 end
 
 function VectorIntersection(a1, b1, a2, b2)
@@ -277,9 +300,9 @@ function Vector:__init(a, b, c)
         self.x, self.y, self.z = a.x, a.y, a.z
     else
         assert(type(a) == "number" and (type(b) == "number" or type(c) == "number"), "Vector: wrong argument types (<Vector> or 2 <number> or 3 <number>)")
-        if type(a) == "number" then self.x = a.x end
-        if type(b) == "number" then self.y = a.y end
-        if type(c) == "number" then self.z = a.z end
+        self.x = a
+        if b and type(b) == "number" then self.y = b end
+        if c and type(c) == "number" then self.z = c end
     end
 end
 
@@ -299,9 +322,9 @@ function Vector:__sub(v)
 end
 
 function Vector.__mul(a, b)
-    if type(a) == "number" and type(b) == "Vector" then
+    if type(a) == "number" and VectorType(b) then
         return Vector({ x = b.x * a, y = b.y and b.y * a, z = b.z and b.z * a })
-    elseif type(b) == "number" and type(a) == "Vector" then
+    elseif type(b) == "number" and VectorType(a) then
         return Vector({ x = a.x * b, y = a.y and a.y * b, z = a.z and a.z * b })
     else
         assert(VectorType(a) and VectorType(b), "Mul: wrong argument types (<Vector> or <number> expected)")
@@ -310,7 +333,7 @@ function Vector.__mul(a, b)
 end
 
 function Vector.__div(a, b)
-    if type(a) == "number" and type(b) == "Vector" then
+    if type(a) == "number" and VectorType(b) then
         return Vector({ x = a / b.x, y = b.y and a / b.y, z = b.z and a / b.z })
     else
         assert(VectorType(a) and type(b) == "number", "Div: wrong argument types (<number> expected)")
@@ -361,7 +384,7 @@ end
 function Vector:len2(v)
     assert(v == nil or VectorType(v), "dist: wrong argument types (<Vector> expected)")
     local v = v and Vector(v) or self
-    return self.x * v.x + ((self.y and v.y) and (self.y * v.y) or 0) + ((self.z and v.z) and (self.z * v.z) or 0)
+    return self.x * v.x + (self.y and self.y * v.y or 0) + (self.z and self.z * v.z or 0)
 end
 
 function Vector:len()
