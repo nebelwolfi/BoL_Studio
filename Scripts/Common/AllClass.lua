@@ -194,25 +194,25 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
     DrawCircle(p2.x, p2.y, p2.z, size, color)
 end
 
-local mem = {}
+local _get2DFrom3D = {}
 function get2DFrom3D(x, y, z)
     local obj = Vector({ x = x - cameraPos.x, y = y - cameraPos.y, z = z - cameraPos.z })
-    if mem.camHeigth ~= cameraPos.y then
-        mem.camHeigth = cameraPos.y
+    if _get2DFrom3D.camHeigth ~= cameraPos.y then
+        _get2DFrom3D.camHeigth = cameraPos.y
         local beta, gamma = 9 * math.pi / 180, 50 * math.pi / 180
         local P3_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta) * math.abs(obj.y) })
         local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) });P1_5 = P1_5 * P3_5:len()/ P1_5:len()
-        mem.absHeight = math.sqrt((P1_5.z - P3_5.z) ^ 2 + (P1_5.y - P3_5.y) ^ 2)
-        mem.absWidth = mem.absHeight * WINDOW_W / WINDOW_H
-        mem.P3 = P3_5 - Vector({ x = mem.absWidth / 2, y = 0, z = 0 })
-        mem.P2 = P1_5 + Vector({ x = mem.absWidth / 2, y = 0, z = 0 })
-        mem.n = (mem.P2 - P3_5):crossP(mem.P3 - P3_5)
+        _get2DFrom3D.absHeight = math.sqrt((P1_5.z - P3_5.z) ^ 2 + (P1_5.y - P3_5.y) ^ 2)
+        _get2DFrom3D.absWidth = _get2DFrom3D.absHeight * WINDOW_W / WINDOW_H
+        _get2DFrom3D.P3 = P3_5 - Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
+        _get2DFrom3D.P2 = P1_5 + Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
+        _get2DFrom3D.n = (_get2DFrom3D.P2 - P3_5):crossP(_get2DFrom3D.P3 - P3_5)
     end
-    obj = obj * (mem.n.x * mem.P2.x + mem.n.y * mem.P2.y + mem.n.z * mem.P2.z) / (mem.n.x * obj.x + mem.n.y * obj.y + mem.n.z * obj.z)
-    local curHeight = math.sqrt((mem.P2.z - obj.z) ^ 2 + (mem.P2.y - obj.y) ^ 2) * ((mem.P2.z - obj.z) / math.abs(mem.P2.z - obj.z))
-    local curWidth = obj.x - mem.P3.x
-    local x2d = WINDOW_W * curWidth / mem.absWidth
-    local y2d = WINDOW_H * curHeight / mem.absHeight
+    obj = obj * (_get2DFrom3D.n.x * _get2DFrom3D.P2.x + _get2DFrom3D.n.y * _get2DFrom3D.P2.y + _get2DFrom3D.n.z * _get2DFrom3D.P2.z) / (_get2DFrom3D.n.x * obj.x + _get2DFrom3D.n.y * obj.y + _get2DFrom3D.n.z * obj.z)
+    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2) * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
+    local curWidth = obj.x - _get2DFrom3D.P3.x
+    local x2d = WINDOW_W * curWidth / _get2DFrom3D.absWidth
+    local y2d = WINDOW_H * curHeight / _get2DFrom3D.absHeight
     local onScreen = x2d <= WINDOW_W and x2d >= -WINDOW_W / 3 and y2d >= -50 and y2d <= WINDOW_H + 50
     return x2d, y2d, onScreen
 end
@@ -2178,14 +2178,17 @@ end
 
 function _miniMap__OnLoad()
     if _miniMap.init then
-        local map = GetMap()
-        UpdateWindow()
-        if WINDOW_H < 500 or WINDOW_W < 500 then return true end
-        local percent = math.max(WINDOW_W / 1920, WINDOW_H / 1080)
-        _miniMap.step = { x = 290 * percent / map.x, y = -290 * percent / map.y }
-        _miniMap.x = WINDOW_W - 300 * percent - _miniMap.step.x * map.min.x
-        _miniMap.y = WINDOW_H - 10 * percent - _miniMap.step.y * map.min.y
-        _miniMap.init = nil
+  	local map = GetMap()
+  	if not WINDOW_W or not WINDOW_H then
+   	WINDOW_H = GetStart().WINDOW_H
+   	WINDOW_W = GetStart().WINDOW_W
+    end
+    if WINDOW_H < 500 or WINDOW_W < 500 then return true end
+	local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
+  	_miniMap.step = {x = 265*percent/map.x, y = -264*percent/map.y}
+  	_miniMap.x = WINDOW_W-270*percent - _miniMap.step.x * map.min.x
+  	_miniMap.y = WINDOW_H-8*percent - _miniMap.step.y * map.min.y
+  	_miniMap.init = nil
     end
     return _miniMap.init
 end
