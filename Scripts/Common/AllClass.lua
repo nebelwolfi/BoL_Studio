@@ -1,6 +1,7 @@
 if player == nil then player = GetMyHero() end
 LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
+SCRIPT_FILENAME = debug.getinfo(1).source:sub(#SCRIPT_PATH+2)
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
@@ -545,6 +546,68 @@ end
 
 function Vector:perpendicular2()
     return Vector(self.z, self.y, -self.x)
+end
+
+--[[
+	Class: Queue
+	Performance optimized implementation of a queue, much faster as if you use table.insert and table.remove
+		Members:
+			pushleft
+			pushright
+			popleft
+			popright
+		
+		Sample:
+			local myQueue = Queue()
+			Queue:pushleft("a"); Queue:pushright(2);
+			for i=1, #myQueue, 1 do
+				PrintChat(tostring(myQueue[i]))
+			end
+
+		Notes:
+			Don't use ipairs or pairs!
+			It's a queue, dont try to insert values by yourself, only use the push functions to add values
+			I wrote it for Lua 5.2, it won't work with previous versions.
+]]
+
+function Queue()
+    local _queue = { first = 0, last = -1 , list = {}}
+    _queue.pushleft = function(self, value)
+        self.first = self.first - 1
+        self.list[self.first] = value
+    end
+    _queue.pushright = function(self, value)
+        self.last = self.last + 1
+        self.list[self.last] = value
+    end
+    _queue.popleft = function(self)
+        if self.first > self.last then error("Queue is empty") end
+        local value = self.list[self.first]
+        self.list[self.first] = nil
+        self.first = self.first + 1
+        return value
+    end
+    _queue.popright = function(self)
+        if self.first > self.last then error("Queue is empty") end
+        local value = self.list[self.last]
+        self.list[self.last] = nil
+        self.last = self.last - 1
+        return value
+    end
+    setmetatable(_queue,
+        {
+            __index = function(self, key)
+                if type(key) == "number" then
+                    return self.list[key + self.first - 1] end
+            end,
+            __newindex = function(self, key, value)
+                error("Cant assign value to Queue, use Queue:pushleft or Queue:pushright instead")
+            end,
+            __len = function(self)
+                return self.last - self.first + 1
+            end,
+        })
+    return _queue
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
