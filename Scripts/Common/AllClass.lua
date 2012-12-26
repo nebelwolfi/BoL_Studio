@@ -401,8 +401,8 @@ end
 function Vector:normalize()
     local a = self:len()
     self.x = self.x / a
-    self.y = self.y / a
-    self.z = self.z / a
+    if self.y then self.y = self.y / a end
+    if self.z then self.z = self.z / a end
 end
 
 function Vector:normalized()
