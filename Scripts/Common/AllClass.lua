@@ -1,7 +1,6 @@
 if player == nil then player = GetMyHero() end
 LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
-SCRIPT_FILENAME = debug.getinfo(1).source:sub(#SCRIPT_PATH+2)
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
