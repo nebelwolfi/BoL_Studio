@@ -1622,7 +1622,7 @@ Members :
 
 -- map 7 = The Proving Grounds
 
-_gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0 }
+_gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = {width = 0, heigth = 0} }
 function GetMap()
     if _gameMap.index == 0 then
         for i = 1, objManager.maxObjects do
@@ -1630,19 +1630,16 @@ function GetMap()
             if object ~= nil then
                 if object.type == "obj_Shop" and object.team == TEAM_BLUE then
                     if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
-                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692 }
+                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = {width = 13982/2, heigth = 14446/2} }
                         break
                     elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116 }
+                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = {width = 15436/2, heigth = 14474/2}  }
                         break
                     elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877 }
+                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = {width = 12948/2, heigth = 12812/2}  }
                         break
                     elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703 }
-                        break
-                    elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-                        _gameMap = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreelineBeta", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116 }
+                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = {width = 13894/2, heigth = 13218/2}  }
                         break
                     end
                 end
