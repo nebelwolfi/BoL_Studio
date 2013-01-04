@@ -260,7 +260,7 @@ function DrawText3D(text, x, y, z, size, color, center)
     local textArea = GetTextArea(text, size or 12)
     if center then
     	if OnScreen(x-textArea.x/2,y-textArea.y/2) or OnScreen(x+textArea.x/2,y+textArea.y/2) then
-    		DrawText(text, size or 12, x-textArea.x/2, y-textArea.y/2, color or 4294967295)
+    		DrawText(text, size or 12, x-textArea.x/2, y, color or 4294967295)
     	end
     else
     	if z or OnScreen(x + textArea.x, y + textArea.y) then
