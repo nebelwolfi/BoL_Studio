@@ -232,19 +232,14 @@ function DrawCircle2D(x, y, radius, width, color, quality)
 end
 
 function DrawCircle3D(x, y, z, radius, width, color, quality)
-    quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 300
-    local x1, y1 = get2DFrom3D(x, y, z + radius)
-    local x2, y2 = get2DFrom3D(x + radius, y, z)
-    local x3, y3 = get2DFrom3D(x, y, z)
-    local radiusX, radiusY = math.sqrt((x2 - x3)*(x2 - x3)+(y2 - y3)*(y2 - y3)), math.sqrt((x1 - x3)*(x1 - x3)+(y1 - y3)*(y1 - y3))
-	if radiusX < radiusY or radius > 2500 then return end
-    local px, py, pz
+	radius = radius or 300
+    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius/15)
+	local px, py, pz
     for theta = 0, 2 * math.pi + quality, quality do
-        cx, cy = x3 + radiusX * math.cos(theta), y3 - radiusY * math.sin(theta)
-        cz = OnScreen(cx, cy)
-        if px and (cz or pz) then
-        	DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
-        end
+        cx, cy, cz = get2DFrom3D(x + radius * math.cos(theta), y, z - radius * math.sin(theta))
+        if px and (pz or cz) then
+			DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
+		end
         px, py, pz = cx, cy, cz
     end
 end
