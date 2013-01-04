@@ -1,3 +1,4 @@
+if player == nil then player = GetMyHero() end
 LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
