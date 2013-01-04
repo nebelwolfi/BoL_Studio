@@ -236,13 +236,14 @@ function DrawCircle3D(x, y, z, radius, width, color, quality)
     local x1, y1 = get2DFrom3D(x, y, z + radius)
     local x2, y2 = get2DFrom3D(x + radius, y, z)
     local x3, y3 = get2DFrom3D(x, y, z)
-    local radiusX, radiusY = math.abs(x2 - x3), math.abs(y1 - y3)
+    local radiusX, radiusY = math.sqrt((x2 - x3)*(x2 - x3)+(y2 - y3)*(y2 - y3)), math.sqrt((x1 - x3)*(x1 - x3)+(y1 - y3)*(y1 - y3))
+	if radiusX < radiusY or radius > 2500 then return end
     local px, py, pz
     for theta = 0, 2 * math.pi + quality, quality do
         cx, cy = x3 + radiusX * math.cos(theta), y3 - radiusY * math.sin(theta)
         cz = OnScreen(cx, cy)
-        if px and (cz or pz) then 
-        	DrawLine(px, py, cx, cy, width or 1, color or 4294967295) 
+        if px and (cz or pz) then
+        	DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
         end
         px, py, pz = cx, cy, cz
     end
@@ -309,12 +310,12 @@ end
 		VectorDirection(v1,v2,v)
 		VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
 		Vector(a,b,c)							-- return a vector from x,y,z pos or from another vector
-		
+
 		---- Vector Members ----
 		x
 		y
 		z
-		
+
 		---- Vector Functions ----
 		vector:clone()							-- return a new Vector from vector
 		vector:unpack()							-- x, z
@@ -631,7 +632,7 @@ end
 			pushright
 			popleft
 			popright
-		
+
 		Sample:
 			local myQueue = Queue()
 			myQueue:pushleft("a"); myQueue:pushright(2);
@@ -955,7 +956,7 @@ TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you 
 
 Functions :
 ts:update() 											-- update the instance target
-ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)	
+ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
 
 ts:SetPrediction()							-- prediction off
 ts:SetPrediction(delay)						-- predict movement for champs (need Prediction__OnTick())
@@ -1471,10 +1472,10 @@ Globals Functions
 Prediction__OnTick()			-- OnTick()
 GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
 GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true) 
+GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
 GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
 GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true) 
+GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
 
 ]]
 _Prediction = { init = true, delta = 1 }
@@ -2341,7 +2342,7 @@ autoLevelSetFunction(func)		-- set the function used if sequence level == 0
 				1-4 = spell 1 to 4
 				nil = will not auto level on this one
 				0 = will use your own function for this one, that return a number between 1-4
-			
+
 		Set the function if you use 0, example :
 			local onChoiceFunction = function()
 				if player:GetSpellData(SPELL_2).level < player:GetSpellData(SPELL_3).level then
@@ -2351,7 +2352,7 @@ autoLevelSetFunction(func)		-- set the function used if sequence level == 0
 				end
 			end
 			autoLevelSetFunction(onChoiceFunction)
-			
+
 		Call the main function on your tick :
 			autoLevel__OnTick()
 ]]
