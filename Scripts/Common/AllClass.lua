@@ -1,4 +1,3 @@
-if player == nil then player = GetMyHero() end
 LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
@@ -241,7 +240,7 @@ function DrawCircle3D(x, y, z, radius, width, color, quality)
     for theta = 0, 2 * math.pi + quality, quality do
         cx, cy = x3 + radiusX * math.cos(theta), y3 - radiusY * math.sin(theta)
         cz = OnScreen(cx, cy)
-        if px then--and (cz or pz) then 
+        if px and (cz or pz) then 
         	DrawLine(px, py, cx, cy, width or 1, color or 4294967295) 
         end
         px, py, pz = cx, cy, cz
