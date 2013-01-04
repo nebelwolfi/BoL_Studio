@@ -217,6 +217,88 @@ function get2DFrom3D(x, y, z)
     return x2d, y2d, onScreen
 end
 
+function OnScreen(x, y)
+    return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H
+end
+
+function DrawCircle2D(x, y, radius, width, color, quality)
+    local px, py
+    quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
+    for theta = 0, 2 * math.pi + quality, quality do
+        cx, cy = x + radius * math.cos(theta), y - radius * math.sin(theta)
+        if px then DrawLine(px, py, cx, cy, width or 1, color or 4294967295) end
+        px, py = cx, cy
+    end
+end
+
+function DrawCircle3D(x, y, z, radius, width, color, quality)
+    quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 300
+    local x1, y1 = get2DFrom3D(x, y, z + radius)
+    local x2, y2 = get2DFrom3D(x + radius, y, z)
+    local x3, y3 = get2DFrom3D(x, y, z)
+    local radiusX, radiusY = math.abs(x2 - x3), math.abs(y1 - y3)
+    local px, py, pz
+    for theta = 0, 2 * math.pi + quality, quality do
+        cx, cy = x3 + radiusX * math.cos(theta), y3 - radiusY * math.sin(theta)
+        cz = OnScreen(cx, cy)
+        if px then--and (cz or pz) then 
+        	DrawLine(px, py, cx, cy, width or 1, color or 4294967295) 
+        end
+        px, py, pz = cx, cy, cz
+    end
+end
+
+function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color, forceDraw)
+    x1, y1, z1 = get2DFrom3D(x1, y1, z1)
+    x2, y2, z2 = get2DFrom3D(x2, y2, z2)
+    if z1 or z2 or forceDraw then
+        DrawLine(x1, y1, x2, y2, width or 1, color or 4294967295)
+    end
+end
+
+function DrawText3D(text, x, y, z, size, color, center)
+    x, y, z = get2DFrom3D(x, y, z)
+    local textArea = GetTextArea(text, size or 12)
+    if center then
+    	if OnScreen(x-textArea.x/2,y-textArea.y/2) or OnScreen(x+textArea.x/2,y+textArea.y/2) then
+    		DrawText(text, size or 12, x-textArea.x/2, y-textArea.y/2, color or 4294967295)
+    	end
+    else
+    	if z or OnScreen(x + textArea.x, y + textArea.y) then
+        	DrawText(text, size or 12, x, y, color or 4294967295)
+    	end
+    end
+end
+
+function DrawHitBox(object, linesize, linecolor)
+    local linesize, linecolor = linesize or 1, linecolor or 4294967295
+    if object and object.minBBox then
+        local x1, y1, z1 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.minBBox.z)
+        local x2, y2, z2 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.maxBBox.z)
+        local x3, y3, z3 = get2DFrom3D(object.maxBBox.x, object.minBBox.y, object.maxBBox.z)
+        local x4, y4, z4 = get2DFrom3D(object.maxBBox.x, object.minBBox.y, object.minBBox.z)
+        local x5, y5, z5 = get2DFrom3D(object.minBBox.x, object.maxBBox.y, object.minBBox.z)
+        local x6, y6, z6 = get2DFrom3D(object.minBBox.x, object.maxBBox.y, object.maxBBox.z)
+        local x7, y7, z7 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.maxBBox.z)
+        local x8, y8, z8 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.minBBox.z)
+
+        if z1 or z2 then DrawLine(x1, y1, x2, y2, linesize, linecolor) end
+        if z2 or z3 then DrawLine(x2, y2, x3, y3, linesize, linecolor) end
+        if z3 or z4 then DrawLine(x3, y3, x4, y4, linesize, linecolor) end
+        if z4 or z1 then DrawLine(x4, y4, x1, y1, linesize, linecolor) end
+
+        if z1 or z5 then DrawLine(x1, y1, x5, y5, linesize, linecolor) end
+        if z2 or z6 then DrawLine(x2, y2, x6, y6, linesize, linecolor) end
+        if z3 or z7 then DrawLine(x3, y3, x7, y7, linesize, linecolor) end
+        if z4 or z8 then DrawLine(x4, y4, x8, y8, linesize, linecolor) end
+
+        if z5 or z6 then DrawLine(x5, y5, x6, y6, linesize, linecolor) end
+        if z6 or z7 then DrawLine(x6, y6, x7, y7, linesize, linecolor) end
+        if z7 or z8 then DrawLine(x7, y7, x8, y8, linesize, linecolor) end
+        if z8 or z5 then DrawLine(x8, y8, x5, y5, linesize, linecolor) end
+    end
+end
+
 --[[
         Class: Vector
 
