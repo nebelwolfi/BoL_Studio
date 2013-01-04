@@ -208,12 +208,12 @@ function get2DFrom3D(x, y, z)
         _get2DFrom3D.P2 = P1_5 + Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
         _get2DFrom3D.n = (_get2DFrom3D.P2 - P3_5):crossP(_get2DFrom3D.P3 - P3_5)
     end
-    obj = obj * (_get2DFrom3D.n.x * _get2DFrom3D.P2.x + _get2DFrom3D.n.y * _get2DFrom3D.P2.y + _get2DFrom3D.n.z * _get2DFrom3D.P2.z) / (_get2DFrom3D.n.x * obj.x + _get2DFrom3D.n.y * obj.y + _get2DFrom3D.n.z * obj.z)
-    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2) * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
+    obj = obj * math.abs(_get2DFrom3D.P2:dotP(_get2DFrom3D.n) / obj:dotP(_get2DFrom3D.n))
+    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2)  * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
     local curWidth = obj.x - _get2DFrom3D.P3.x
     local x2d = WINDOW_W * curWidth / _get2DFrom3D.absWidth
     local y2d = WINDOW_H * curHeight / _get2DFrom3D.absHeight
-    local onScreen = x2d <= WINDOW_W and x2d >= -WINDOW_W / 3 and y2d >= -50 and y2d <= WINDOW_H + 50
+    local onScreen = x2d <= WINDOW_W and x2d >= 0 and y2d >= 0 and y2d <= WINDOW_H
     return x2d, y2d, onScreen
 end
 
@@ -264,18 +264,12 @@ end
 
 function VectorIntersection(a1, b1, a2, b2)
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
-    if math.close(b1.x, 0) and math.close(b2.z, 0) then return Vector(a1.x, a2.z) end
-    if math.close(b1.z, 0) and math.close(b2.x, 0) then return Vector(a2.x, a1.z) end
-    local m1 = (not math.close(b1.x, 0)) and b1.z / b1.x or 0
-    local m2 = (not math.close(b2.x, 0)) and b2.z / b2.x or 0
-    if math.close(m1, m2) then return nil end
-    local c1 = a1.z - m1 * a1.x
-    local c2 = a2.z - m2 * a2.x
-    local ix = (c2 - c1) / (m1 - m2)
-    local iy = m1 * ix + c1
-    if math.close(b1.x, 0) then return Vector(a1.x, a1.x * m2 + c2) end
-    if math.close(b2.x, 0) then return Vector(a2.x, a2.x * m1 + c1) end
-    return Vector(ix, iy)
+    --http://en.wikipedia.org/wiki/Line-line_intersection#Mathematics
+    local x1,y1,x2,y2,x3,y3,x4,y4 = a1.x,a1.y or a1.z,b1.x,b1.y or b1.z,a2.x,a2.y or a2.z,b2.x,b2.y or b2.z
+    local px = (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4)
+    local py = (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4)
+    local divisor = (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)
+    return divisor~=0 and Vector(px/divisor, py/divisor)
 end
 
 function VectorDirection(v1, v2, v)
