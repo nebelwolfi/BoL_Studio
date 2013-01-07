@@ -201,15 +201,16 @@ function get2DFrom3D(x, y, z)
         _get2DFrom3D.camHeigth = cameraPos.y
         local beta, gamma = 9 * math.pi / 180, 50 * math.pi / 180
         local P3_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta) * math.abs(obj.y) })
-        local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) });P1_5 = P1_5 * P3_5:len()/ P1_5:len()
+        local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) }); P1_5 = P1_5 * P3_5:len() / P1_5:len()
         _get2DFrom3D.absHeight = math.sqrt((P1_5.z - P3_5.z) ^ 2 + (P1_5.y - P3_5.y) ^ 2)
         _get2DFrom3D.absWidth = _get2DFrom3D.absHeight * WINDOW_W / WINDOW_H
         _get2DFrom3D.P3 = P3_5 - Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
         _get2DFrom3D.P2 = P1_5 + Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
         _get2DFrom3D.n = (_get2DFrom3D.P2 - P3_5):crossP(_get2DFrom3D.P3 - P3_5)
+        _get2DFrom3D.d = _get2DFrom3D.P2:dotP(_get2DFrom3D.n)
     end
-    obj = obj * math.abs(_get2DFrom3D.P2:dotP(_get2DFrom3D.n) / obj:dotP(_get2DFrom3D.n))
-    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2)  * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
+    obj = obj * math.abs( _get2DFrom3D.d / obj:dotP(_get2DFrom3D.n))
+    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2) * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
     local curWidth = obj.x - _get2DFrom3D.P3.x
     local x2d = WINDOW_W * curWidth / _get2DFrom3D.absWidth
     local y2d = WINDOW_H * curHeight / _get2DFrom3D.absHeight
@@ -232,14 +233,14 @@ function DrawCircle2D(x, y, radius, width, color, quality)
 end
 
 function DrawCircle3D(x, y, z, radius, width, color, quality)
-	radius = radius or 300
-    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius/15)
-	local px, py, pz
+    radius = radius or 300
+    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
+    local px, py, pz
     for theta = 0, 2 * math.pi + quality, quality do
         cx, cy, cz = get2DFrom3D(x + radius * math.cos(theta), y, z - radius * math.sin(theta))
         if px and (pz or cz) then
-			DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
-		end
+            DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
+        end
         px, py, pz = cx, cy, cz
     end
 end
@@ -256,13 +257,13 @@ function DrawText3D(text, x, y, z, size, color, center)
     x, y, z = get2DFrom3D(x, y, z)
     local textArea = GetTextArea(text, size or 12)
     if center then
-    	if OnScreen(x-textArea.x/2,y-textArea.y/2) or OnScreen(x+textArea.x/2,y+textArea.y/2) then
-    		DrawText(text, size or 12, x-textArea.x/2, y, color or 4294967295)
-    	end
+        if OnScreen(x - textArea.x / 2, y - textArea.y / 2) or OnScreen(x + textArea.x / 2, y + textArea.y / 2) then
+            DrawText(text, size or 12, x - textArea.x / 2, y, color or 4294967295)
+        end
     else
-    	if z or OnScreen(x + textArea.x, y + textArea.y) then
-        	DrawText(text, size or 12, x, y, color or 4294967295)
-    	end
+        if z or OnScreen(x + textArea.x, y + textArea.y) then
+            DrawText(text, size or 12, x, y, color or 4294967295)
+        end
     end
 end
 
@@ -320,34 +321,33 @@ end
 		vector:dist(v)							-- distance between 2 vectors (v and vector)
 		vector:normalize()						-- normalize vector
 		vector:normalized()						-- return a new Vector normalize from vector
-		vector:rotate(phiX, phiY, phiZ)					-- rotate the vector by phi angle
-		vector:rotated(phiX, phiY, phiZ)				-- return a new Vector rotate from vector by phi angle
+		vector:rotate(phiX, phiY, phiZ)			-- rotate the vector by phi angle
+		vector:rotated(phiX, phiY, phiZ)        -- return a new Vector rotate from vector by phi angle
 		vector:projectOn(v)						-- return a new Vector from vector projected on v
 		vector:mirrorOn(v)						-- return a new Vector from vector mirrored on v
 		vector:center(v)						-- return center between vector and v
-        	vector:crossP()                         			-- return cross product of vector
-        	vector:dotP()                           			-- return dot product of vector
+        vector:crossP()                         -- return cross product of vector
+        vector:dotP()                           -- return dot product of vector
 
 		vector:polar()							-- return the angle from axe
-		vector:angleBetween(v1, v2)					-- return the angle formed from vector to v1,v2
+		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
 		vector:compare(v)						-- compare vector and v
-		vector:perpendicular()						-- return new Vector rotated 90° rigth
-		vector:perpendicular2()						-- return new Vector rotated 90° left
+		vector:perpendicular()					-- return new Vector rotated 90° rigth
 ]]
 
 -- STAND ALONE FUNCTIONS
 function VectorType(v)
-    return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and  type(v.z) == "number"))
+    return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and type(v.z) == "number"))
 end
 
 function VectorIntersection(a1, b1, a2, b2)
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
     --http://en.wikipedia.org/wiki/Line-line_intersection#Mathematics
-    local x1,y1,x2,y2,x3,y3,x4,y4 = a1.x,a1.y or a1.z,b1.x,b1.y or b1.z,a2.x,a2.y or a2.z,b2.x,b2.y or b2.z
-    local px = (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4)
-    local py = (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4)
-    local divisor = (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)
-    return divisor~=0 and Vector(px/divisor, py/divisor)
+    local x1, y1, x2, y2, x3, y3, x4, y4 = a1.x, a1.y or a1.z, b1.x, b1.y or b1.z, a2.x, a2.y or a2.z, b2.x, b2.y or b2.z
+    local px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
+    local py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
+    local divisor = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    return divisor ~= 0 and Vector(px / divisor, py / divisor)
 end
 
 function VectorDirection(v1, v2, v)
@@ -439,9 +439,9 @@ end
 
 function Vector:__tostring()
     if self.y and self.z then
-        return "(" .. self.x .. "," .. self.y .. "," .. self.z")"
+        return "(" .. tostring(self.x) .. "," .. tostring(self.y) .. "," .. tostring(self.z) .. ")"
     else
-        return "(" .. self.x .. "," .. self.y or self.z .. ")"
+        return "(" .. tostring(self.x) .. "," .. self.y and tostring(self.y) or tostring(self.z) .. ")"
     end
 end
 
@@ -620,6 +620,8 @@ function Vector:perpendicular2()
 end
 
 --[[
+		vector:perpendicular2()					-- return new Vector rotated 90° left
+
 	Class: Queue
 	Performance optimized implementation of a queue, much faster as if you use table.insert and table.remove
 		Members:
@@ -641,7 +643,7 @@ end
 ]]
 
 function Queue()
-    local _queue = { first = 0, last = -1 , list = {}}
+    local _queue = { first = 0, last = -1, list = {} }
     _queue.pushleft = function(self, value)
         self.first = self.first - 1
         self.list[self.first] = value
@@ -668,7 +670,8 @@ function Queue()
         {
             __index = function(self, key)
                 if type(key) == "number" then
-                    return self.list[key + self.first - 1] end
+                    return self.list[key + self.first - 1]
+                end
             end,
             __newindex = function(self, key, value)
                 error("Cant assign value to Queue, use Queue:pushleft or Queue:pushright instead")
@@ -919,11 +922,176 @@ function _CalcCombos(comboSize, targetsTable, comboTableToFill, comboString, ind
     end
 end
 
--- for compat
+-- for combat
 FindGroupCenterFromNearestEnemies = GetMEC
 function FindGroupCenterNearTarget(target, radius, range)
     return GetMEC(radius, range, target)
 end
+
+-- Prediction Functions
+--[[
+Globals Functions
+GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
+GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
+GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
+GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
+GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+
+]]
+-- Prediction Functions
+--[[
+Globals Functions
+GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
+GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
+GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
+GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
+GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+
+]]
+
+
+local _gameHeros, _gameAllyCount, _gameEnemyCount = {}, 0, 0
+-- Class related function
+local function _gameHeros__init()
+    if #_gameHeros == 0 then
+        _gameAllyCount, _gameEnemyCount = 0, 0
+        for i = 1, heroManager.iCount do
+            local hero = heroManager:getHero(i)
+            if hero ~= nil then
+                if hero.team == player.team then
+                    _gameAllyCount = _gameAllyCount + 1
+                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
+                else
+                    _gameEnemyCount = _gameEnemyCount + 1
+                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
+                end
+            end
+        end
+    end
+end
+
+local function _gameHeros__extended(target, assertText)
+    local assertText = assertText or ""
+    if type(target) == "number" then
+        return _gameHeros[target]
+    elseif target ~= nil then
+        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
+        for index, _gameHero in ipairs(_gameHeros) do
+            if _gameHero.hero.networkID == target.networkID then
+                return _gameHero
+            end
+        end
+    end
+end
+
+local function _gameHeros__hero(target, assertText, enemyTeam)
+    local assertText = assertText or ""
+    enemyTeam = (enemyTeam ~= false)
+    if type(target) == "string" then
+        for index, _gameHero in ipairs(_gameHeros) do
+            if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
+                return _gameHero.hero
+            end
+        end
+    elseif type(target) == "number" then
+        return heroManager:getHero(target)
+    elseif target == nil then
+        return GetTarget()
+    else
+        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
+        return target
+    end
+end
+
+local function _gameHeros__index(target, assertText, enemyTeam)
+    local assertText = assertText or ""
+    local enemyTeam = (enemyTeam ~= false)
+    if type(target) == "string" then
+        for index, _gameHero in ipairs(_gameHeros) do
+            if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
+                return _gameHero.index
+            end
+        end
+    elseif type(target) == "number" then
+        return target
+    else
+        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
+        return _gameHeros__index(target.charName, assertText, (target.team ~= player.team))
+    end
+end
+
+local _Prediction = { init = true, delta = 1 }
+
+local function _Prediction__OnLoad()
+    if not __Prediction__OnTick then
+        function __Prediction__OnTick()
+            local tick = GetTickCount()
+            _Prediction.delta = 1 / (tick - _Prediction.tick)
+            _Prediction.tick = tick
+            for i, _gameHero in ipairs(_gameHeros) do
+                if _gameHero.hero ~= nil and _gameHero.hero.dead == false and _gameHero.hero.visible then
+                    _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
+                    _gameHero.lastPos = Vector(_gameHero.hero)
+                    _gameHero.pHealth = _gameHero.hero.health - _gameHero.lastHealth
+                    _gameHero.lastHealth = _gameHero.hero.health
+                end
+            end
+        end
+        AddTickCallback(__Prediction__OnTick)
+    end
+    _gameHeros__init()
+    _Prediction.tick = GetTickCount()
+    for i, _gameHero in ipairs(_gameHeros) do
+        if _gameHero.hero ~= nil then
+            _gameHero.pVector = Vector()
+            _gameHero.lastPos = Vector(_gameHero.hero)
+            _gameHero.pHealth = 0
+            _gameHero.lastHealth = _gameHero.hero.health
+        end
+    end
+    _Prediction.init = nil
+end
+
+local function _PredictionPosition(iHero, delay)
+    local _gameHero = _gameHeros[iHero]
+    if _gameHero and VectorType(_gameHero.pVector) and VectorType(_gameHero.lastPos) then
+        local heroPosition = _gameHero.lastPos + (_gameHero.pVector * (_Prediction.delta * delay))
+        heroPosition.y = _gameHero.hero.y
+        return heroPosition
+    end
+end
+
+local function _PredictionHealth(iHero, delay)
+    local _gameHero = _gameHeros[iHero]
+    if _gameHero and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
+        return _gameHero.lastHealth + (_gameHero.pHealth * (_Prediction.delta * delay))
+    end
+end
+
+local warning_Prediction__OnTick
+function Prediction__OnTick()
+    if not warning_Prediction__OnTick then
+        warning_Prediction__OnTick = true
+        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+function GetPredictionPos(target, delay, enemyTeam)
+    if _Prediction.init then _Prediction__OnLoad() end
+    local enemyTeam = (enemyTeam ~= false)
+    local iHero = _gameHeros__index(target, "GetPredictionPos", enemyTeam)
+    return _PredictionPosition(iHero, delay)
+end
+
+function GetPredictionHealth(target, delay, enemyTeam)
+    if _Prediction.init then _Prediction__OnLoad() end
+    local enemyTeam = (enemyTeam ~= false)
+    local iHero = _gameHeros__index(target, "GetPredictionHealth", enemyTeam)
+    return _PredictionHealth(iHero, delay)
+end
+
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TargetSelector Class
@@ -946,8 +1114,6 @@ TS_SetPriority(target1, target2, target3, target4, target5) 	-> set priority in 
 TS_SetPriorityA(target1, target2, target3, target4, target5) 	-> set priority in order to ally targets
 
 TS_GetPriority(target, enemyTeam)		-> return the current priority, and the max allowed
-
-TargetSelector__OnSendChat(msg) 			-- to add to OnSendChat(msg) function if you want the chat command
 
 Functions :
 ts:update() 											-- update the instance target
@@ -990,15 +1156,10 @@ function OnLoad()
 end
 
 function OnTick()
-	ts:update()
 	if ts.target ~= nil then
 		PrintChat(ts.target.charName)
 		ts:SetDamages((player.ap * 10), 0, 0)
 	end
-end
-
-function OnSendChat(msg)
-	TargetSelector__OnSendChat(msg)
 end
 
 ]]
@@ -1016,77 +1177,8 @@ DAMAGE_MAGIC = 1
 DAMAGE_PHYSICAL = 2
 
 -- Class related global
-_gameHeros, _gameAllyCount, _gameEnemyCount = {}, 0, 0
-_TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority" }
-
--- Class related function
-function _gameHeros__init()
-    if #_gameHeros == 0 then
-        _gameAllyCount, _gameEnemyCount = 0, 0
-        for i = 1, heroManager.iCount do
-            local hero = heroManager:getHero(i)
-            if hero ~= nil then
-                if hero.team == player.team then
-                    _gameAllyCount = _gameAllyCount + 1
-                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
-                else
-                    _gameEnemyCount = _gameEnemyCount + 1
-                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
-                end
-            end
-        end
-    end
-end
-
-function _gameHeros__extended(target, assertText)
-    local assertText = assertText or ""
-    if type(target) == "number" then
-        return _gameHeros[target]
-    elseif target ~= nil then
-        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
-        for index, _gameHero in ipairs(_gameHeros) do
-            if _gameHero.hero.networkID == target.networkID then
-                return _gameHero
-            end
-        end
-    end
-end
-
-function _gameHeros__hero(target, assertText, enemyTeam)
-    local assertText = assertText or ""
-    enemyTeam = (enemyTeam ~= false)
-    if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeros) do
-            if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
-                return _gameHero.hero
-            end
-        end
-    elseif type(target) == "number" then
-        return heroManager:getHero(target)
-    elseif target == nil then
-        return GetTarget()
-    else
-        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
-        return target
-    end
-end
-
-function _gameHeros__index(target, assertText, enemyTeam)
-    local assertText = assertText or ""
-    local enemyTeam = (enemyTeam ~= false)
-    if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeros) do
-            if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
-                return _gameHero.index
-            end
-        end
-    elseif type(target) == "number" then
-        return target
-    else
-        assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
-        return _gameHeros__index(target.charName, assertText, (target.team ~= player.team))
-    end
-end
+local _TS_Draw
+local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority" }
 
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
@@ -1171,7 +1263,7 @@ function TS_Ignore(target, enemyTeam)
     end
 end
 
-function _TS_Draw_Init()
+local function _TS_Draw_Init()
     if not _TS_Draw then
         UpdateWindow()
         _TS_Draw = { y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, redColor = 1422721024, greenColor = 1409321728, blueColor = 2684354716 }
@@ -1179,7 +1271,7 @@ function _TS_Draw_Init()
     end
 end
 
-function TS__DrawMenu(x, y, enemyTeam)
+local function TS__DrawMenu(x, y, enemyTeam)
     assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
@@ -1202,7 +1294,7 @@ function TS__DrawMenu(x, y, enemyTeam)
     return y1
 end
 
-function TS_ClickMenu(x, y, enemyTeam)
+local function TS_ClickMenu(x, y, enemyTeam)
     assert(type(x) == "number" and type(y) == "number", "TS__DrawMenu: wrong argument types (<number>, <number> expected)")
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
@@ -1221,46 +1313,61 @@ function TS_ClickMenu(x, y, enemyTeam)
     return y1
 end
 
+local warning_TargetSelector__OnSendChat
 function TargetSelector__OnSendChat(msg)
-    if msg:sub(1, 3) ~= ".ts" then return end
-    BlockChat()
-    local args = {}
-    while string.find(msg, " ") do
-        local index = string.find(msg, " ")
-        table.insert(args, msg:sub(1, index - 1))
-        msg = string.sub(msg, index + 1)
-    end
-    table.insert(args, msg)
-    local cmd = args[1]:lower()
-    if cmd == ".tsprint" then
-        TS_Print()
-    elseif cmd == ".tsprinta" then
-        TS_Print(false)
-    elseif cmd == ".tsfocus" then
-        PrintChat(cmd .. " - " .. args[2])
-        TS_SetFocus(args[2])
-    elseif cmd == ".tsfocusa" then
-        TS_SetFocus(args[2], false)
-    elseif cmd == ".tspriorityhero" then
-        TS_SetHeroPriority(args[2], args[3])
-    elseif cmd == ".tspriorityheroa" then
-        TS_SetHeroPriority(args[2], args[3], false)
-    elseif cmd == ".tspriority" then
-        TS_SetPriority(args[2], args[3], args[4], args[5], args[6])
-    elseif cmd == ".tsprioritya" then
-        TS_SetPriorityA(args[2], args[3], args[4], args[5], args[6])
-    elseif cmd == ".tsignore" then
-        TS_Ignore(args[2])
-    elseif cmd == ".tsignorea" then
-        TS_Ignore(args[2], false)
+    if not warning_TargetSelector__OnSendChat then
+        warning_TargetSelector__OnSendChat = true
+        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
+
+local function TargetSelector__OnLoad()
+    if not __TargetSelector__OnSendChat then
+        function __TargetSelector__OnSendChat(msg)
+            if not msg or msg:sub(1, 3) ~= ".ts" then return end
+            BlockChat()
+            local args = {}
+            while string.find(msg, " ") do
+                local index = string.find(msg, " ")
+                table.insert(args, msg:sub(1, index - 1))
+                msg = string.sub(msg, index + 1)
+            end
+            table.insert(args, msg)
+            local cmd = args[1]:lower()
+            if cmd == ".tsprint" then
+                TS_Print()
+            elseif cmd == ".tsprinta" then
+                TS_Print(false)
+            elseif cmd == ".tsfocus" then
+                PrintChat(cmd .. " - " .. args[2])
+                TS_SetFocus(args[2])
+            elseif cmd == ".tsfocusa" then
+                TS_SetFocus(args[2], false)
+            elseif cmd == ".tspriorityhero" then
+                TS_SetHeroPriority(args[2], args[3])
+            elseif cmd == ".tspriorityheroa" then
+                TS_SetHeroPriority(args[2], args[3], false)
+            elseif cmd == ".tspriority" then
+                TS_SetPriority(args[2], args[3], args[4], args[5], args[6])
+            elseif cmd == ".tsprioritya" then
+                TS_SetPriorityA(args[2], args[3], args[4], args[5], args[6])
+            elseif cmd == ".tsignore" then
+                TS_Ignore(args[2])
+            elseif cmd == ".tsignorea" then
+                TS_Ignore(args[2], false)
+            end
+        end
+        AddChatCallback(__TargetSelector__OnSendChat)
+    end
+end
+
 
 class'TargetSelector'
 function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTeam)
     -- Init Global
     assert(type(mode) == "number" and type(range) == "number", "TargetSelector: wrong argument types (<mode>, <number> expected)")
     _gameHeros__init()
+    TargetSelector__OnLoad()
     self.mode = mode
     self.range = range
     self._mDmgBase, self._pDmgBase, self._tDmg = 0, 0, 0
@@ -1461,78 +1568,6 @@ function TargetSelector:ClickMenu(x, y)
     return y + _TS_Draw.cellSize
 end
 
--- Prediction Functions
---[[
-Globals Functions
-Prediction__OnTick()			-- OnTick()
-GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
-GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
-GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
-GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
-
-]]
-_Prediction = { init = true, delta = 1 }
-
-function _Prediction__OnLoad()
-    if _Prediction.init then
-        _gameHeros__init()
-        _Prediction.tick = GetTickCount()
-        for i, _gameHero in ipairs(_gameHeros) do
-            if _gameHero.hero ~= nil then
-                _gameHero.pVector = Vector()
-                _gameHero.lastPos = Vector(_gameHero.hero)
-                _gameHero.pHealth = 0
-                _gameHero.lastHealth = _gameHero.hero.health
-            end
-        end
-        _Prediction.init = nil
-    end
-end
-
-function _PredictionPosition(iHero, delay)
-    local _gameHero = _gameHeros[iHero]
-    if _gameHero and VectorType(_gameHero.pVector) and VectorType(_gameHero.lastPos) then
-        local heroPosition = _gameHero.lastPos + (_gameHero.pVector * (_Prediction.delta * delay))
-        heroPosition.y = _gameHero.hero.y
-        return heroPosition
-    end
-end
-
-function _PredictionHealth(iHero, delay)
-    local _gameHero = _gameHeros[iHero]
-    if _gameHero and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
-        return _gameHero.lastHealth + (_gameHero.pHealth * (_Prediction.delta * delay))
-    end
-end
-
-function Prediction__OnTick()
-    _Prediction__OnLoad()
-    local tick = GetTickCount()
-    _Prediction.delta = 1 / (tick - _Prediction.tick)
-    _Prediction.tick = tick
-    for i, _gameHero in ipairs(_gameHeros) do
-        if _gameHero.hero ~= nil and _gameHero.hero.dead == false and _gameHero.hero.visible then
-            _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
-            _gameHero.lastPos = Vector(_gameHero.hero)
-            _gameHero.pHealth = _gameHero.hero.health - _gameHero.lastHealth
-            _gameHero.lastHealth = _gameHero.hero.health
-        end
-    end
-end
-
-function GetPredictionPos(target, delay, enemyTeam)
-    local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeros__index(target, "GetPredictionPos", enemyTeam)
-    return _PredictionPosition(iHero, delay)
-end
-
-function GetPredictionHealth(target, delay, enemyTeam)
-    local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeros__index(target, "GetPredictionHealth", enemyTeam)
-    return _PredictionHealth(iHero, delay)
-end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GetMinionCollision
@@ -1558,9 +1593,6 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TargetPrediction Class
 --[[
-Globals Functions
-TargetPrediction__OnTick()			-- OnTick()
-
 Methods:
 tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
 
@@ -1579,38 +1611,51 @@ tp.smoothness
 ]]
 
 -- use _gameHeros with TargetSelector
-_TargetPrediction__tick = 0
+local _TargetPrediction__tick = 0
 
--- should be place on OnTick()
+local warning_TargetPrediction__OnTick
 function TargetPrediction__OnTick()
-    local osTime = os.clock()
-    if osTime - _TargetPrediction__tick > 0.35 then
-        _TargetPrediction__tick = osTime
-        for i, _enemyHero in ipairs(_gameHeros) do
-            local hero = _enemyHero.hero
-            if hero.dead then
-                _enemyHero.prediction = nil
-            elseif hero.visible then
-                if _enemyHero.prediction then
-                    local deltaTime = osTime - _enemyHero.prediction.lastUpdate
-                    _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
-                    _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
-                    _enemyHero.prediction.health = hero.health
-                    _enemyHero.prediction.position = Vector(hero)
-                    _enemyHero.prediction.lastUpdate = osTime
-                else
-                    _enemyHero.prediction = { position = Vector(hero), lastUpdate = osTime, minions = false, health = hero.health }
+    if not warning_TargetPrediction__OnTick then
+        warning_TargetPrediction__OnTick = true
+        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local function TargetPrediction__Onload()
+    if not __TargetPrediction__OnTick then
+        function __TargetPrediction__OnTick()
+            local osTime = os.clock()
+            if osTime - _TargetPrediction__tick > 0.35 then
+                _TargetPrediction__tick = osTime
+                for i, _enemyHero in ipairs(_gameHeros) do
+                    local hero = _enemyHero.hero
+                    if hero.dead then
+                        _enemyHero.prediction = nil
+                    elseif hero.visible then
+                        if _enemyHero.prediction then
+                            local deltaTime = osTime - _enemyHero.prediction.lastUpdate
+                            _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
+                            _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
+                            _enemyHero.prediction.health = hero.health
+                            _enemyHero.prediction.position = Vector(hero)
+                            _enemyHero.prediction.lastUpdate = osTime
+                        else
+                            _enemyHero.prediction = { position = Vector(hero), lastUpdate = osTime, minions = false, health = hero.health }
+                        end
+                    end
                 end
             end
         end
+
+        AddTickCallback(__TargetPrediction__OnTick)
     end
 end
 
 class'TargetPrediction'
-
 function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoothness)
     assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
     _gameHeros__init()
+    TargetPrediction__Onload()
     self.range = range
     self.proj_speed = proj_speed
     self.delay = delay or 0
@@ -1694,7 +1739,7 @@ Members :
 
 -- map 7 = The Proving Grounds
 
-_gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = {width = 0, heigth = 0} }
+local _gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, heigth = 0 } }
 function GetMap()
     if _gameMap.index == 0 then
         for i = 1, objManager.maxObjects do
@@ -1702,16 +1747,16 @@ function GetMap()
             if object ~= nil then
                 if object.type == "obj_Shop" and object.team == TEAM_BLUE then
                     if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
-                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = {width = 13982/2, heigth = 14446/2} }
+                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, heigth = 14446 / 2 } }
                         break
                     elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = {width = 15436/2, heigth = 14474/2}  }
+                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, heigth = 14474 / 2 } }
                         break
                     elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = {width = 12948/2, heigth = 12812/2}  }
+                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, heigth = 12812 / 2 } }
                         break
                     elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = {width = 13894/2, heigth = 13218/2}  }
+                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, heigth = 13218 / 2 } }
                         break
                     end
                 end
@@ -1750,10 +1795,9 @@ end
 
 ]]
 
-_gameState = { objects = {}, isOver = false, needCheck = false, nextUpdate = 0, tickUpdate = 500 }
+local _gameState = { objects = {}, isOver = false, needCheck = false, nextUpdate = 0, tickUpdate = 500 }
 
 class'GameState'
-
 function GameState:__init()
     if (#_gameState.objects == 0) then
         local mapIndex = GetMap().index
@@ -1853,11 +1897,6 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- minionManager
 --[[
-Goblal Functions :
-minionManager__OnCreateObj(object)			-- OnCreateObj
-minionManager__OnDeleteObj(object)			-- OnDeleteObj
-minionManager__OnLoad()						-- onLoad()
-
 minionManager Class :
 
 Methods:
@@ -1882,28 +1921,20 @@ function OnLoad()
 end
 
 function OnTick()
-	allyMinions:update()
 	enemyMinions:update()
+	allyMinions:update()
 	for index, minion in pairs(enemyMinions.objects) do
 		-- what you want
 	end
 	-- ex changing range
 	enemyMinions.range = 250
-	enemyMinions:update()
-end
-
-function OnCreateObj()
-	minionManager__OnCreateObj(object)
-end
-
-function OnDeleteObj()
-	minionManager__OnDeleteObj(object)
+	enemyMinions:update() --not needed
 end
 
 ]]
 
-_minionTable = { {}, {}, {}, {}, {} }
-_minionManager = { init = true, ally = "##", enemy = "##", jungle = "##", }
+local _minionTable = { {}, {}, {}, {}, {} }
+local _minionManager = { init = true, ally = "##", enemy = "##", jungle = "##", }
 -- Class related constants
 MINION_ALL = 1
 MINION_ENEMY = 2
@@ -1917,30 +1948,23 @@ MINION_SORT_MAXHEALTH_DEC = 4
 MINION_SORT_AD_ASC = 5
 MINION_SORT_AD_DEC = 6
 
+local warning_minionManager__OnCreateObj
 function minionManager__OnCreateObj(object)
-    if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil and not object.dead then
-        local name = object.name
-        for index, minionTable in pairs(_minionTable) do
-            if minionTable[name] ~= nil then return end
-        end
-        _minionTable[MINION_ALL][name] = object
-        if string.find(name, _minionManager.ally) then _minionTable[MINION_ALLY][name] = object
-        elseif string.find(name, _minionManager.enemy) then _minionTable[MINION_ENEMY][name] = object
-        elseif string.find(_minionManager.jungle, object.charName) then _minionTable[MINION_JUNGLE][name] = object
-        else _minionTable[MINION_OTHER][name] = object
-        end
+    if not warning_minionManager__OnCreateObj then
+        warning_minionManager__OnCreateObj = true
+        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
+local warning_minionManager__OnDeleteObj
 function minionManager__OnDeleteObj(object)
-    if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil then
-        for index, minionTable in pairs(_minionTable) do
-            if minionTable[object.name] ~= nil then minionTable[object.name] = nil end
-        end
+    if not warning_minionManager__OnDeleteObj then
+        warning_minionManager__OnDeleteObj = true
+        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
-function minionManager__OnLoad()
+local function minionManager__OnLoad()
     if _minionManager.init then
         local mapIndex = GetMap().index
         if mapIndex ~= 4 then
@@ -1957,9 +1981,38 @@ function minionManager__OnLoad()
         end
         for i = 1, objManager.maxObjects do
             local object = objManager:getObject(i)
-            minionManager__OnCreateObj(object)
+            if __minionManager__OnCreateObj then __minionManager__OnCreateObj(object) end
         end
         _minionManager.init = nil
+        if not __minionManager__OnCreateObj then
+            function __minionManager__OnCreateObj(object)
+                if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil and not object.dead then
+                    local name = object.name
+                    for index, minionTable in pairs(_minionTable) do
+                        if minionTable[name] ~= nil then return end
+                    end
+                    _minionTable[MINION_ALL][name] = object
+                    if string.find(name, _minionManager.ally) then _minionTable[MINION_ALLY][name] = object
+                    elseif string.find(name, _minionManager.enemy) then _minionTable[MINION_ENEMY][name] = object
+                    elseif string.find(_minionManager.jungle, object.charName) then _minionTable[MINION_JUNGLE][name] = object
+                    else _minionTable[MINION_OTHER][name] = object
+                    end
+                end
+            end
+
+            AddCreateObjCallback(__minionManager__OnCreateObj)
+        end
+        if not __minionManager__OnDeleteObj then
+            function __minionManager__OnDeleteObj(object)
+                if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil then
+                    for index, minionTable in pairs(_minionTable) do
+                        if minionTable[object.name] ~= nil then minionTable[object.name] = nil end
+                    end
+                end
+            end
+
+            AddDeleteObjCallback(__minionManager__OnDeleteObj)
+        end
     end
 end
 
@@ -2060,6 +2113,7 @@ function CastItem(itemID, var1, var2)
     return false
 end
 
+local _shop
 function InShop()
     local function getShop()
         for i = 1, objManager.maxObjects, 1 do
@@ -2067,9 +2121,10 @@ function InShop()
             if object and object.type == "obj_Shop" and object.team == player.team then return object end
         end
     end
+
     if not _shop then
         local shop = getShop()
-        assert(shop~=nil, "InShop: Could not get Shop Coordinates")
+        assert(shop ~= nil, "InShop: Could not get Shop Coordinates")
         _shop = { x = shop.x, y = shop.y, z = shop.z }
     end
     if math.sqrt((_shop.x - player.x) ^ 2 + (_shop.z - player.z) ^ 2) < 1250 then return true, _shop.x, _shop.y, _shop.z, 1250 end
@@ -2079,9 +2134,6 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Class : ChampionLane
 --[[
-Goblal Function :
-_ChampionLane__OnLoad() 		-- OnLoad()
-ChampionLane__OnTick()			-- OnTick()
 
 Method :
 CL = ChampionLane()
@@ -2103,8 +2155,24 @@ CL:GetJungler(team)		-- return the object of the team jungler or nil
 
 _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, myLane = "unknow", nextUpdate = 0, tickUpdate = 250 }
 
+local function _ChampionLane__Save()
+    _championLane.nextSave = GetTickCount() + 30000
+    local file = io.open(_championLane.savedFile, "w")
+    if file then
+        file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
+        for j, team in pairs({ "ally", "enemy" }) do
+            file:write("_championLane.save." .. team .. " = {}\n")
+            for i, champion in pairs(_championLane[team].champions) do
+                file:write("_championLane.save." .. team .. "[" .. i .. "] = {top = " .. _championLane[team].champions[i].top .. ", mid = " .. _championLane[team].champions[i].mid .. ", bot = " .. _championLane[team].champions[i].bot .. ", jungle = " .. _championLane[team].champions[i].jungle .. " }\n")
+            end
+        end
+        file:close()
+    end
+    file = nil
+end
+
 -- init values
-function _ChampionLane__OnLoad()
+local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
         _championLane.mapIndex = GetMap().index
@@ -2148,78 +2216,73 @@ function _ChampionLane__OnLoad()
         end
         --clean
         _championLane.save = nil
-    end
-end
-
-function _ChampionLane__Save()
-    _championLane.nextSave = GetTickCount() + 30000
-    local file = io.open(_championLane.savedFile, "w")
-    if file then
-        file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
-        for j, team in pairs({ "ally", "enemy" }) do
-            file:write("_championLane.save." .. team .. " = {}\n")
-            for i, champion in pairs(_championLane[team].champions) do
-                file:write("_championLane.save." .. team .. "[" .. i .. "] = {top = " .. _championLane[team].champions[i].top .. ", mid = " .. _championLane[team].champions[i].mid .. ", bot = " .. _championLane[team].champions[i].bot .. ", jungle = " .. _championLane[team].champions[i].jungle .. " }\n")
-            end
-        end
-        file:close()
-    end
-    file = nil
-end
-
-function ChampionLane__OnTick()
-    if not _championLane.startTime then return end
-    local tick = GetTickCount()
-    if tick < _championLane.startTime or tick < _championLane.nextUpdate then return end
-    if tick > _championLane.stopTime then _championLane.startTime = nil return end
-    if tick > _championLane.nextSave then _ChampionLane__Save() end
-    _championLane.nextUpdate = tick + _championLane.tickUpdate
-    -- team update
-    for j, team in pairs({ "ally", "enemy" }) do
-        local update = { top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }
-        for i, champion in pairs(_championLane[team].champions) do
-            -- update champ pos
-            if champion.hero.dead == false then
-                if champion.hero.visible then
-                    if GetDistance(_championLane.top.point, champion.hero) < 2000 then champion.top = champion.top + 10 end
-                    if _championLane.mid ~= nil and GetDistance(_championLane.mid.point, champion.hero) < 2000 then champion.mid = champion.mid + 10 end
-                    if GetDistance(_championLane.bot.point, champion.hero) < 2000 then champion.bot = champion.bot + 10 end
-                else
-                    champion.jungle = champion.jungle + 1
+        if not __ChampionLane__OnTick then
+            function __ChampionLane__OnTick()
+                if not _championLane.startTime then return end
+                local tick = GetTickCount()
+                if tick < _championLane.startTime or tick < _championLane.nextUpdate then return end
+                if tick > _championLane.stopTime then _championLane.startTime = nil return end
+                if tick > _championLane.nextSave then _ChampionLane__Save() end
+                _championLane.nextUpdate = tick + _championLane.tickUpdate
+                -- team update
+                for j, team in pairs({ "ally", "enemy" }) do
+                    local update = { top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }
+                    for i, champion in pairs(_championLane[team].champions) do
+                        -- update champ pos
+                        if champion.hero.dead == false then
+                            if champion.hero.visible then
+                                if GetDistance(_championLane.top.point, champion.hero) < 2000 then champion.top = champion.top + 10 end
+                                if _championLane.mid ~= nil and GetDistance(_championLane.mid.point, champion.hero) < 2000 then champion.mid = champion.mid + 10 end
+                                if GetDistance(_championLane.bot.point, champion.hero) < 2000 then champion.bot = champion.bot + 10 end
+                            else
+                                champion.jungle = champion.jungle + 1
+                            end
+                            if champion.isJungler then champion.jungle = champion.jungle + 5 end
+                        end
+                        local lane
+                        if champion.top > champion.mid and champion.top > champion.bot and champion.top > champion.jungle then lane = "top"
+                        elseif champion.mid > champion.bot and champion.mid > champion.jungle then lane = "mid"
+                        elseif champion.bot > champion.jungle then lane = "bot"
+                        elseif champion.jungle > 0 then lane = "jungle"
+                        else lane = "unknow"
+                        end
+                        table.insert(update[lane], champion.hero)
+                        if champion.hero.networkID == player.networkID then
+                            _championLane.myLane = lane
+                        end
+                    end
+                    _championLane[team].top = update.top
+                    _championLane[team].mid = update.mid
+                    _championLane[team].bot = update.bot
+                    _championLane[team].jungle = update.jungle
+                    -- update jungler if needed
+                    if _championLane[team].jungler == nil and #_championLane[team].jungle == 1 then
+                        _championLane[team].jungler = _championLane[team].jungle[1]
+                    end
+                    if _championLane.mapIndex == 1 then
+                        -- update carry / support
+                        local carryAD = nil
+                        local support = nil
+                        for i, hero in pairs(_championLane[team].bot) do
+                            if carryAD == nil or hero.totalDamage > carryAD.totalDamage then carryAD = hero end
+                            if support == nil or hero.totalDamage < support.totalDamage then support = hero end
+                        end
+                        _championLane[team].carryAD = carryAD
+                        _championLane[team].support = support
+                    end
                 end
-                if champion.isJungler then champion.jungle = champion.jungle + 5 end
             end
-            local lane
-            if champion.top > champion.mid and champion.top > champion.bot and champion.top > champion.jungle then lane = "top"
-            elseif champion.mid > champion.bot and champion.mid > champion.jungle then lane = "mid"
-            elseif champion.bot > champion.jungle then lane = "bot"
-            elseif champion.jungle > 0 then lane = "jungle"
-            else lane = "unknow"
-            end
-            table.insert(update[lane], champion.hero)
-            if champion.hero.networkID == player.networkID then
-                _championLane.myLane = lane
-            end
+
+            AddTickCallback(__ChampionLane__OnTick)
         end
-        _championLane[team].top = update.top
-        _championLane[team].mid = update.mid
-        _championLane[team].bot = update.bot
-        _championLane[team].jungle = update.jungle
-        -- update jungler if needed
-        if _championLane[team].jungler == nil and #_championLane[team].jungle == 1 then
-            _championLane[team].jungler = _championLane[team].jungle[1]
-        end
-        if _championLane.mapIndex == 1 then
-            -- update carry / support
-            local carryAD = nil
-            local support = nil
-            for i, hero in pairs(_championLane[team].bot) do
-                if carryAD == nil or hero.totalDamage > carryAD.totalDamage then carryAD = hero end
-                if support == nil or hero.totalDamage < support.totalDamage then support = hero end
-            end
-            _championLane[team].carryAD = carryAD
-            _championLane[team].support = support
-        end
+    end
+end
+
+local warning_ChampionLane__OnTick
+function ChampionLane__OnTick()
+    if not warning_ChampionLane__OnTick then
+        warning_ChampionLane__OnTick = true
+        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
@@ -2275,10 +2338,27 @@ Goblal Function :
 GetMinimapX(x) 					-- Return x minimap value
 GetMinimapY(y)					-- Return y minimap value
 GetMinimap(v)					-- Get minimap point {x, y} from object
-GetMinimap(x, y)					-- Get minimap point {x, y}
+GetMinimap(x, y)				-- Get minimap point {x, y}
 ]]
 
-_miniMap = { init = true }
+local _miniMap = { init = true }
+
+local function _miniMap__OnLoad()
+    if _miniMap.init then
+        local map = GetMap()
+        if not WINDOW_W or not WINDOW_H then
+            WINDOW_H = GetStart().WINDOW_H
+            WINDOW_W = GetStart().WINDOW_W
+        end
+        if WINDOW_H < 500 or WINDOW_W < 500 then return true end
+        local percent = math.max(WINDOW_W / 1920, WINDOW_H / 1080)
+        _miniMap.step = { x = 265 * percent / map.x, y = -264 * percent / map.y }
+        _miniMap.x = WINDOW_W - 270 * percent - _miniMap.step.x * map.min.x
+        _miniMap.y = WINDOW_H - 8 * percent - _miniMap.step.y * map.min.y
+        _miniMap.init = nil
+    end
+    return _miniMap.init
+end
 
 function GetMinimapX(x)
     assert(type(x) == "number", "GetMinimapX: wrong argument types (<number> expected for x)")
@@ -2306,26 +2386,8 @@ function GetMinimap(a, b)
     return { x = GetMinimapX(x), y = GetMinimapY(y) }
 end
 
-function _miniMap__OnLoad()
-    if _miniMap.init then
-  	local map = GetMap()
-  	if not WINDOW_W or not WINDOW_H then
-   	WINDOW_H = GetStart().WINDOW_H
-   	WINDOW_W = GetStart().WINDOW_W
-    end
-    if WINDOW_H < 500 or WINDOW_W < 500 then return true end
-	local percent = math.max(WINDOW_W/1920, WINDOW_H/1080)
-  	_miniMap.step = {x = 265*percent/map.x, y = -264*percent/map.y}
-  	_miniMap.x = WINDOW_W-270*percent - _miniMap.step.x * map.min.x
-  	_miniMap.y = WINDOW_H-8*percent - _miniMap.step.y * map.min.y
-  	_miniMap.init = nil
-    end
-    return _miniMap.init
-end
-
 --	autoLevel
 --[[
-autoLevel__OnTick()			--OnTick()
 autoLevelSetSequence(sequence)	-- set the sequence
 autoLevelSetFunction(func)		-- set the function used if sequence level == 0
 	Usage :
@@ -2347,27 +2409,39 @@ autoLevelSetFunction(func)		-- set the function used if sequence level == 0
 				end
 			end
 			autoLevelSetFunction(onChoiceFunction)
-
-		Call the main function on your tick :
-			autoLevel__OnTick()
 ]]
 
-_autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
+local _autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
 
+local warning_autoLevel__OnTick
 function autoLevel__OnTick()
-    local tick = GetTickCount()
-    if _autoLevel.nextUpdate > tick then return end
-    _autoLevel.nextUpdate = tick + _autoLevel.tickUpdate
-    local realLevel = GetHeroLeveled()
-    if player.level > realLevel and _autoLevel.levelSequence[realLevel + 1] ~= nil then
-        local splell = _autoLevel.levelSequence[realLevel + 1]
-        if splell == 0 and type(_autoLevel.onChoiceFunction) == "function" then splell = _autoLevel.onChoiceFunction() end
-        if type(splell) == "number" and splell >= 1 and splell <= 4 then LevelSpell(_autoLevel.spellsSlots[splell]) end
+    if not warning_autoLevel__OnTick then
+        warning_autoLevel__OnTick = true
+        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local function autoLevel__OnLoad()
+    if not __autoLevel__OnTick then
+        function __autoLevel__OnTick()
+            local tick = GetTickCount()
+            if _autoLevel.nextUpdate > tick then return end
+            _autoLevel.nextUpdate = tick + _autoLevel.tickUpdate
+            local realLevel = GetHeroLeveled()
+            if player.level > realLevel and _autoLevel.levelSequence[realLevel + 1] ~= nil then
+                local splell = _autoLevel.levelSequence[realLevel + 1]
+                if splell == 0 and type(_autoLevel.onChoiceFunction) == "function" then splell = _autoLevel.onChoiceFunction() end
+                if type(splell) == "number" and splell >= 1 and splell <= 4 then LevelSpell(_autoLevel.spellsSlots[splell]) end
+            end
+        end
+
+        AddTickCallback(__autoLevel__OnTick)
     end
 end
 
 function autoLevelSetSequence(sequence)
     assert(sequence == nil or type(sequence) == "table", "autoLevelSetSequence : wrong argument types (<table> or nil expected)")
+    autoLevel__OnLoad()
     local sequence = sequence or {}
     for i = 1, 18 do
         local spell = sequence[i]
@@ -2381,6 +2455,7 @@ end
 
 function autoLevelSetFunction(func)
     assert(func == nil or type(func) == "function", "autoLevelSetFunction : wrong argument types (<function> or nil expected)")
+    autoLevel__OnLoad()
     _autoLevel.onChoiceFunction = func
 end
 
@@ -2421,15 +2496,6 @@ function OnTick()
 		-- bla
 	end
 end
-
-function OnDraw()
-	SC__OnDraw()
-end
-
-function OnWndMsg(msg,key)
-	SC__OnWndMsg(msg,key)
-end
-
 ]]
 
 SCRIPT_PARAM_ONOFF = 1
@@ -2442,7 +2508,7 @@ _SC = { init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH .. "sc
 
 class'scriptConfig'
 
-function __SC__remove(name)
+local function __SC__remove(name)
     local file = io.open(_SC.configFile, "a+")
     local nameFound, keepLine, content = false, true, {}
     for line in file:lines() do
@@ -2460,7 +2526,7 @@ function __SC__remove(name)
     end
 end
 
-function __SC__load(name)
+local function __SC__load(name)
     local keepLine, config = false, {}
     local file = io.open(_SC.configFile, "a+")
     for line in file:lines() do
@@ -2480,7 +2546,7 @@ function __SC__load(name)
     return config
 end
 
-function __SC__save(name, content)
+local function __SC__save(name, content)
     __SC__remove(name)
     local file = io.open(_SC.configFile, "a")
     file:write("[" .. name .. "]\n")
@@ -2490,16 +2556,7 @@ function __SC__save(name, content)
     file:close()
 end
 
-function __SC__saveMenu()
-    __SC__save("Menu", { "menuKey = " .. tostring(_SC.menuKey), "draw.x = " .. tostring(_SC.draw.x), "draw.y = " .. tostring(_SC.draw.y), "pDraw.x = " .. tostring(_SC.pDraw.x), "pDraw.y = " .. tostring(_SC.pDraw.y) })
-    _SC.master.x = _SC.draw.x
-    _SC.master.y = _SC.draw.y
-    _SC.master.px = _SC.pDraw.x
-    _SC.master.py = _SC.pDraw.y
-    __SC__saveMaster()
-end
-
-function __SC__saveMaster()
+local function __SC__saveMaster()
     local config = {}
     local P, PS, I = 0, 0, 0
     for index, instance in pairs(_SC.instances) do
@@ -2517,7 +2574,7 @@ function __SC__saveMaster()
     __SC__save("Master", config)
 end
 
-function __SC__updateMaster()
+local function __SC__updateMaster()
     _SC.master = __SC__load("Master")
     _SC.masterY, _SC.masterYp = 1, 0
     _SC.masterY = (_SC.master.useTS and 1 or 0)
@@ -2539,7 +2596,16 @@ function __SC__updateMaster()
     _SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
 end
 
-function __SC__init_draw()
+local function __SC__saveMenu()
+    __SC__save("Menu", { "menuKey = " .. tostring(_SC.menuKey), "draw.x = " .. tostring(_SC.draw.x), "draw.y = " .. tostring(_SC.draw.y), "pDraw.x = " .. tostring(_SC.pDraw.x), "pDraw.y = " .. tostring(_SC.pDraw.y) })
+    _SC.master.x = _SC.draw.x
+    _SC.master.y = _SC.draw.y
+    _SC.master.px = _SC.pDraw.x
+    _SC.master.py = _SC.pDraw.y
+    __SC__saveMaster()
+end
+
+local function __SC__init_draw()
     if _SC.initDraw then
         UpdateWindow()
         _SC.draw = { x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
@@ -2563,7 +2629,7 @@ function __SC__init_draw()
     return _SC.initDraw
 end
 
-function __SC__init(name)
+local function __SC__init(name)
     if name == nil then
         return (_SC.init or __SC__init_draw())
     end
@@ -2599,148 +2665,174 @@ function __SC__init(name)
     __SC__updateMaster()
 end
 
-function __SC__txtKey(key)
+local function __SC__txtKey(key)
     return (key > 32 and key < 96 and " " .. string.char(key) .. " " or "(" .. tostring(key) .. ")")
 end
 
+local warning_SC__OnDraw
 function SC__OnDraw()
-    if __SC__init() then return end
-    if IsKeyDown(_SC.menuKey) or _SC._changeKey then
-        if _SC.draw.move then
-            local cursor = GetCursorPos()
-            _SC.draw.x = cursor.x - _SC.draw.offset.x
-            _SC.draw.y = cursor.y - _SC.draw.offset.y
-            _SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
-        elseif _SC.pDraw.move then
-            local cursor = GetCursorPos()
-            _SC.pDraw.x = cursor.x - _SC.pDraw.offset.x
-            _SC.pDraw.y = cursor.y - _SC.pDraw.offset.y
-        end
-        if _SC.masterIndex == 1 then
-            DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-            _SC.draw.y1 = _SC.draw.y
-            local menuText = _SC._changeKey and not _SC._changeKeyVar and "press key for Menu" or "Menu"
-            DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
-            DrawText(__SC__txtKey(_SC.menuKey), _SC.draw.fontSize, _SC.draw.x + _SC.draw.width * 0.9, _SC.draw.y1, _SC.color.grey)
-        end
-        _SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize
-        if _SC.useTS then
-            __SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
-            if _SC.menuIndex == 0 then
-                DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-                DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
-                _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-                _SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
-            end
-        end
-        _SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
-        for index, instance in ipairs(_SC.instances) do
-            __SC__DrawInstance(instance.header, (_SC.menuIndex == index))
-            if _SC.menuIndex == index then instance:OnDraw() end
-        end
-    end
-    local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
-    for index, instance in ipairs(_SC.instances) do
-        if #instance._permaShow > 0 then
-            for i, varIndex in ipairs(instance._permaShow) do
-                local pVar = instance._param[varIndex].var
-                DrawLine(_SC.pDraw.x - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.row - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
-                DrawText(instance._param[varIndex].text, _SC.pDraw.fontSize, _SC.pDraw.x, y1, _SC.color.grey)
-                if instance._param[varIndex].pType == SCRIPT_PARAM_SLICE or instance._param[varIndex].pType == SCRIPT_PARAM_INFO then
-                    DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
-                    DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
-                else
-                    DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.green or _SC.color.lgrey))
-                    DrawText((instance[pVar] and "      ON" or "      OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
-                end
-                y1 = y1 + _SC.pDraw.cellSize
-            end
-        end
+    if not warning_SC__OnDraw then
+        warning_SC__OnDraw = true
+        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
-function __SC__DrawInstance(header, selected)
+local function __SC__DrawInstance(header, selected)
     DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y1, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y1 + _SC.draw.cellSize, _SC.draw.width + _SC.draw.border * 2, (selected and _SC.color.red or _SC.color.lgrey))
     DrawText(header, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, (selected and _SC.color.ivory or _SC.color.grey))
     _SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
 end
 
-function SC__OnWndMsg(msg, key)
-    if __SC__init() then return end
-    local msg, key = msg, key
-    if key == _SC.menuKey and _SC.lastKeyState ~= msg then
-        _SC.lastKeyState = msg
-        __SC__updateMaster()
-    end
-    if _SC._changeKey then
-        if msg == KEY_DOWN then
-            if _SC._changeKeyMenu then return end
-            _SC._changeKey = false
-            if _SC._changeKeyVar == nil then
-                _SC.menuKey = key
-                if _SC.masterIndex == 1 then __SC__saveMenu() end
-            else
-                _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].key = key
-                _SC.instances[_SC.menuIndex]:save()
-            end
-            return
-        else
-            if _SC._changeKeyMenu and key == _SC.menuKey then _SC._changeKeyMenu = false end
-        end
-    end
-    if msg == WM_LBUTTONDOWN and IsKeyDown(_SC.menuKey) then
-        if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.heigth) then
-            _SC.menuIndex = -1
-            if CursorIsUnder(_SC.draw.x + _SC.draw.width - _SC.draw.fontSize * 1.5, _SC.draw.y, _SC.draw.fontSize, _SC.draw.cellSize) then
-                _SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, nil, true
-                return
-            elseif CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.cellSize) then
-                _SC.draw.offset = Vector(GetCursorPos()) - _SC.draw
-                _SC.draw.move = true
-                return
-            else
-                if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
-                local y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
+local function __SC__OnLoad()
+    if not __SC__OnDraw then
+        function __SC__OnDraw()
+            if __SC__init() then return end
+            if IsKeyDown(_SC.menuKey) or _SC._changeKey then
+                if _SC.draw.move then
+                    local cursor = GetCursorPos()
+                    _SC.draw.x = cursor.x - _SC.draw.offset.x
+                    _SC.draw.y = cursor.y - _SC.draw.offset.y
+                    _SC._Idraw.x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2
+                elseif _SC.pDraw.move then
+                    local cursor = GetCursorPos()
+                    _SC.pDraw.x = cursor.x - _SC.pDraw.offset.x
+                    _SC.pDraw.y = cursor.y - _SC.pDraw.offset.y
+                end
+                if _SC.masterIndex == 1 then
+                    DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+                    _SC.draw.y1 = _SC.draw.y
+                    local menuText = _SC._changeKey and not _SC._changeKeyVar and "press key for Menu" or "Menu"
+                    DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
+                    DrawText(__SC__txtKey(_SC.menuKey), _SC.draw.fontSize, _SC.draw.x + _SC.draw.width * 0.9, _SC.draw.y1, _SC.color.grey)
+                end
+                _SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize
+                if _SC.useTS then
+                    __SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
+                    if _SC.menuIndex == 0 then
+                        DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+                        DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
+                        _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
+                        _SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+                    end
+                end
+                _SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
                 for index, instance in ipairs(_SC.instances) do
-                    if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
-                    y1 = y1 + _SC.draw.cellSize
+                    __SC__DrawInstance(instance.header, (_SC.menuIndex == index))
+                    if _SC.menuIndex == index then instance:OnDraw() end
                 end
             end
-        elseif CursorIsUnder(_SC.pDraw.x, _SC.pDraw.y, _SC.pDraw.width, _SC.pDraw.heigth) then
-            _SC.pDraw.offset = Vector(GetCursorPos()) - _SC.pDraw
-            _SC.pDraw.move = true
-        elseif _SC.menuIndex == 0 then
-            TS_ClickMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-        elseif _SC.menuIndex > 0 and CursorIsUnder(_SC._Idraw.x, _SC.draw.y, _SC.draw.width, _SC._Idraw.heigth) then
-            _SC.instances[_SC.menuIndex]:OnWndMsg()
-        end
-    elseif msg == WM_LBUTTONUP then
-        if _SC.draw.move or _SC.pDraw.move then
-            _SC.draw.move = false
-            _SC.pDraw.move = false
-            if _SC.masterIndex == 1 then __SC__saveMenu() end
-            return
-        elseif _SC._slice then
-            _SC._slice = false
-            _SC.instances[_SC.menuIndex]:save()
-            return
-        end
-    else
-        for index, instance in ipairs(_SC.instances) do
-            for i, param in ipairs(instance._param) do
-                if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and key == param.key and msg == KEY_DOWN then
-                    instance[param.var] = not instance[param.var]
-                elseif param.pType == SCRIPT_PARAM_ONKEYDOWN and key == param.key then
-                    instance[param.var] = (msg == KEY_DOWN)
+            local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
+            for index, instance in ipairs(_SC.instances) do
+                if #instance._permaShow > 0 then
+                    for i, varIndex in ipairs(instance._permaShow) do
+                        local pVar = instance._param[varIndex].var
+                        DrawLine(_SC.pDraw.x - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.row - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
+                        DrawText(instance._param[varIndex].text, _SC.pDraw.fontSize, _SC.pDraw.x, y1, _SC.color.grey)
+                        if instance._param[varIndex].pType == SCRIPT_PARAM_SLICE or instance._param[varIndex].pType == SCRIPT_PARAM_INFO then
+                            DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
+                            DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
+                        else
+                            DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.green or _SC.color.lgrey))
+                            DrawText((instance[pVar] and "      ON" or "      OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
+                        end
+                        y1 = y1 + _SC.pDraw.cellSize
+                    end
                 end
             end
         end
+
+        AddDrawCallback(__SC__OnDraw)
+    end
+    if not __SC__OnWndMsg then
+        function __SC__OnWndMsg(msg, key)
+            if __SC__init() then return end
+            local msg, key = msg, key
+            if key == _SC.menuKey and _SC.lastKeyState ~= msg then
+                _SC.lastKeyState = msg
+                __SC__updateMaster()
+            end
+            if _SC._changeKey then
+                if msg == KEY_DOWN then
+                    if _SC._changeKeyMenu then return end
+                    _SC._changeKey = false
+                    if _SC._changeKeyVar == nil then
+                        _SC.menuKey = key
+                        if _SC.masterIndex == 1 then __SC__saveMenu() end
+                    else
+                        _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].key = key
+                        _SC.instances[_SC.menuIndex]:save()
+                    end
+                    return
+                else
+                    if _SC._changeKeyMenu and key == _SC.menuKey then _SC._changeKeyMenu = false end
+                end
+            end
+            if msg == WM_LBUTTONDOWN and IsKeyDown(_SC.menuKey) then
+                if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.heigth) then
+                    _SC.menuIndex = -1
+                    if CursorIsUnder(_SC.draw.x + _SC.draw.width - _SC.draw.fontSize * 1.5, _SC.draw.y, _SC.draw.fontSize, _SC.draw.cellSize) then
+                        _SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, nil, true
+                        return
+                    elseif CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.cellSize) then
+                        _SC.draw.offset = Vector(GetCursorPos()) - _SC.draw
+                        _SC.draw.move = true
+                        return
+                    else
+                        if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
+                        local y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
+                        for index, instance in ipairs(_SC.instances) do
+                            if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
+                            y1 = y1 + _SC.draw.cellSize
+                        end
+                    end
+                elseif CursorIsUnder(_SC.pDraw.x, _SC.pDraw.y, _SC.pDraw.width, _SC.pDraw.heigth) then
+                    _SC.pDraw.offset = Vector(GetCursorPos()) - _SC.pDraw
+                    _SC.pDraw.move = true
+                elseif _SC.menuIndex == 0 then
+                    TS_ClickMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
+                elseif _SC.menuIndex > 0 and CursorIsUnder(_SC._Idraw.x, _SC.draw.y, _SC.draw.width, _SC._Idraw.heigth) then
+                    _SC.instances[_SC.menuIndex]:OnWndMsg()
+                end
+            elseif msg == WM_LBUTTONUP then
+                if _SC.draw.move or _SC.pDraw.move then
+                    _SC.draw.move = false
+                    _SC.pDraw.move = false
+                    if _SC.masterIndex == 1 then __SC__saveMenu() end
+                    return
+                elseif _SC._slice then
+                    _SC._slice = false
+                    _SC.instances[_SC.menuIndex]:save()
+                    return
+                end
+            else
+                for index, instance in ipairs(_SC.instances) do
+                    for i, param in ipairs(instance._param) do
+                        if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and key == param.key and msg == KEY_DOWN then
+                            instance[param.var] = not instance[param.var]
+                        elseif param.pType == SCRIPT_PARAM_ONKEYDOWN and key == param.key then
+                            instance[param.var] = (msg == KEY_DOWN)
+                        end
+                    end
+                end
+            end
+        end
+
+        AddMsgCallback(__SC__OnWndMsg)
+    end
+end
+
+local warning_SC__OnWndMsg
+function SC__OnWndMsg(msg, key)
+    if not warning_SC__OnWndMsg then
+        warning_SC__OnWndMsg = true
+        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
 function scriptConfig:__init(header, name)
     assert((type(header) == "string") and (type(name) == "string"), "scriptConfig: expected <string>, <string>)")
     __SC__init(name)
+    __SC__OnLoad()
     self.header = header
     self.name = name
     self._tsInstances = {}
