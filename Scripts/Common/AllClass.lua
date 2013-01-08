@@ -40,7 +40,48 @@ if table.copy == nil then
         end
     end
 end
--- Round a number corrected by surface
+
+table.contains = function(t, what, member) --member is optional
+    assert(type(num) == "table", "table.contains: wrong argument types (<table> expected for t)")
+    for i, v in pairs(t) do
+        if member and v[member] == what or v == what then return i, v end
+    end
+end
+
+--from http://lua-users.org/wiki/SplitJoin
+string.split = function(str, delim, maxNb)
+-- Eliminate bad cases...
+    if not delim or delim == "" or string.find(str, delim) == nil then
+        return { str }
+    end
+    maxNb = (maxNb and maxNb>=1) and maxNb or 0
+    local result = {}
+    local pat = "(.-)" .. delim .. "()"
+    local nb = 0
+    local lastPos
+    for part, pos in string.gfind(str, pat) do
+        nb = nb + 1
+        result[nb] = part
+        lastPos = pos
+        if nb == maxNb then break end
+    end
+    -- Handle the last field
+    if nb ~= maxNb then
+        result[nb + 1] = string.sub(str, lastPos)
+    end
+    return result
+end
+
+string.join = function(arg, del)
+    local str, del = "", del or ""
+    if not arg or not arg[1] then return str end
+    for i, v in ipairs(arg) do
+        str = str .. tostring(v) .. del
+    end
+    return str
+end
+
+-- Round a number
 function math.round(num, idp)
     assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
     assert(type(idp) == "number" or idp == nil, "math.round: wrong argument types (<integer> expected for idp)")
@@ -80,27 +121,16 @@ function CursorIsUnder(x, y, sizeX, sizeY)
     return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
---return texted version of a timer
-function TimerText(seconds, len)
+--[[
+   return texted version of a timer(minutes and seconds)
+   if you want the full time string, use os.date("%H:%M:%S",seconds+82800)
+]]
+function TimerText(seconds)
     if type(seconds) ~= "number" or seconds > 100000 or seconds < 0 then return " ? " end
-    local minutes = seconds / 60
-    local returnText
-    if minutes >= 60 then
-        returnText = string.format("%i:%02i:%02i", minutes / 60, minutes, seconds % 60)
-    elseif minutes >= 1 then
-        returnText = string.format("%i:%02i", minutes, seconds % 60)
-    else
-        returnText = string.format(":%02i", seconds % 60)
-    end
-    if len ~= nil then
-        while string.len(returnText) < len do
-            returnText = " " .. returnText .. " "
-        end
-    end
-    return returnText
+    return seconds >= 60 and string.format("%i:%02i", seconds / 60, seconds % 60) or string.format(":%02i", seconds % 60)
 end
 
--- for compat
+-- for combat
 timerText = TimerText
 
 -- return sprite
@@ -209,7 +239,7 @@ function get2DFrom3D(x, y, z)
         _get2DFrom3D.n = (_get2DFrom3D.P2 - P3_5):crossP(_get2DFrom3D.P3 - P3_5)
         _get2DFrom3D.d = _get2DFrom3D.P2:dotP(_get2DFrom3D.n)
     end
-    obj = obj * math.abs( _get2DFrom3D.d / obj:dotP(_get2DFrom3D.n))
+    obj = obj * math.abs(_get2DFrom3D.d / obj:dotP(_get2DFrom3D.n))
     local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2) * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
     local curWidth = obj.x - _get2DFrom3D.P3.x
     local x2d = WINDOW_W * curWidth / _get2DFrom3D.absWidth
@@ -299,40 +329,41 @@ end
 --[[
         Class: Vector
 
-		API :
-		---- functions ----
-		VectorType(v)							-- return if as vector
-		VectorIntersection(a1,b1,a2,b2)			-- return the Intersection of 2 lines
-		VectorDirection(v1,v2,v)
-		VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
-		Vector(a,b,c)							-- return a vector from x,y,z pos or from another vector
+        API :
+        ---- functions ----
+        VectorType(v)                           -- return if as vector
+        VectorIntersection(a1,b1,a2,b2)         -- return the Intersection of 2 lines
+        VectorDirection(v1,v2,v)
+        VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
+        Vector(a,b,c)                           -- return a vector from x,y,z pos or from another vector
 
-		---- Vector Members ----
-		x
-		y
-		z
+        ---- Vector Members ----
+        x
+        y
+        z
 
-		---- Vector Functions ----
-		vector:clone()							-- return a new Vector from vector
-		vector:unpack()							-- x, z
-		vector:len2()							-- return vector^2
-		vector:len2(v)							-- return vector^v
-		vector:len()							-- return vector length
-		vector:dist(v)							-- distance between 2 vectors (v and vector)
-		vector:normalize()						-- normalize vector
-		vector:normalized()						-- return a new Vector normalize from vector
-		vector:rotate(phiX, phiY, phiZ)			-- rotate the vector by phi angle
-		vector:rotated(phiX, phiY, phiZ)        -- return a new Vector rotate from vector by phi angle
-		vector:projectOn(v)						-- return a new Vector from vector projected on v
-		vector:mirrorOn(v)						-- return a new Vector from vector mirrored on v
-		vector:center(v)						-- return center between vector and v
+        ---- Vector Functions ----
+        vector:clone()                          -- return a new Vector from vector
+        vector:unpack()                         -- x, z
+        vector:len2()                           -- return vector^2
+        vector:len2(v)                          -- return vector^v
+        vector:len()                            -- return vector length
+        vector:dist(v)                          -- distance between 2 vectors (v and vector)
+        vector:normalize()                      -- normalize vector
+        vector:normalized()                     -- return a new Vector normalize from vector
+        vector:rotate(phiX, phiY, phiZ)         -- rotate the vector by phi angle
+        vector:rotated(phiX, phiY, phiZ)        -- return a new Vector rotate from vector by phi angle
+        vector:projectOn(v)                     -- return a new Vector from vector projected on v
+        vector:mirrorOn(v)                      -- return a new Vector from vector mirrored on v
+        vector:center(v)                        -- return center between vector and v
         vector:crossP()                         -- return cross product of vector
         vector:dotP()                           -- return dot product of vector
 
-		vector:polar()							-- return the angle from axe
-		vector:angleBetween(v1, v2)				-- return the angle formed from vector to v1,v2
-		vector:compare(v)						-- compare vector and v
-		vector:perpendicular()					-- return new Vector rotated 90° rigth
+        vector:polar()                          -- return the angle from axe
+        vector:angleBetween(v1, v2)             -- return the angle formed from vector to v1,v2
+        vector:compare(v)                       -- compare vector and v
+        vector:perpendicular()                  -- return new Vector rotated 90° rigth
+        vector:perpendicular2()                 -- return new Vector rotated 90° left
 ]]
 
 -- STAND ALONE FUNCTIONS
@@ -576,9 +607,6 @@ function Vector:rotated(phiX, phiY, phiZ)
     return a
 end
 
-
-
-
 -- not yet full 3D functions
 
 function Vector:polar()
@@ -620,26 +648,24 @@ function Vector:perpendicular2()
 end
 
 --[[
-		vector:perpendicular2()					-- return new Vector rotated 90° left
+    Class: Queue
+    Performance optimized implementation of a queue, much faster as if you use table.insert and table.remove
+        Members:
+            pushleft
+            pushright
+            popleft
+            popright
 
-	Class: Queue
-	Performance optimized implementation of a queue, much faster as if you use table.insert and table.remove
-		Members:
-			pushleft
-			pushright
-			popleft
-			popright
+        Sample:
+            local myQueue = Queue()
+            myQueue:pushleft("a"); myQueue:pushright(2);
+            for i=1, #myQueue, 1 do
+                PrintChat(tostring(myQueue[i]))
+            end
 
-		Sample:
-			local myQueue = Queue()
-			myQueue:pushleft("a"); myQueue:pushright(2);
-			for i=1, #myQueue, 1 do
-				PrintChat(tostring(myQueue[i]))
-			end
-
-		Notes:
-			Don't use ipairs or pairs!
-			It's a queue, dont try to insert values by yourself, only use the push functions to add values
+        Notes:
+            Don't use ipairs or pairs!
+            It's a queue, dont try to insert values by yourself, only use the push functions to add values
 ]]
 
 function Queue()
@@ -692,11 +718,11 @@ Methods:
 circle = Circle(center (opt),radius (opt))
 
 Function :
-circle:Contains(v)		-- return if Vector point v is in the circle
+circle:Contains(v)      -- return if Vector point v is in the circle
 
 Members :
-circle.center		-- Vector point for circle's center
-circle.radius			-- radius of the circle
+circle.center       -- Vector point for circle's center
+circle.radius           -- radius of the circle
 ]]
 
 class'Circle'
@@ -721,8 +747,8 @@ end
 -- Minimum Enclosing Circle class
 --[[
 Global function ;
-GetMEC(R, range) 					-- Find Group Center From Nearest Enemies
-GetMEC(R, range, target) 			-- Find Group Center Near Target
+GetMEC(R, range)                    -- Find Group Center From Nearest Enemies
+GetMEC(R, range, target)            -- Find Group Center Near Target
 
 MEC Class :
 Methods:
@@ -730,8 +756,8 @@ mec = MEC(points (opt))
 
 Function :
 mec:SetPoints(points)
-mec:HalfHull(left, right, pointTable, factor)		-- return table
-mec:ConvexHull()						-- return table
+mec:HalfHull(left, right, pointTable, factor)       -- return table
+mec:ConvexHull()                        -- return table
 mec:Compute()
 
 Members :
@@ -931,23 +957,23 @@ end
 -- Prediction Functions
 --[[
 Globals Functions
-GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
-GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
-GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
-GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionPos(iHero, delay)              -- return nextPosition in delay (ms) for iHero (index)
+GetPredictionPos(Hero, delay)               -- return nextPosition in delay (ms) for Hero
+GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
+GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
+GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
 
 ]]
 -- Prediction Functions
 --[[
 Globals Functions
-GetPredictionPos(iHero, delay)				-- return nextPosition in delay (ms) for iHero (index)
-GetPredictionPos(Hero, delay)				-- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)		-- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
-GetPredictionHealth(iHero, delay)			-- return next Health in delay (ms) for iHero (index)
-GetPredictionHealth(Hero, delay)			-- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam)	-- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionPos(iHero, delay)              -- return nextPosition in delay (ms) for iHero (index)
+GetPredictionPos(Hero, delay)               -- return nextPosition in delay (ms) for Hero
+GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
+GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
+GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
 
 ]]
 
@@ -1039,6 +1065,7 @@ local function _Prediction__OnLoad()
                 end
             end
         end
+
         AddTickCallback(__Prediction__OnTick)
     end
     _gameHeros__init()
@@ -1102,39 +1129,39 @@ Methods:
 ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
 
 Goblal Functions :
-TS_Print(enemyTeam (opt))			-> print Priority (global)
+TS_Print(enemyTeam (opt))           -> print Priority (global)
 
-TS_SetFocus() 			-> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(id)			-> set priority to the championID (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(charName, enemyTeam (opt))	-> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(hero) 		-> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus()           -> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(id)         -> set priority to the championID (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(charName, enemyTeam (opt))  -> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
+TS_SetFocus(hero)       -> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
 
-TS_SetHeroPriority(priority, target, enemyTeam (opt))					-> set the priority to target
-TS_SetPriority(target1, target2, target3, target4, target5) 	-> set priority in order to enemy targets
-TS_SetPriorityA(target1, target2, target3, target4, target5) 	-> set priority in order to ally targets
+TS_SetHeroPriority(priority, target, enemyTeam (opt))                   -> set the priority to target
+TS_SetPriority(target1, target2, target3, target4, target5)     -> set priority in order to enemy targets
+TS_SetPriorityA(target1, target2, target3, target4, target5)    -> set priority in order to ally targets
 
-TS_GetPriority(target, enemyTeam)		-> return the current priority, and the max allowed
+TS_GetPriority(target, enemyTeam)       -> return the current priority, and the max allowed
 
 Functions :
-ts:update() 											-- update the instance target
+ts:update()                                             -- update the instance target
 ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
 
-ts:SetPrediction()							-- prediction off
-ts:SetPrediction(delay)						-- predict movement for champs (need Prediction__OnTick())
-ts:SetMinionCollision()						-- minion colission off
-ts:SetMinionCollision(spellWidth)			-- avoid champ if minion between player
-ts:SetConditional()							-- erase external function use
-ts:SetConditional(func)						-- set external function that return true/false to allow filter -- function(hero, index (opt))
-ts:SetProjectileSpeed(pSpeed)				-- set projectile speed (need Prediction__OnTick())
+ts:SetPrediction()                          -- prediction off
+ts:SetPrediction(delay)                     -- predict movement for champs (need Prediction__OnTick())
+ts:SetMinionCollision()                     -- minion colission off
+ts:SetMinionCollision(spellWidth)           -- avoid champ if minion between player
+ts:SetConditional()                         -- erase external function use
+ts:SetConditional(func)                     -- set external function that return true/false to allow filter -- function(hero, index (opt))
+ts:SetProjectileSpeed(pSpeed)               -- set projectile speed (need Prediction__OnTick())
 
 Members:
-ts.mode 					-> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
-ts.range 					-> number > 0
-ts.targetSelected 		-> true/false
-ts.target 					-> return the target (object or nil)
-ts.index 		-> index of target (if hero)
+ts.mode                     -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
+ts.range                    -> number > 0
+ts.targetSelected       -> true/false
+ts.target                   -> return the target (object or nil)
+ts.index        -> index of target (if hero)
 ts.nextPosition -> nextPosition predicted
-ts.nextHealth 		-> nextHealth predicted
+ts.nextHealth       -> nextHealth predicted
 
 Usage :
 variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
@@ -1152,14 +1179,14 @@ variable.targetSelected -> true/false (if you clicked on a champ)
 
 ex :
 function OnLoad()
-	ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
+    ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
 end
 
 function OnTick()
-	if ts.target ~= nil then
-		PrintChat(ts.target.charName)
-		ts:SetDamages((player.ap * 10), 0, 0)
-	end
+    if ts.target ~= nil then
+        PrintChat(ts.target.charName)
+        ts:SetDamages((player.ap * 10), 0, 0)
+    end
 end
 
 ]]
@@ -1357,6 +1384,7 @@ local function TargetSelector__OnLoad()
                 TS_Ignore(args[2], false)
             end
         end
+
         AddChatCallback(__TargetSelector__OnSendChat)
     end
 end
@@ -1572,8 +1600,8 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GetMinionCollision
 --[[
-	Goblal Function :
-	GetMinionCollision(posEnd, spellWidth)			-> return true/false if collision with minion from player to posEnd with spellWidth.
+    Goblal Function :
+    GetMinionCollision(posEnd, spellWidth)          -> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
 function GetMinionCollision(posStart, posEnd, spellWidth)
     assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
@@ -1597,10 +1625,10 @@ Methods:
 tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
 
 Functions :
-tp:GetPrediction(target)			-- return nextPosition, minionCollision, nextHealth
+tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
 
 members :
-tp.nextPosition						-- vector pos
+tp.nextPosition                     -- vector pos
 tp.minions
 tp.nextHealth
 tp.range
@@ -1718,15 +1746,15 @@ end
 -- MAP
 --[[
 Goblal Function :
-GetMap()			-> return map
+GetMap()            -> return map
 
 Members :
-	map.index = 1-4 (0 mean not found)
-	map.name -> return the full map name
-	map.shortName -> return the shorted map name (usefull for using it in table)
-	map.min {x, y} -> return min map x, y
-	map.max{x, y} -> return max map x, y
-	map{x, y} -> return map size x, y
+    map.index = 1-4 (0 mean not found)
+    map.name -> return the full map name
+    map.shortName -> return the shorted map name (usefull for using it in table)
+    map.min {x, y} -> return min map x, y
+    map.max{x, y} -> return max map x, y
+    map{x, y} -> return map size x, y
 ]]
 
 
@@ -1771,26 +1799,26 @@ end
 --[[
 GameState Class :
 Methods:
-gameState = GameState()				--return a gameState instance
+gameState = GameState()             --return a gameState instance
 
 Functions :
-gameState:gameIsOver()				-- update the gameIsOver state
+gameState:gameIsOver()              -- update the gameIsOver state
 
 Members:
-gameState.winner			-> TEAM_BLUE / TEAM_RED winner
-gameState.loser 			-> TEAM_BLUE / TEAM_RED loser
+gameState.winner            -> TEAM_BLUE / TEAM_RED winner
+gameState.loser             -> TEAM_BLUE / TEAM_RED loser
 
 Usage :
 ex :
 function OnLoad()
-	gameState = GameState()
+    gameState = GameState()
 end
 
 function OnTick()
-	if gameState:gameIsOver() then
-		if gameState.winner == player.team then PrintChat("you are the best !") end
-		return
-	end
+    if gameState:gameIsOver() then
+        if gameState.winner == player.team then PrintChat("you are the best !") end
+        return
+    end
 end
 
 ]]
@@ -1841,13 +1869,13 @@ end
 -- Start Saved Values
 --[[
 Goblal Function :
-GetStart()			-> return start
+GetStart()          -> return start
 
 Members :
-	start.tick			-- return saved GetTickCount() at start
-	start.osTime		-- return saved os.time at start
-	start.WINDOW_W		-- return saved WINDOW_W
-	start.WINDOW_H		-- return saved WINDOW_H
+    start.tick          -- return saved GetTickCount() at start
+    start.osTime        -- return saved os.time at start
+    start.WINDOW_W      -- return saved WINDOW_W
+    start.WINDOW_H      -- return saved WINDOW_H
 ]]
 
 _gameStart = { configFile = LIB_PATH .. "gameStart.cfg", init = true }
@@ -1900,53 +1928,53 @@ end
 minionManager Class :
 
 Methods:
-minionArray = minionManager(mode, range, fromPos, sortMode)		--return a minionArray instance
+minionArray = minionManager(mode, range, fromPos, sortMode)     --return a minionArray instance
 
 Functions :
-minionArray:update()				-- update the minionArray instance
+minionArray:update()                -- update the minionArray instance
 
 Members:
-minionArray.objects					-- minionArray objects table
-minionArray.iCount					-- minionArray objects count
-minionArray.mode					-- minionArray instance mode (MINION_ALL, etc)
-minionArray.range					-- minionArray instance range
-minionArray.fromPos					-- minionArray instance x, z from wich the range is based (player by default)
-minionArray.sortMode				-- minionArray instance sort mode (MINION_SORT_HEALTH_ASC, etc... or nil if no sorted)
+minionArray.objects                 -- minionArray objects table
+minionArray.iCount                  -- minionArray objects count
+minionArray.mode                    -- minionArray instance mode (MINION_ALL, etc)
+minionArray.range                   -- minionArray instance range
+minionArray.fromPos                 -- minionArray instance x, z from which the range is based (player by default)
+minionArray.sortMode                -- minionArray instance sort mode (MINION_SORT_HEALTH_ASC, etc... or nil if no sorted)
 
 Usage :
 ex :
 function OnLoad()
-	enemyMinions = minionManager(MINION_ENEMY, 600, player, MINION_SORT_HEALTH_ASC)
-	allyMinions = minionManager(MINION_ALLY, 300, player, MINION_SORT_HEALTH_DES)
+    enemyMinions = minionManager(MINION_ENEMY, 600, player, MINION_SORT_HEALTH_ASC)
+    allyMinions = minionManager(MINION_ALLY, 300, player, MINION_SORT_HEALTH_DES)
 end
 
 function OnTick()
-	enemyMinions:update()
-	allyMinions:update()
-	for index, minion in pairs(enemyMinions.objects) do
-		-- what you want
-	end
-	-- ex changing range
-	enemyMinions.range = 250
-	enemyMinions:update() --not needed
+    enemyMinions:update()
+    allyMinions:update()
+    for index, minion in pairs(enemyMinions.objects) do
+        -- what you want
+    end
+    -- ex changing range
+    enemyMinions.range = 250
+    enemyMinions:update() --not needed
 end
 
 ]]
 
 local _minionTable = { {}, {}, {}, {}, {} }
-local _minionManager = { init = true, ally = "##", enemy = "##", jungle = "##", }
+local _minionManager = { init = true, ally = "##", enemy = "##" }
 -- Class related constants
 MINION_ALL = 1
 MINION_ENEMY = 2
 MINION_ALLY = 3
 MINION_JUNGLE = 4
 MINION_OTHER = 5
-MINION_SORT_HEALTH_ASC = 1
-MINION_SORT_HEALTH_DEC = 2
-MINION_SORT_MAXHEALTH_ASC = 3
-MINION_SORT_MAXHEALTH_DEC = 4
-MINION_SORT_AD_ASC = 5
-MINION_SORT_AD_DEC = 6
+MINION_SORT_HEALTH_ASC = function(a, b) return a.health < b.health end
+MINION_SORT_HEALTH_DEC = function(a, b) return a.health > b.health end
+MINION_SORT_MAXHEALTH_ASC = function(a, b) return a.maxHealth < b.maxHealth end
+MINION_SORT_MAXHEALTH_DEC = function(a, b) return a.maxHealth > b.maxHealth end
+MINION_SORT_AD_ASC = function(a, b) return a.ad < b.ad end
+MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
 
 local warning_minionManager__OnCreateObj
 function minionManager__OnCreateObj(object)
@@ -1970,31 +1998,19 @@ local function minionManager__OnLoad()
         if mapIndex ~= 4 then
             _minionManager.ally = "Minion_T" .. player.team
             _minionManager.enemy = "Minion_T" .. TEAM_ENEMY
-            if mapIndex == 1 then
-                _minionManager.jungle = "Worm,Dragon,AncientGolem,LizardElder,GiantWolf,wolf,YoungLizard,SmallGolem,LesserWraith"
-            elseif mapIndex == 2 then
-                _minionManager.jungle = "blueDragon,TwistedLizardElder,Ghast,RabidWolf,TwistedBlueWraith,TwistedGiantWolf,TwistedGolem,TwistedYoungLizard,TwistedTinyWraith,TwistedSmallWolf"
-            end
         else
             _minionManager.ally = (player.team == TEAM_BLUE and "Blue" or "Red")
             _minionManager.enemy = (player.team == TEAM_BLUE and "Red" or "Blue")
         end
-        for i = 1, objManager.maxObjects do
-            local object = objManager:getObject(i)
-            if __minionManager__OnCreateObj then __minionManager__OnCreateObj(object) end
-        end
-        _minionManager.init = nil
         if not __minionManager__OnCreateObj then
             function __minionManager__OnCreateObj(object)
-                if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil and not object.dead then
+                if object and object.type == "obj_AI_Minion" and object.name and not object.dead then
                     local name = object.name
-                    for index, minionTable in pairs(_minionTable) do
-                        if minionTable[name] ~= nil then return end
-                    end
                     _minionTable[MINION_ALL][name] = object
-                    if string.find(name, _minionManager.ally) then _minionTable[MINION_ALLY][name] = object
-                    elseif string.find(name, _minionManager.enemy) then _minionTable[MINION_ENEMY][name] = object
-                    elseif string.find(_minionManager.jungle, object.charName) then _minionTable[MINION_JUNGLE][name] = object
+
+                    if name:sub(1, #_minionManager.ally) == _minionManager.ally then _minionTable[MINION_ALLY][name] = object
+                    elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then _minionTable[MINION_ENEMY][name] = object
+                    elseif object.team == TEAM_NEUTRAL then _minionTable[MINION_JUNGLE][name] = object
                     else _minionTable[MINION_OTHER][name] = object
                     end
                 end
@@ -2004,15 +2020,19 @@ local function minionManager__OnLoad()
         end
         if not __minionManager__OnDeleteObj then
             function __minionManager__OnDeleteObj(object)
-                if object ~= nil and object.type == "obj_AI_Minion" and object.name ~= nil then
-                    for index, minionTable in pairs(_minionTable) do
-                        if minionTable[object.name] ~= nil then minionTable[object.name] = nil end
+                if object and object.type == "obj_AI_Minion" and object.name then
+                    for i = MINION_ALL, MINION_OTHER do
+                        _minionTable[i][object.name] = nil
                     end
                 end
             end
 
             AddDeleteObjCallback(__minionManager__OnDeleteObj)
         end
+        for i = 1, objManager.maxObjects do
+            __minionManager__OnCreateObj(objManager:getObject(i))
+        end
+        _minionManager.init = nil
     end
 end
 
@@ -2024,34 +2044,21 @@ function minionManager:__init(mode, range, fromPos, sortMode)
     self.mode = mode
     self.range = range
     self.fromPos = fromPos or player
-    self.sortMode = sortMode
+    self.sortMode = type(sortMode) == "function" and sortMode
     self.objects = {}
     self.iCount = 0
     self:update()
 end
 
 function minionManager:update()
+    local i = 1
     self.objects = {}
     for name, object in pairs(_minionTable[self.mode]) do
-        if object ~= nil and object.dead == false and object.visible and GetDistance(self.fromPos, object) <= self.range then
-            table.insert(self.objects, object)
+        if object and not object.dead and object.visible and GetDistance(self.fromPos, object) <= self.range then
+            self.objects[i] = object; i = i + 1
         end
     end
-    if self.sortMode ~= nil then
-        if self.sortMode == MINION_SORT_HEALTH_ASC then
-            table.sort(self.objects, function(a, b) return a.health < b.health end)
-        elseif self.sortMode == MINION_SORT_HEALTH_DEC then
-            table.sort(self.objects, function(a, b) return a.health > b.health end)
-        elseif self.sortMode == MINION_SORT_MAXHEALTH_ASC then
-            table.sort(self.objects, function(a, b) return a.maxHealth < b.maxHealth end)
-        elseif self.sortMode == MINION_SORT_MAXHEALTH_DEC then
-            table.sort(self.objects, function(a, b) return a.maxHealth > b.maxHealth end)
-        elseif self.sortMode == MINION_SORT_AD_ASC then
-            table.sort(self.objects, function(a, b) return a.ad < b.ad end)
-        elseif self.sortMode == MINION_SORT_AD_DEC then
-            table.sort(self.objects, function(a, b) return a.ad > b.ad end)
-        end
-    end
+    if self.sortMode then table.sort(self.objects, self.sortMode) end
     self.iCount = #self.objects
 end
 
@@ -2059,16 +2066,16 @@ end
 -- Inventory
 --[[
 Goblal Function :
-CastItem(itemID) 					-- Cast item
-CastItem(itemID, hero) 				-- Cast item on hero
-CastItem(itemID, x, z) 				-- Cast item on pos x,z
+CastItem(itemID)                    -- Cast item
+CastItem(itemID, hero)              -- Cast item on hero
+CastItem(itemID, x, z)              -- Cast item on pos x,z
 
-GetInventorySlotItem(itemID)		-- return the slot or nil
-GetInventoryHaveItem(itemID)		-- return true/false
-GetInventorySlotIsEmpty(slot)		-- return true/false
-GetInventoryItemIsCastable(itemID)	-- return true/false
+GetInventorySlotItem(itemID)        -- return the slot or nil
+GetInventoryHaveItem(itemID)        -- return true/false
+GetInventorySlotIsEmpty(slot)       -- return true/false
+GetInventoryItemIsCastable(itemID)  -- return true/false
 
-InShop()				-- return true/false, x, y, z, range
+InShop()                -- return true/false, x, y, z, range
 ]]
 
 function GetInventorySlotItem(itemID, target)
@@ -2139,18 +2146,18 @@ Method :
 CL = ChampionLane()
 
 Functions :
-CL:GetMyLane()			-- return lane name
-CL:GetPoint(lane)			-- return the 3D point of the center of the lane
-CL:GetHeroCount(lane)		-- return number of enemy hero in lane
-CL:GetHeroCount(lane, team)	-- return number of team hero in lane ("ally", "enemy")
-CL:GetHeroArray(lane)	-- return the array of enemy hero objects in lane
-CL:GetHeroArray(lane, team)	-- return the array of team hero objects in lane
-CL:GetCarryAD()			-- return the object of the enemy Carry Ad or nil
-CL:GetCarryAD(team)		-- return the object of the team Carry Ad or nil
-CL:GetSupport()			-- return the object of the enemy support or nil
-CL:GetSupport(team)		-- return the object of the team support or nil
-CL:GetJungler()			-- return the object of the enemy jungler or nil
-CL:GetJungler(team)		-- return the object of the team jungler or nil
+CL:GetMyLane()          -- return lane name
+CL:GetPoint(lane)           -- return the 3D point of the center of the lane
+CL:GetHeroCount(lane)       -- return number of enemy hero in lane
+CL:GetHeroCount(lane, team) -- return number of team hero in lane ("ally", "enemy")
+CL:GetHeroArray(lane)   -- return the array of enemy hero objects in lane
+CL:GetHeroArray(lane, team) -- return the array of team hero objects in lane
+CL:GetCarryAD()         -- return the object of the enemy Carry Ad or nil
+CL:GetCarryAD(team)     -- return the object of the team Carry Ad or nil
+CL:GetSupport()         -- return the object of the enemy support or nil
+CL:GetSupport(team)     -- return the object of the team support or nil
+CL:GetJungler()         -- return the object of the enemy jungler or nil
+CL:GetJungler(team)     -- return the object of the team jungler or nil
 ]]
 
 _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknow = {} }, myLane = "unknow", nextUpdate = 0, tickUpdate = 250 }
@@ -2335,10 +2342,10 @@ end
 -- minimap
 --[[
 Goblal Function :
-GetMinimapX(x) 					-- Return x minimap value
-GetMinimapY(y)					-- Return y minimap value
-GetMinimap(v)					-- Get minimap point {x, y} from object
-GetMinimap(x, y)				-- Get minimap point {x, y}
+GetMinimapX(x)                  -- Return x minimap value
+GetMinimapY(y)                  -- Return y minimap value
+GetMinimap(v)                   -- Get minimap point {x, y} from object
+GetMinimap(x, y)                -- Get minimap point {x, y}
 ]]
 
 local _miniMap = { init = true }
@@ -2386,29 +2393,29 @@ function GetMinimap(a, b)
     return { x = GetMinimapX(x), y = GetMinimapY(y) }
 end
 
---	autoLevel
+--  autoLevel
 --[[
-autoLevelSetSequence(sequence)	-- set the sequence
-autoLevelSetFunction(func)		-- set the function used if sequence level == 0
-	Usage :
-		On your script :
-		Set the levelSequence :
-			local levelSequence = {1,nil,0,1,1,4,1,nil,1,nil,4,nil,nil,nil,nil,4,nil,nil}
-			autoLevelSetSequence(levelSequence)
-				The levelSequence is table of 18 fields
-				1-4 = spell 1 to 4
-				nil = will not auto level on this one
-				0 = will use your own function for this one, that return a number between 1-4
+autoLevelSetSequence(sequence)  -- set the sequence
+autoLevelSetFunction(func)      -- set the function used if sequence level == 0
+    Usage :
+        On your script :
+        Set the levelSequence :
+            local levelSequence = {1,nil,0,1,1,4,1,nil,1,nil,4,nil,nil,nil,nil,4,nil,nil}
+            autoLevelSetSequence(levelSequence)
+                The levelSequence is table of 18 fields
+                1-4 = spell 1 to 4
+                nil = will not auto level on this one
+                0 = will use your own function for this one, that return a number between 1-4
 
-		Set the function if you use 0, example :
-			local onChoiceFunction = function()
-				if player:GetSpellData(SPELL_2).level < player:GetSpellData(SPELL_3).level then
-					return 2
-				else
-					return 3
-				end
-			end
-			autoLevelSetFunction(onChoiceFunction)
+        Set the function if you use 0, example :
+            local onChoiceFunction = function()
+                if player:GetSpellData(SPELL_2).level < player:GetSpellData(SPELL_3).level then
+                    return 2
+                else
+                    return 3
+                end
+            end
+            autoLevelSetFunction(onChoiceFunction)
 ]]
 
 local _autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
@@ -2459,7 +2466,7 @@ function autoLevelSetFunction(func)
     _autoLevel.onChoiceFunction = func
 end
 
---	scriptConfig
+--  scriptConfig
 --[[
 
 myConfig = scriptConfig("My Script Config Header", "thisScript")
@@ -2469,32 +2476,32 @@ myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
 
-myConfig:permaShow(pvar)	-- show this var in perma menu
+myConfig:permaShow(pvar)    -- show this var in perma menu
 
-myConfig:addTS(ts)			-- add a ts instance
+myConfig:addTS(ts)          -- add a ts instance
 
 
 var are myConfig.var
 
 function OnLoad()
-	myConfig = scriptConfig("My Script Config", "thisScript.cfg")
-	myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-	myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
-	myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
-	myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
-	myConfig:permaShow("harass")
-	myConfig:permaShow("combo")
-	ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
-	ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
-	myConfig:addTS(ts)
+    myConfig = scriptConfig("My Script Config", "thisScript.cfg")
+    myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+    myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
+    myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
+    myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
+    myConfig:permaShow("harass")
+    myConfig:permaShow("combo")
+    ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
+    ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
+    myConfig:addTS(ts)
 end
 
 function OnTick()
-	if myConfig.combo == true then
-		-- bla
-	elseif myConfig.harass then
-		-- bla
-	end
+    if myConfig.combo == true then
+        -- bla
+    elseif myConfig.harass then
+        -- bla
+    end
 end
 ]]
 
@@ -2686,7 +2693,7 @@ end
 local function __SC__OnLoad()
     if not __SC__OnDraw then
         function __SC__OnDraw()
-            if __SC__init() then return end
+            if __SC__init() or Console__IsOpen then return end
             if IsKeyDown(_SC.menuKey) or _SC._changeKey then
                 if _SC.draw.move then
                     local cursor = GetCursorPos()
@@ -2745,7 +2752,7 @@ local function __SC__OnLoad()
     end
     if not __SC__OnWndMsg then
         function __SC__OnWndMsg(msg, key)
-            if __SC__init() then return end
+            if __SC__init() or Console__IsOpen then return end
             local msg, key = msg, key
             if key == _SC.menuKey and _SC.lastKeyState ~= msg then
                 _SC.lastKeyState = msg
