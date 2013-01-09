@@ -50,7 +50,7 @@ end
 
 --from http://lua-users.org/wiki/SplitJoin
 string.split = function(str, delim, maxNb)
--- Eliminate bad cases...
+    -- Eliminate bad cases...
     if not delim or delim == "" or string.find(str, delim) == nil then
         return { str }
     end
@@ -59,11 +59,15 @@ string.split = function(str, delim, maxNb)
     local pat = "(.-)" .. delim .. "()"
     local nb = 0
     local lastPos
+    local last
     for part, pos in string.gmatch(str, pat) do
         nb = nb + 1
+        if nb == maxNb then
+            result[nb] = lastPos and string.sub(str, lastPos, #str ) or str
+            break
+        end
         result[nb] = part
         lastPos = pos
-        if nb == maxNb then break end
     end
     -- Handle the last field
     if nb ~= maxNb then
