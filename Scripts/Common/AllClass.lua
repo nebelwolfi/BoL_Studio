@@ -131,7 +131,7 @@ end
 ]]
 function TimerText(seconds)
     if type(seconds) ~= "number" or seconds > 100000 or seconds < 0 then return " ? " end
-    return seconds >= 60 and string.format("%i:%02i", seconds / 60, seconds % 60) or string.format(":%02i", seconds % 60)
+    return string.format("%i:%02i", seconds / 60, seconds % 60)
 end
 
 -- for combat
