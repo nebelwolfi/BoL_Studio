@@ -125,6 +125,15 @@ function CursorIsUnder(x, y, sizeX, sizeY)
     return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
+--fixed by gReY/ This is a bug on the c++/c site, i hope it gets fixed soon
+function ARGB(a, r, g, b)
+    a = a < 0 and 0 or (a>255 and 255 or a)
+	r = r < 0 and 0 or (r>255 and 255 or r)
+	g = g < 0 and 0 or (g>255 and 255 or g)
+	b = b < 0 and 0 or (b>255 and 255 or b)
+	return (a<255 and a*16777216 or -16777216) + r*65536 + g*256 + b
+end
+
 --[[
    return texted version of a timer(minutes and seconds)
    if you want the full time string, use os.date("%H:%M:%S",seconds+82800)
@@ -256,11 +265,16 @@ function OnScreen(x, y)
     return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H
 end
 
+--ToDo: Add Different Overloads
+function DrawRectangle(x, y, width, height, color)
+    DrawLine( x, y + (height/2), x + width, y + (height/2), height, color)
+end
+
 function DrawCircle2D(x, y, radius, width, color, quality)
     local px, py
     quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
     for theta = 0, 2 * math.pi + quality, quality do
-        cx, cy = x + radius * math.cos(theta), y - radius * math.sin(theta)
+        local cx, cy = x + radius * math.cos(theta), y - radius * math.sin(theta)
         if px then DrawLine(px, py, cx, cy, width or 1, color or 4294967295) end
         px, py = cx, cy
     end
