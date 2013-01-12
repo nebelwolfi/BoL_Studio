@@ -125,12 +125,8 @@ function CursorIsUnder(x, y, sizeX, sizeY)
     return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
---fixed by gReY/ This is a bug on the c++/c site, i hope it gets fixed soon
-function ARGB(a, r, g, b)
-    a = a < 0 and 0 or (a>255 and 255 or a)
-	r = r < 0 and 0 or (r>255 and 255 or r)
-	g = g < 0 and 0 or (g>255 and 255 or g)
-	b = b < 0 and 0 or (b>255 and 255 or b)
+--lua_number = float. This is a temp fix for all colors with the opacity 255
+function ARGB2(a, r, g, b)
 	return (a<255 and a*16777216 or -16777216) + r*65536 + g*256 + b
 end
 
