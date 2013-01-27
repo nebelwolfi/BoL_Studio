@@ -125,9 +125,38 @@ function CursorIsUnder(x, y, sizeX, sizeY)
     return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
---lua_number = float. This is a temp fix for all colors with the opacity 255
-function ARGB2(a, r, g, b)
-	return (a<255 and a*16777216 or -16777216) + r*65536 + g*256 + b
+--lua_number = float. This is a very, very dirty fix for all colors (by gReY)
+if not ARGB then
+    function ARGB(a, r, g, b)
+        if a == 0 then return RGB( r , g , b) end
+        if a == 255 then return -16777216 + r * 65536 + g * 256 + b end
+        --Dirtiest Workaround ever :D
+        local function add(a, b)
+            local astring, bstring = tostring(a), tostring(b)
+            local index, maxIndex = 0, math.max(#astring, #bstring)
+            local total, carry = "", 0
+            while index < maxIndex or carry > 0 do
+                local value = carry + (#astring - index > 0 and tonumber(astring:sub(#astring - index, #astring - index)) or 0) + (#bstring - index > 0 and tonumber(bstring:sub(#bstring - index, #bstring - index)) or 0)
+                carry = math.floor(value / 10)
+                total = value % 10 .. total
+                index = index + 1
+            end
+            return load("return " .. total)()
+        end
+        local function mul(a, b)
+            local astring, b = tostring(math.max(a, b)), math.min(a, b)
+            local index, maxIndex = 0, #astring
+            local total = ""
+            while index < maxIndex do
+                local value = tostring((tonumber(astring:sub(#astring - index, #astring - index)) or 0) * b)
+                for i = 1, index do value = value .. "0" end
+                total = tostring(add(total, value))
+                index = index + 1
+            end
+            return load("return " .. total)()
+        end
+        return add(add(add(b, mul(g, 256)), mul(r, 65536)), mul(a, 16777216))
+    end
 end
 
 --[[
