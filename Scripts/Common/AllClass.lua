@@ -122,43 +122,41 @@ function CursorIsUnder(x, y, sizeX, sizeY)
         y = y + sizeY
         sizeY = -sizeY
     end
-    return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
+return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
 --lua_number = float. This is a very, very dirty fix for all colors (by gReY)
-if not ARGB then
-    function ARGB(a, r, g, b)
-        assert(a >= 0 and a <= 255 and r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "function ARGB: arguments out of range (0-255)")
-        a, r, g, b = math.floor(a), math.floor(r), math.floor(g), math.floor(b)
-        if a == 0 then return r * 65536 + g * 256 + b end
-        if a == 255 then return -16777216 + r * 65536 + g * 256 + b end --First Workaround
-        --Dirtiest Workaround ever :D
-        local function add(a, b)
-            local astring, bstring = tostring(a), tostring(b)
-            local index, maxIndex = 0, math.max(#astring, #bstring)
-            local total, carry = "", 0
-            while index < maxIndex or carry > 0 do
-                local value = carry + (#astring - index > 0 and tonumber(astring:sub(#astring - index, #astring - index)) or 0) + (#bstring - index > 0 and tonumber(bstring:sub(#bstring - index, #bstring - index)) or 0)
-                carry = math.floor(value / 10)
-                total = value % 10 .. total
-                index = index + 1
-            end
-            return load("return " .. total)()
+
+function ARGB(a, r, g, b)
+    assert(a >= 0 and a <= 255 and r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "function ARGB: arguments out of range (0-255)")
+    a, r, g, b = math.floor(a), math.floor(r), math.floor(g), math.floor(b)
+    if a == 0 then return r * 65536 + g * 256 + b end
+    --Dirtiest Workaround ever :D
+    local function add(a, b)
+        local astring, bstring = tostring(a), tostring(b)
+        local index, maxIndex = 0, math.max(#astring, #bstring)
+        local total, carry = "", 0
+        while index < maxIndex or carry > 0 do
+            local value = carry + (#astring - index > 0 and tonumber(astring:sub(#astring - index, #astring - index)) or 0) + (#bstring - index > 0 and tonumber(bstring:sub(#bstring - index, #bstring - index)) or 0)
+            carry = math.floor(value / 10)
+            total = value % 10 .. total
+            index = index + 1
         end
-        local function mul(a, b)
-            local astring, b = tostring(math.max(a, b)), math.min(a, b)
-            local index, maxIndex = 0, #astring
-            local total = 0
-            while index < maxIndex do
-                local value = tostring((tonumber(astring:sub(maxIndex - index, maxIndex - index)) or 0) * b)
-                for i = 1, index do value = value .. "0" end
-                total = add(total, value)
-                index = index + 1
-            end
-            return load("return " .. total)()
-        end
-        return add(mul(a, 16777216), r * 65536 + g * 256 + b)
+        return load("return " .. total)()
     end
+    local function mul(a, b)
+        local astring, b = tostring(math.max(a, b)), math.min(a, b)
+        local index, maxIndex = 0, #astring
+        local total = 0
+        while index < maxIndex do
+            local value = tostring((tonumber(astring:sub(maxIndex - index, maxIndex - index)) or 0) * b)
+            for i = 1, index do value = value .. "0" end
+            total = add(total, value)
+            index = index + 1
+        end
+        return load("return " .. total)()
+    end
+    return add(mul(a, 16777216), r * 65536 + g * 256 + b)
 end
 
 --[[
