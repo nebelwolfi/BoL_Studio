@@ -128,8 +128,10 @@ end
 --lua_number = float. This is a very, very dirty fix for all colors (by gReY)
 if not ARGB then
     function ARGB(a, r, g, b)
-        if a == 0 then return RGB( r , g , b) end
-        if a == 255 then return -16777216 + r * 65536 + g * 256 + b end
+        assert(a >= 0 and a <= 255 and r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "function ARGB: arguments out of range (0-255)")
+        a, r, g, b = math.floor(a), math.floor(r), math.floor(g), math.floor(b)
+        if a == 0 then return r * 65536 + g * 256 + b end
+        if a == 255 then return -16777216 + r * 65536 + g * 256 + b end --First Workaround
         --Dirtiest Workaround ever :D
         local function add(a, b)
             local astring, bstring = tostring(a), tostring(b)
@@ -146,16 +148,16 @@ if not ARGB then
         local function mul(a, b)
             local astring, b = tostring(math.max(a, b)), math.min(a, b)
             local index, maxIndex = 0, #astring
-            local total = ""
+            local total = 0
             while index < maxIndex do
-                local value = tostring((tonumber(astring:sub(#astring - index, #astring - index)) or 0) * b)
+                local value = tostring((tonumber(astring:sub(maxIndex - index, maxIndex - index)) or 0) * b)
                 for i = 1, index do value = value .. "0" end
-                total = tostring(add(total, value))
+                total = add(total, value)
                 index = index + 1
             end
             return load("return " .. total)()
         end
-        return add(add(add(b, mul(g, 256)), mul(r, 65536)), mul(a, 16777216))
+        return add(mul(a, 16777216), r * 65536 + g * 256 + b)
     end
 end
 
