@@ -80,7 +80,8 @@ string.join = function(arg, del)
     local str, del = "", del or ""
     if not arg or not arg[1] then return str end
     for i, v in ipairs(arg) do
-        str = str .. tostring(v) .. del
+        if i==#arg then str = str .. tostring(v)
+    	else str = str .. tostring(v) .. del end
     end
     return str
 end
@@ -142,7 +143,7 @@ function ARGB(a, r, g, b)
             total = value % 10 .. total
             index = index + 1
         end
-        return load("return " .. total)()
+        return tonumber(total)
     end
     local function mul(a, b)
         local astring, b = tostring(math.max(a, b)), math.min(a, b)
@@ -154,7 +155,7 @@ function ARGB(a, r, g, b)
             total = add(total, value)
             index = index + 1
         end
-        return load("return " .. total)()
+        return tonumber(total)
     end
     return add(mul(a, 16777216), r * 65536 + g * 256 + b)
 end
@@ -265,8 +266,8 @@ end
 local _get2DFrom3D = {}
 function get2DFrom3D(x, y, z)
     local obj = Vector({ x = x - cameraPos.x, y = y - cameraPos.y, z = z - cameraPos.z })
-    if _get2DFrom3D.camHeigth ~= cameraPos.y then
-        _get2DFrom3D.camHeigth = cameraPos.y
+    if _get2DFrom3D.camHeight ~= cameraPos.y then
+        _get2DFrom3D.camHeight = cameraPos.y
         local beta, gamma = 9 * math.pi / 180, 50 * math.pi / 180
         local P3_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta) * math.abs(obj.y) })
         local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) }); P1_5 = P1_5 * P3_5:len() / P1_5:len()
@@ -1336,7 +1337,7 @@ end
 local function _TS_Draw_Init()
     if not _TS_Draw then
         UpdateWindow()
-        _TS_Draw = { y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, redColor = 1422721024, greenColor = 1409321728, blueColor = 2684354716 }
+        _TS_Draw = { y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, redColor = 1422721024, greenColor = 1409321728, blueColor = 2684354716 }
         _TS_Draw.cellSize, _TS_Draw.midSize, _TS_Draw.row1, _TS_Draw.row2, _TS_Draw.row3, _TS_Draw.row4 = _TS_Draw.fontSize + _TS_Draw.border, _TS_Draw.fontSize / 2, _TS_Draw.width * 0.6, _TS_Draw.width * 0.7, _TS_Draw.width * 0.8, _TS_Draw.width * 0.9
     end
 end
@@ -1810,7 +1811,7 @@ Members :
 
 -- map 7 = The Proving Grounds
 
-local _gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, heigth = 0 } }
+local _gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
 function GetMap()
     if _gameMap.index == 0 then
         for i = 1, objManager.maxObjects do
@@ -1818,16 +1819,16 @@ function GetMap()
             if object ~= nil then
                 if object.type == "obj_Shop" and object.team == TEAM_BLUE then
                     if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
-                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, heigth = 14446 / 2 } }
+                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
                         break
                     elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, heigth = 14474 / 2 } }
+                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, height = 14474 / 2 } }
                         break
                     elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, heigth = 12812 / 2 } }
+                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, height = 12812 / 2 } }
                         break
                     elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, heigth = 13218 / 2 } }
+                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
                         break
                     end
                 end
@@ -2637,8 +2638,8 @@ local function __SC__updateMaster()
         size = size + _SC.master["I" .. i]
         sizep = sizep + _SC.master["PS" .. i]
     end
-    _SC.draw.heigth = size * _SC.draw.cellSize
-    _SC.pDraw.heigth = sizep * _SC.pDraw.cellSize
+    _SC.draw.height = size * _SC.draw.cellSize
+    _SC.pDraw.height = sizep * _SC.pDraw.cellSize
     _SC.draw.x = _SC.master.x
     _SC.draw.y = _SC.master.y
     _SC.pDraw.x = _SC.master.px
@@ -2658,8 +2659,8 @@ end
 local function __SC__init_draw()
     if _SC.initDraw then
         UpdateWindow()
-        _SC.draw = { x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
-        _SC.pDraw = { x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, heigth = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
+        _SC.draw = { x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
+        _SC.pDraw = { x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
         local menuConfig = __SC__load("Menu")
         for var, value in pairs(menuConfig) do
             vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
@@ -2672,7 +2673,7 @@ local function __SC__init_draw()
         _SC.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
         _SC.draw.cellSize, _SC.draw.midSize, _SC.draw.row4, _SC.draw.row3, _SC.draw.row2, _SC.draw.row1 = _SC.draw.fontSize + _SC.draw.border, _SC.draw.fontSize / 2, _SC.draw.width * 0.9, _SC.draw.width * 0.8, _SC.draw.width * 0.7, _SC.draw.width * 0.6
         _SC.pDraw.cellSize, _SC.pDraw.midSize, _SC.pDraw.row = _SC.pDraw.fontSize + _SC.pDraw.border, _SC.pDraw.fontSize / 2, _SC.pDraw.width * 0.7
-        _SC._Idraw = { x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2, y = _SC.draw.y, heigth = 0 }
+        _SC._Idraw = { x = _SC.draw.x + _SC.draw.width + _SC.draw.border * 2, y = _SC.draw.y, height = 0 }
         if WINDOW_H < 500 or WINDOW_W < 500 then return true end
         _SC.initDraw = nil
     end
@@ -2749,7 +2750,7 @@ local function __SC__OnLoad()
                     _SC.pDraw.y = cursor.y - _SC.pDraw.offset.y
                 end
                 if _SC.masterIndex == 1 then
-                    DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+                    DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y + _SC.draw.height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
                     _SC.draw.y1 = _SC.draw.y
                     local menuText = _SC._changeKey and not _SC._changeKeyVar and "press key for Menu" or "Menu"
                     DrawText(menuText, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, _SC.color.ivory) -- ivory
@@ -2759,10 +2760,10 @@ local function __SC__OnLoad()
                 if _SC.useTS then
                     __SC__DrawInstance("Target Selector", (_SC.menuIndex == 0))
                     if _SC.menuIndex == 0 then
-                        DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+                        DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC.draw.y + _SC._Idraw.height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
                         DrawText("Target Selector", _SC.draw.fontSize, _SC._Idraw.x, _SC.draw.y, _SC.color.ivory)
                         _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-                        _SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+                        _SC._Idraw.height = _SC._Idraw.y - _SC.draw.y
                     end
                 end
                 _SC.draw.y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
@@ -2818,7 +2819,7 @@ local function __SC__OnLoad()
                 end
             end
             if msg == WM_LBUTTONDOWN and IsKeyDown(_SC.menuKey) then
-                if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.heigth) then
+                if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.height) then
                     _SC.menuIndex = -1
                     if CursorIsUnder(_SC.draw.x + _SC.draw.width - _SC.draw.fontSize * 1.5, _SC.draw.y, _SC.draw.fontSize, _SC.draw.cellSize) then
                         _SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, nil, true
@@ -2835,12 +2836,12 @@ local function __SC__OnLoad()
                             y1 = y1 + _SC.draw.cellSize
                         end
                     end
-                elseif CursorIsUnder(_SC.pDraw.x, _SC.pDraw.y, _SC.pDraw.width, _SC.pDraw.heigth) then
+                elseif CursorIsUnder(_SC.pDraw.x, _SC.pDraw.y, _SC.pDraw.width, _SC.pDraw.height) then
                     _SC.pDraw.offset = Vector(GetCursorPos()) - _SC.pDraw
                     _SC.pDraw.move = true
                 elseif _SC.menuIndex == 0 then
                     TS_ClickMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-                elseif _SC.menuIndex > 0 and CursorIsUnder(_SC._Idraw.x, _SC.draw.y, _SC.draw.width, _SC._Idraw.heigth) then
+                elseif _SC.menuIndex > 0 and CursorIsUnder(_SC._Idraw.x, _SC.draw.y, _SC.draw.width, _SC._Idraw.height) then
                     _SC.instances[_SC.menuIndex]:OnWndMsg()
                 end
             elseif msg == WM_LBUTTONUP then
@@ -2942,7 +2943,7 @@ function scriptConfig:OnDraw()
         self[self._param[_SC._slice].var] = math.round(cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[_SC._slice].max - self._param[_SC._slice].min), self._param[_SC._slice].idc)
     end
     _SC._Idraw.y = _SC.draw.y
-    DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y + _SC._Idraw.heigth, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+    DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y + _SC._Idraw.height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
     local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for " .. _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
     DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
@@ -2955,7 +2956,7 @@ function scriptConfig:OnDraw()
     for index, param in ipairs(self._param) do
         self:_DrawParam(index)
     end
-    _SC._Idraw.heigth = _SC._Idraw.y - _SC.draw.y
+    _SC._Idraw.height = _SC._Idraw.y - _SC.draw.y
 end
 
 function scriptConfig:_DrawParam(varIndex)
