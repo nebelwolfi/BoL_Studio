@@ -48,6 +48,24 @@ table.contains = function(t, what, member) --member is optional
     end
 end
 
+function table.serialize(t,tab)
+    assert(type(t)=="table", "table.serialize: Wrong Argument, table expected")
+    local s = "{\n"
+    for i, v in pairs(t) do
+        local cS = (tab or "") .. "\t"
+        local iType, vType = type(i), type(v)
+        if iType == "number" then cS = cS .. "[" .. i .. "] = "
+        elseif iType == "string" then cS = cS .. i .. " = "
+        else break end
+        if vType == "number" then cS = cS .. v
+        elseif vType == "string" then cS = cS .. [["]] .. v .. [["]]
+        elseif vType == "table" then cS = cS .. table.serialize(v, (tab or "").."\t")
+        else break end
+        s = s .. cS .. ",\n"
+    end
+    return s..(tab or "").."}"
+end
+
 --from http://lua-users.org/wiki/SplitJoin
 string.split = function(str, delim, maxNb)
     -- Eliminate bad cases...
