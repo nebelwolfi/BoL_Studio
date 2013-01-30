@@ -60,6 +60,7 @@ function table.serialize(t,tab)
         if vType == "number" then cS = cS .. v
         elseif vType == "string" then cS = cS .. [["]] .. v .. [["]]
         elseif vType == "table" then cS = cS .. table.serialize(v, (tab or "").."\t")
+    	elseif vType == "boolean" then cS = cS .. tostring(v)
         else break end
         s = s .. cS .. ",\n"
     end
