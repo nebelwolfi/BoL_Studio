@@ -17,15 +17,15 @@ GetDistance2D = GetDistance
 
 function ValidTarget(object, distance, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    return object ~= nil and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistance(object) <= distance)
+    return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistance(object) <= distance)
 end
 
 function ValidTargetNear(object, distance, target)
-    return object ~= nil and object.team == target.team and object.networkID ~= target.networkID and object.visible and not object.dead and object.bTargetable and GetDistance(target, object) <= distance
+    return object ~= nil and object.valid and object.team == target.team and object.networkID ~= target.networkID and object.visible and not object.dead and object.bTargetable and GetDistance(target, object) <= distance
 end
 
 function GetDistanceFromMouse(object)
-    if object ~= nil and VectorType(object) then return GetDistance(object, mousePos) end
+    if object ~= nil and object.valid and VectorType(object) then return GetDistance(object, mousePos) end
     return 100000
 end
 
@@ -220,7 +220,7 @@ function TargetHaveParticle(particle, target, range)
     local range = range or 50
     for i = 1, objManager.maxObjects do
         local object = objManager:GetObject(i)
-        if object ~= nil and object.name == particle and GetDistance(target, object) < range then return true end
+        if object ~= nil and object.valid and object.name == particle and GetDistance(target, object) < range then return true end
     end
     return false
 end
@@ -1048,7 +1048,7 @@ local function _gameHeros__init()
         _gameAllyCount, _gameEnemyCount = 0, 0
         for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
-            if hero ~= nil then
+            if hero ~= nil and hero.valid then
                 if hero.team == player.team then
                     _gameAllyCount = _gameAllyCount + 1
                     table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
@@ -1065,7 +1065,7 @@ local function _gameHeros__extended(target, assertText)
     local assertText = assertText or ""
     if type(target) == "number" then
         return _gameHeros[target]
-    elseif target ~= nil then
+    elseif target ~= nil and target.valid then
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
         for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.networkID == target.networkID then
@@ -1120,7 +1120,7 @@ local function _Prediction__OnLoad()
             _Prediction.delta = 1 / (tick - _Prediction.tick)
             _Prediction.tick = tick
             for i, _gameHero in ipairs(_gameHeros) do
-                if _gameHero.hero ~= nil and _gameHero.hero.dead == false and _gameHero.hero.visible then
+                if _gameHero.hero ~= nil and _gameHero.hero.valid and _gameHero.hero.dead == false and _gameHero.hero.visible then
                     _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
                     _gameHero.lastPos = Vector(_gameHero.hero)
                     _gameHero.pHealth = _gameHero.hero.health - _gameHero.lastHealth
@@ -1134,7 +1134,7 @@ local function _Prediction__OnLoad()
     _gameHeros__init()
     _Prediction.tick = GetTickCount()
     for i, _gameHero in ipairs(_gameHeros) do
-        if _gameHero.hero ~= nil then
+        if _gameHero.hero ~= nil and _gameHero.hero.valid then
             _gameHero.pVector = Vector()
             _gameHero.lastPos = Vector(_gameHero.hero)
             _gameHero.pHealth = 0
@@ -1273,7 +1273,7 @@ local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "Near
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     for i, target in ipairs(_gameHeros) do
-        if target.hero ~= nil and target.enemy == enemyTeam then
+        if target.hero ~= nil and target.hero.valid and target.enemy == enemyTeam then
             PrintChat("[TS] " .. (enemyTeam and "Enemy " or "Ally ") .. target.tIndex .. " (" .. target.index .. ") : " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .. " Priority=" .. target.priority)
         end
     end
@@ -1282,7 +1282,7 @@ end
 function TS_SetFocus(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local selected = _gameHeros__hero(target, "TS_SetFocus")
-    if selected ~= nil and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
+    if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
         for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.enemy == enemyTeam then
                 if _gameHero.hero.networkID == selected.networkID then
@@ -1342,7 +1342,7 @@ end
 function TS_Ignore(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local selected = _gameHeros__hero(target, "TS_Ignore")
-    if selected ~= nil and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
+    if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
         for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
                 _gameHero.ignore = not _gameHero.ignore
@@ -1671,7 +1671,7 @@ function GetMinionCollision(posStart, posEnd, spellWidth)
     local distance = GetDistance(posStart, posEnd)
     for i = 0, objManager.maxObjects, 1 do
         local object = objManager:getObject(i)
-        if object and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
+        if object and object.valid and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
             if GetDistance(object, posStart) < distance and GetDistance(object, posEnd) < distance then
                 local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, object)
                 if GetDistance(closestPoint, object) <= spellWidth / 2 then return true end
@@ -1835,7 +1835,7 @@ function GetMap()
     if _gameMap.index == 0 then
         for i = 1, objManager.maxObjects do
             local object = objManager:getObject(i)
-            if object ~= nil then
+            if object ~= nil and object.valid then
                 if object.type == "obj_Shop" and object.team == TEAM_BLUE then
                     if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
                         _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
@@ -1895,7 +1895,7 @@ function GameState:__init()
         if (mapIndex == 1 or mapIndex == 2 or mapIndex == 3) then
             for i = 1, objManager.maxObjects, 1 do
                 local object = objManager:getObject(i)
-                if object ~= nil and object.type == "obj_HQ" then
+                if object ~= nil and object.valid and object.type == "obj_HQ" then
                     table.insert(_gameState.objects, { object = object, team = object.team })
                 end
             end
@@ -1956,7 +1956,7 @@ function GetStart()
         local gameStarted = false
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
-            if object ~= nil and object.type == "obj_AI_Minion" and string.find(object.name, "Minion_T") then
+            if object ~= nil and object.valid and object.type == "obj_AI_Minion" and string.find(object.name, "Minion_T") then
                 gameStarted = true
                 break
             end
@@ -2249,7 +2249,7 @@ local function _ChampionLane__OnLoad()
         local start = GetStart()
         for i = 1, heroManager.iCount, 1 do
             local hero = heroManager:getHero(i)
-            if hero ~= nil then
+            if hero ~= nil and hero.valid then
                 local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name .. hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
                 table.insert(_championLane[(hero.team == player.team and "ally" or "enemy")].champions, { hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler })
                 if isJungler then
