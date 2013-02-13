@@ -36,7 +36,6 @@
 
 do
 	--[[      GLOBAL      ]]
-	require "AllClass"
 
 	local jungle = {}
 
