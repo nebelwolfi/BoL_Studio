@@ -213,16 +213,21 @@ function GetHeroLeveled()
     return player:GetSpellData(SPELL_1).level + player:GetSpellData(SPELL_2).level + player:GetSpellData(SPELL_3).level + player:GetSpellData(SPELL_4).level
 end
 
--- return if target have particule
+-- return the target particle
+function GetParticleObject(particle, target, range)
+	assert(type(particle) == "string", "GetParticleObject: wrong argument types (<string> expected for particle)")
+	local target = target or player
+	local range = range or 50
+	for i = 1, objManager.maxObjects do
+		local object = objManager:GetObject(i)
+		if object ~= nil and object.valid and object.name == particle and GetDistance(target, object) < range then return object end
+	end
+	return nil
+end
+-- return if target have particle
 function TargetHaveParticle(particle, target, range)
     assert(type(particle) == "string", "TargetHaveParticule: wrong argument types (<string> expected for particle)")
-    local target = target or player
-    local range = range or 50
-    for i = 1, objManager.maxObjects do
-        local object = objManager:GetObject(i)
-        if object ~= nil and object.valid and object.name == particle and GetDistance(target, object) < range then return true end
-    end
-    return false
+    return (GetParticleObject(particle, target, range) ~= nil)
 end
 
 -- return if target have buff
@@ -362,7 +367,7 @@ end
 
 function DrawHitBox(object, linesize, linecolor)
     local linesize, linecolor = linesize or 1, linecolor or 4294967295
-    if object and object.minBBox then
+    if object and object.valid and object.minBBox then
         local x1, y1, z1 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.minBBox.z)
         local x2, y2, z2 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.maxBBox.z)
         local x3, y3, z3 = get2DFrom3D(object.maxBBox.x, object.minBBox.y, object.maxBBox.z)
@@ -2117,7 +2122,7 @@ function minionManager:update()
     local i = 1
     self.objects = {}
     for name, object in pairs(_minionTable[self.mode]) do
-        if object and not object.dead and object.visible and GetDistance(self.fromPos, object) <= self.range then
+        if object and object.valid and not object.dead and object.visible and GetDistance(self.fromPos, object) <= self.range then
             self.objects[i] = object; i = i + 1
         end
     end
@@ -3062,4 +3067,65 @@ function scriptConfig:OnWndMsg()
         end
         y1 = y1 + _SC.draw.cellSize
     end
+end
+
+--  Muramana toggler
+--[[
+	MuramanaIsActive()						Return true / false
+	MuramanaOn()							Set Muramana On if possible
+	MuramanaOff()							Set Muramana Off if possible
+	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
+]]
+
+_muramana = { init = true, id = 3042, nextTick = 0, tick = 2500, particle = "ItemMuramanaToggle.troy", object = nil }
+
+function _muramana__OnCreateObj(object)
+	if object and object.valid and object.name == _muramana.particle and GetDistance(object) < 50 then
+		_muramana.object = object
+	end
+end
+
+local function _muramana__Init()
+	if _muramana.init then
+		function __muramana__OnCreateObj(object)
+			if object and object.valid and object.name == _muramana.particle and GetDistance(object) < 50 then
+				_muramana.object = object
+			end
+		end
+		AddCreateObjCallback(__muramana__OnCreateObj)
+		for i = 1, objManager.maxObjects do
+            __muramana__OnCreateObj(objManager:getObject(i))
+        end
+		_muramana.init = false
+	end
+end
+
+function MuramanaIsActive()
+	_muramana__Init()
+	return (_muramana.object ~= nil and _muramana.object.valid)
+end
+
+function MuramanaToggle(range, extCondition)
+	assert(type(range) == "number", "MuramanaToggle: expected <number> for range)")
+	assert((extCondition == nil or type(extCondition) == "boolean"), "MuramanaToggle: expected <boolean> or nil for extCondition)")
+	if extCondition == nil then extCondition = true end
+	if (_muramana.nextTick > GetTickCount()) then return end
+	_muramana.nextTick = GetTickCount() + _muramana.tick
+	local muramanaActived = MuramanaIsActive()
+	if GetInventoryItemIsCastable(_muramana.id) then
+		_muramana.tick = 200
+		local enemyInRange = (CountEnemyHeroInRange(range) > 0)
+		if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
+			-- toogle muramana
+			CastItem(_muramana.id)
+		end
+	end
+end
+
+function MuramanaOn()
+	if (MuramanaIsActive() == false) then CastItem(_muramana.id) end
+end
+
+function MuramanaOff()
+	if (MuramanaIsActive()) then CastItem(_muramana.id) end
 end
