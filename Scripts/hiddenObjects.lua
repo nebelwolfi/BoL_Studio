@@ -12,7 +12,6 @@
 	v0.1c				change spells names for teemo
 	v0.1d				fix the perma show
 	v0.2				BoL Studio Version
-	v0.3				AllClass use
 	
 	USAGE :
 	Hold shift key to see the hidden object's range.
@@ -78,7 +77,7 @@ do
 				visible = (object == nil),
 				display = { visible = false, text = ""},
 			}
-		elseif hiddenObjects.objects[objId].object == nil and object ~= nil then
+		elseif hiddenObjects.objects[objId].object == nil and object ~= nil and object.valid then
 			hiddenObjects.objects[objId].object = object
 			hiddenObjects.objects[objId].fromSpell = false
 		end
@@ -87,7 +86,7 @@ do
 	end
 
 	function OnCreateObj(object)
-		if object ~= nil and object.type == "obj_AI_Minion" then
+		if object ~= nil and object.valid and object.type == "obj_AI_Minion" then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if object.name == objectToAdd.name then
 					local tick = GetTickCount()
@@ -98,7 +97,7 @@ do
 	end
 
 	function OnProcessSpell(object,spell)
-		if object ~= nil and object.team == TEAM_ENEMY then
+		if object ~= nil and object.valid and object.team == TEAM_ENEMY then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if spell.name == objectToAdd.spellName then
 					ticked = GetTickCount()
@@ -109,12 +108,12 @@ do
 	end
 
 	function OnDeleteObj(object)
-		if object ~= nil and object.name ~= nil and object.type == "obj_AI_Minion" then
+		if object ~= nil and object.valid and object.name ~= nil and object.type == "obj_AI_Minion" then
 			for i,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
 				if object.charName == objectToAdd.charName then
 					-- remove the object
 					for j,obj in pairs(hiddenObjects.objects) do
-						if obj.object ~= nil and obj.object.networkID == object.networkID then
+						if obj.object ~= nil and obj.object.valid and obj.object.networkID ~= nil and obj.object.networkID == object.networkID then
 							hiddenObjects.objects[j] = nil
 							return
 						end
@@ -154,7 +153,7 @@ do
 				hiddenObjects.tmpObjects[i] = nil
 			else
 				for j,objectToAdd in pairs(hiddenObjects.objectsToAdd) do
-					if obj.object ~= nil and obj.object.charName == objectToAdd.charName and obj.object.team == TEAM_ENEMY then
+					if obj.object ~= nil and obj.object.valid and obj.object.charName == objectToAdd.charName and obj.object.team == TEAM_ENEMY then
 						hiddenObjects.addObject(objectToAdd, obj.object, false, obj.object)
 						hiddenObjects.tmpObjects[i] = nil
 						break
@@ -166,7 +165,8 @@ do
 			if tick > obj.endTick or (obj.object ~= nil) and false then
 				hiddenObjects.objects[i] = nil
 			else
-				if obj.object == nil or (obj.object ~= nil and obj.object.dead == false) then
+				if obj.object == nil or obj.object.valid == false or (obj.object ~= nil and obj.object.valid and obj.object.dead ~= nil and obj.object.dead == false) then
+				--if obj.object == nil
 					obj.visible = true
 				else
 					obj.visible = false
