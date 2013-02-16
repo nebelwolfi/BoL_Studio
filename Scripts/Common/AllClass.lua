@@ -1854,6 +1854,9 @@ function GetMap()
                     elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
                         _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
                         break
+                    elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
+                        _gameMap = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
+                        break
                     end
                 end
             end
