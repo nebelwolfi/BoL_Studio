@@ -7,8 +7,6 @@
 		UPDATES :
 		v0.1					initial release
 ]]
---require "AllClass"
-
 do
 	--[[      GLOBAL      ]]
 	monsters = {
