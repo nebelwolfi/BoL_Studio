@@ -28,7 +28,6 @@ do
 			end
 		end
 		if #cloneRevealer.heros > 0 then
-			require "AllClass"
 			gameState = GameState()
 			function OnDraw()
 				if gameState:gameIsOver() then return end

@@ -10,8 +10,6 @@
 	v0.2				BoL Studio Version
 ]]
 
-require "AllClass"
-
 do
 	local missChat = {
 		HK = 96,			-- key 0 on keypad
@@ -47,7 +45,6 @@ do
 	end
 	function OnTick()
 		if IsKeyPressed(missChat.HK) then missChat.sendLaneState() end
-		ChampionLane__OnTick()
 	end
 	function OnLoad()
 		CL = ChampionLane()

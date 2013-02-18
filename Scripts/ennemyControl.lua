@@ -14,8 +14,6 @@
 ]]
 
 do
-	require "AllClass"
-
 	local ennemyControl = {}
 	ennemyControl.alert = {}
 
