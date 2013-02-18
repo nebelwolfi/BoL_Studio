@@ -25,7 +25,7 @@ function ValidTargetNear(object, distance, target)
 end
 
 function GetDistanceFromMouse(object)
-    if object ~= nil and object.valid and VectorType(object) then return GetDistance(object, mousePos) end
+    if object ~= nil and VectorType(object) then return GetDistance(object, mousePos) end
     return 100000
 end
 
