@@ -7,6 +7,8 @@
 		UPDATES :
 		v0.1					initial release
 ]]
+--require "AllClass"
+
 do
 	--[[      GLOBAL      ]]
 	monsters = {
@@ -302,29 +304,43 @@ do
 		twistedTreeline = {},
 		crystalScar = {
 			{
+				pos = { x = 5500, y = 60, z = 6500 },
 				name = "Relic",
 				team = TEAM_BLUE,
 				spawn = 180,
 				respawn = 180,
 				advise = true,
-				objectName = "Info_LargeRelic1",
 				locked = false,
-				precenceObject = "Odin_Prism_Green.troy",
+				precenceObject = (player.team == TEAM_BLUE and "Odin_Prism_Green.troy" or "Odin_Prism_Red.troy"),
 			},
 			{
+				pos = { x = 7550, y = 60, z = 6500 },
 				name = "Relic",
 				team = TEAM_RED,
 				spawn = 180,
 				respawn = 180,
 				advise = true,
-				objectName = "Info_LargeRelic2",
 				locked = false,
-				precenceObject = "Odin_Prism_Red.troy",
+				precenceObject = (player.team == TEAM_RED and "Odin_Prism_Green.troy" or "Odin_Prism_Red.troy"),
 			},
 		},
 		provingGrounds = {},
 	}
 
+	heals = {
+		summonerRift = {},
+		twistedTreeline = {},
+		provingGrounds = {},
+		crystalScar = {
+			{
+				name = "Heal",
+				objectName = "OdinShieldRelic",
+				respawn = 30,
+				objects = {},
+			},
+		},
+	}
+	
 	function addCampCreepAltar(object)
 		if object ~= nil and object.name ~= nil then
 			for i,monster in pairs(monsters[mapName]) do
@@ -371,15 +387,24 @@ do
 				end
 			end
 			for i,relic in pairs(relics[mapName]) do
-				if relic.objectName == object.name then
-					relic.founded = true
-					relic.minimap = GetMinimap(object)
-					return
-				elseif relic.precenceObject == object.name then
+				if relic.precenceObject == object.name then
 					relic.object = object
 					relic.locked = false
-					relic.advisedBefore = false
-					relic.advised = false
+					return
+				end
+			end
+			for i,heal in pairs(heals[mapName]) do
+				if heal.objectName == object.name then
+					for j,healObject in pairs(heal.objects) do
+						if (GetDistance(healObject, object) < 50) then
+							healObject.object = object
+							healObject.found = true
+							healObject.locked = false
+							return
+						end
+					end
+					local k = #heal.objects + 1
+					heals[mapName][i].objects[k] = {found = true, locked = false, object = object, x = object.x, y = object.y, z = object.z, minimap = GetMinimap(object), }
 					return
 				end
 			end
@@ -583,39 +608,65 @@ do
 			
 				-- relics
 				for i,relic in pairs(relics[mapName]) do
-					if relic.founded then
-						if (not relic.locked and not relic.object or not relic.object.valid) then
-							if GameTime < relic.spawn then
-								relic.unlockTime = relic.spawn
-							else
-								relic.unlockTime = math.ceil(GameTime + relic.respawn)
-							end
-							relic.unlockText = relic.name.." respawn at "..TimerText(relic.unlockTime)							
-							relic.locked = true
-							relic.drawColor = 0xFFFFFF00
+					if (not relic.locked and (not relic.object or not relic.object.valid or relic.dead)) then
+						if GameTime < relic.spawn then
+							relic.unlockTime = relic.spawn - GameTime
+						else
+							relic.unlockTime = math.ceil(GameTime + relic.respawn)
 						end
-						if relic.locked then
-							relic.secondLeft = math.ceil(math.max(0, relic.unlockTime - GameTime))
+						relic.advised = false
+						relic.advisedBefore = false
+						relic.drawText = ""
+						relic.unlockText = relic.name.." respawn at "..TimerText(relic.unlockTime)							
+						relic.drawColor = 4288610048
+						--FF9EFF00
+						relic.minimap = GetMinimap(relic.pos)
+						relic.locked = true
+					end
+					if relic.locked then
+						relic.secondLeft = math.ceil(math.max(0, relic.unlockTime - GameTime))
+						if relic.advise == true then
+							if relic.secondLeft == 0 and relic.advised == false then
+								relic.advised = true
+								if MMTConfig.textOnRespawn then PrintChat("<font color='#00FFCC'>"..relic.name.."</font><font color='#FFAA00'> has respawned</font>") end
+								if MMTConfig.pingOnRespawn then PingSignal(PING_FALLBACK,relic.pos.x,relic.pos.y,relic.pos.z,2) end
+							elseif relic.secondLeft <= MMTConfig.adviceBefore and relic.advisedBefore == false then
+								relic.advisedBefore = true
+								if MMTConfig.textOnRespawnBefore then PrintChat("<font color='#00FFCC'>"..relic.name.."</font><font color='#FFAA00'> will respawn in </font><font color='#00FFCC'>"..relic.secondLeft.." sec</font>") end
+								if MMTConfig.pingOnRespawnBefore then PingSignal(PING_FALLBACK,relic.pos.x,relic.pos.y,relic.pos.z,2) end
+							end
+						end
+						-- shift click
+						if IsKeyDown(16) then
+							relic.drawText = " "..(relic.unlockTime ~= nil and TimerText(relic.unlockTime) or "")
+							relic.textUnder = (CursorIsUnder(relic.minimap.x - 9, relic.minimap.y - 5, 20, 8))
+						else
 							relic.drawText = " "..(relic.secondLeft ~= nil and TimerText(relic.secondLeft) or "")
-							if relic.advise == true then
-								if relic.secondLeft == 0 and relic.advised == false then
-									relic.advised = true
-									if MMTConfig.textOnRespawn then PrintChat("<font color='#00FFCC'>"..relic.name.."</font><font color='#FFAA00'> has respawned</font>") end
-									if MMTConfig.pingOnRespawn then PingSignal(PING_FALLBACK,relic.object.x,relic.object.y,relic.object.z,2) end
-								elseif relic.secondLeft <= MMTConfig.adviceBefore and relic.advisedBefore == false then
-									relic.advisedBefore = true
-									if MMTConfig.textOnRespawnBefore then PrintChat("<font color='#00FFCC'>"..relic.name.."</font><font color='#FFAA00'> will respawn in </font><font color='#00FFCC'>"..relic.secondLeft.." sec</font>") end
-									if MMTConfig.pingOnRespawnBefore then PingSignal(PING_FALLBACK,relic.object.x,relic.object.y,relic.object.z,2) end
-								end
-							end
+							relic.textUnder = false
+						end
+					end
+				end
+			
+				for i,heal in pairs(heals[mapName]) do
+					for j,healObject in pairs(heal.objects) do
+						if (not healObject.locked and healObject.found and (not healObject.object or not healObject.object.valid or healObject.object.dead)) then
+							healObject.drawColor = 0xFF00FF04
+							healObject.unlockTime = math.ceil(GameTime + heal.respawn)
+							healObject.drawText = ""
+							healObject.found = false
+							healObject.locked = true
+						end
+						if healObject.locked then
 							-- shift click
+							local secondLeft = math.ceil(math.max(0, healObject.unlockTime - GameTime))
 							if IsKeyDown(16) then
-								relic.drawText = " "..(relic.unlockTime ~= nil and TimerText(relic.unlockTime) or "")
-								relic.textUnder = (CursorIsUnder(relic.minimap.x - 9, relic.minimap.y - 5, 20, 8))
+								healObject.drawText = " "..(healObject.unlockTime ~= nil and TimerText(healObject.unlockTime) or "")
+								healObject.textUnder = (CursorIsUnder(healObject.minimap.x - 9, healObject.minimap.y - 5, 20, 8))
 							else
-								relic.drawText = " "..(relic.secondLeft ~= nil and TimerText(relic.secondLeft) or "")
-								relic.textUnder = false
+								healObject.drawText = " "..(secondLeft ~= nil and TimerText(secondLeft) or "")
+								healObject.textUnder = false
 							end
+							if secondLeft == 0 then healObject.locked = false end
 						end
 					end
 				end
@@ -640,8 +691,15 @@ do
 					end
 				end
 				for i,relic in pairs(relics[mapName]) do
-					if relic.founded and relic.locked then
+					if relic.locked then
 						DrawText(relic.drawText,16,relic.minimap.x - 9, relic.minimap.y - 5, relic.drawColor)
+					end
+				end
+				for i,heal in pairs(heals[mapName]) do
+					for j,healObject in pairs(heal.objects) do
+						if healObject.locked then
+							DrawText(healObject.drawText,16,healObject.minimap.x - 9, healObject.minimap.y - 5, healObject.drawColor)
+						end
 					end
 				end
 			end
