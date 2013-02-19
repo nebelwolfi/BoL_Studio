@@ -1,50 +1,30 @@
 --[[
-	Script: Auto SummonerHeal v0.2
+	Script: Auto SummonerHeal v0.3
 	Author: SurfaceS
 
 	v0.1 	initial release
 	v0.2	BoL Studio Version
+	v0.3	Added Menu
 ]]
 
 do
-	--[[ 		Globals		]]
-	local castDelay = 0
-	local active = false
-	local toggled = false
-	local haveDisplay = true		-- don't display chat
-	local activeKey = 32			-- Press key to use autoSummonerBarrier mode (space by default)
-	local toggleKey = 114		-- Press key to toggle autoSummonerBarrier mode (F3/F4 by default based on slot)
-	local minValue = 0.15		-- Minimum health ratio for using Barrier
-	local slot
-	
---[[ 		Code		]]
-	local function ready()
-		if slot ~= nil and castDelay < GetTickCount() and player:CanUseSpell(slot) == READY then return true end
-		return false
-	end
-	
 	function OnLoad()
 		--[[            Conditional            ]]
 		if string.find(player:GetSpellData(SUMMONER_1).name..player:GetSpellData(SUMMONER_2).name, "SummonerHeal") ~= nil then
+			local key = 114
 			if player:GetSpellData(SUMMONER_1).name == "SummonerHeal" then
-				slot = SUMMONER_1
+				HL_slot = SUMMONER_1
 			elseif player:GetSpellData(SUMMONER_2).name == "SummonerHeal" then
-				slot = SUMMONER_2
-				toggleKey = toggleKey + 1
+				HL_slot = SUMMONER_2
+				key = 115
 			end
-			function OnWndMsg(msg,wParam)
-				if msg == KEY_DOWN and wParam == toggleKey then
-					toggled = not toggled
-					active = toggled
-					if haveDisplay == false then PrintChat(" >> Auto heal : "..(active and "ON" or "OFF")) end
-				end
-			end
+			myConfig = scriptConfig("Summoner Heal", "summonerHeal")
+			myConfig:addParam("forcedAH", "Forced Auto Heal", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+			myConfig:addParam("AH", "Perma Auto Heal", SCRIPT_PARAM_ONKEYTOGGLE, true, key)
+			myConfig:addParam("AHLifeRatio", "Heal Life ratio", SCRIPT_PARAM_SLICE, 0.15, 0, 1, 2)
 			function OnTick()
-				local tick = GetTickCount()
-				if toggled == false then active = IsKeyDown(activeKey) end
-				if active and ready() and player.health / player.maxHealth < minValue then
-					CastSpell(slot)
-					castDelay = tick + 300
+				if (myConfig.AH or myConfig.forcedAH) and player:CanUseSpell(HL_slot) == READY and (player.health / player.maxHealth < myConfig.AHLifeRatio) then
+					CastSpell(HL_slot)
 				end
 			end
 		end
