@@ -81,10 +81,8 @@ spellList = {
 
 	-- Ezreal
 	-- Mystic Shot
-	EzrealMysticShot = {charName = "Ezreal", range = 1100, spellType = 1, size = 80, duration = 1000, speed = 1.95, delay = 400, spellKey = _Q, spammable = true},
-	EzrealMysticShotMissile = {charName = "Ezreal", range = 1100, spellType = 1, size = 80, duration = 1000, speed = 1.95, delay = 400, spellKey = _Q, spammable = true},
+	EzrealMysticShotMissile = {charName = "Ezreal", range = 1200, spellType = 1, size = 50, delay = 250, speed = 1975, duration = 1000, spellKey = _Q, spammable = true},
 	-- Essence Flux
-	EzrealEssenceFlux = {charName = "Ezreal", range = 900, spellType = 1, size = 100, duration = 1000, speed = 1.5, delay = 300, spellKey = _W, spammable = true},
 	EzrealEssenceFluxMissile = {charName = "Ezreal", range = 900, spellType = 1, size = 100, duration = 1000, speed = 1.5, delay = 300, spellKey = _W, spammable = true},
 	-- Trueshot Barrage 
 	EzrealTrueshotBarrage = {charName = "Ezreal", range = 50000, spellType = 4, size = 150, duration = 4000, speed = 0, delay = 1000, spellKey = _R},
@@ -176,7 +174,7 @@ spellList = {
 
 	-- Lux
 	--LuxMaliceCannon
-	LuxLightBinding = {charName = "Lux", range = 1000, spellType = 1, size = 80, duration = 1000, speed = 1.17, delay = 300, spellKey = _Q, spammable = true},
+	LuxLightBinding = {charName = "Lux", range = 1300, spellType = 1, size = 80, duration = 1000, speed = 1.17, delay = 300, spellKey = _Q, spammable = true},
 	LucentSingularity = {charName = "Lux", range = 1100, spellType = 3, size = 300, duration = 2500, speed = 1.24, delay = 300, spellKey = _E, spammable = true},
 	LuxLightStrikeKugel = {charName = "Lux", range = 1100, spellType = 3, size = 300, duration = 2500, speed = 1.24, delay = 300, spellKey = _E, spammable = true},
 	FinalesFunkeln = {charName = "Lux", range = 3000, spellType = 1, size = 80, duration = 1500, speed = 0, delay = 500, spellKey = _R},
