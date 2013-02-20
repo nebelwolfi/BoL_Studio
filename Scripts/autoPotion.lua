@@ -98,7 +98,7 @@ do
 				_fountain = { x = fountain.x, y = fountain.y, z = fountain.z }
 			end
 			if distance == nil then distance = _radius end
-			return (GetDistance(fountain) <= distance), fountain.x, fountain.y, fountain.z, distance
+			return (GetDistance(_fountain) <= distance), _fountain.x, _fountain.y, _fountain.z, distance
 		end
 	end
 ----------------------------------------------------------------------------
