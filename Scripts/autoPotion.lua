@@ -92,7 +92,7 @@ do
 		end
 		function NearFountain(distance)
 			assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
-			if not fountain then
+			if not _fountain then
 				local fountain = GetFountain()
 				assert(fountain ~= nil, "InFontain: Could not get Fontain Coordinates")
 				_fountain = { x = fountain.x, y = fountain.y, z = fountain.z }
