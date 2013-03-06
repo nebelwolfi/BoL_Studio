@@ -279,8 +279,8 @@ do
 				advise = true,
 				objectName = "TT_Buffplat_L",
 				locked = false,
-				lockNames = {"TT_Lock_Blue_L.troy", "TT_Lock_Red_L.troy", "TT_Lock_Neutral_L.troy", },
-				unlockNames = {"TT_Unlock_Blue_L.troy", "TT_Unlock_Red_L.troy", "TT_Unlock_Neutral_L.troy", },
+				lockNames = {"TT_Lock_Blue_L.troy", "TT_Lock_Purple_L.troy", "TT_Lock_Neutral_L.troy", },
+				unlockNames = {"TT_Unlock_Blue_L.troy", "TT_Unlock_purple_L.troy", "TT_Unlock_Neutral_L.troy", },
 			},
 			{
 				name = "Right Altar",
@@ -289,8 +289,8 @@ do
 				advise = true,
 				objectName = "TT_Buffplat_R",
 				locked = false,
-				lockNames = {"TT_Lock_Blue_R.troy", "TT_Lock_Red_R.troy", "TT_Lock_Neutral_R.troy", },
-				unlockNames = {"TT_Unlock_Blue_R.troy", "TT_Unlock_Red_R.troy", "TT_Unlock_Neutral_R.troy", },
+				lockNames = {"TT_Lock_Blue_R.troy", "TT_Lock_Purple_R.troy", "TT_Lock_Neutral_R.troy", },
+				unlockNames = {"TT_Unlock_Blue_R.troy", "TT_Unlock_purple_R.troy", "TT_Unlock_Neutral_R.troy", },
 			},
 		},
 		crystalScar = {},
@@ -339,8 +339,26 @@ do
 		},
 	}
 	
+	inhibitors = {}
+	
 	function addCampCreepAltar(object)
 		if object ~= nil and object.name ~= nil then
+			if object.name == "Order_Inhibit_Gem.troy" or object.name == "Chaos_Inhibit_Gem.troy" then
+				table.insert(inhibitors, { object = object, destroyed = false, lefttime = 0, x = object.x, y = object.y, z = object.z, minimap = GetMinimap(object), textTick = 0 })
+				return
+			elseif object.name == "Order_Inhibit_Crystal_Shatter.troy" then
+				lastF = Vector(object)
+				for i,inhibitor in pairs(inhibitors) do
+					if GetDistance(inhibitor, object) < 200 then
+						local tick = GetTickCount()
+						inhibitor.dtime = tick
+						inhibitor.rtime = tick + 300000
+						inhibitor.ltime = 300000
+						inhibitor.destroyed = true
+					end
+				end
+				return
+			end
 			for i,monster in pairs(monsters[mapName]) do
 				for j,camp in pairs(monster.camps) do
 					if camp.name == object.name then
@@ -362,6 +380,7 @@ do
 			for i,altar in pairs(altars[mapName]) do
 				if altar.objectName == object.name then
 					altar.object = object
+					altar.textTick = 0
 					altar.minimap = GetMinimap(object)
 				end
 				if altar.locked then
@@ -387,6 +406,7 @@ do
 			for i,relic in pairs(relics[mapName]) do
 				if relic.precenceObject == object.name then
 					relic.object = object
+					relic.textTick = 0
 					relic.locked = false
 					return
 				end
@@ -402,7 +422,7 @@ do
 						end
 					end
 					local k = #heal.objects + 1
-					heals[mapName][i].objects[k] = {found = true, locked = false, object = object, x = object.x, y = object.y, z = object.z, minimap = GetMinimap(object), }
+					heals[mapName][i].objects[k] = {found = true, locked = false, object = object, x = object.x, y = object.y, z = object.z, minimap = GetMinimap(object), textTick = 0,}
 					return
 				end
 			end
@@ -446,10 +466,12 @@ do
 			MMTConfig:addParam("textOnRespawnBefore", "Chat before respawn", SCRIPT_PARAM_ONOFF, true) -- print chat text before respawn
 			MMTConfig:addParam("adviceEnemyMonsters", "Advice enemy monster", SCRIPT_PARAM_ONOFF, true) -- advice enemy monster, or just our monsters
 			MMTConfig:addParam("adviceBefore", "Advice Time", SCRIPT_PARAM_SLICE, 20, 1, 40, 0) -- time in second to advice before monster respawn
+			MMTConfig:addParam("textOnMap", "Text on map", SCRIPT_PARAM_ONOFF, true) -- time in second on map
 			for i,monster in pairs(monsters[mapName]) do
 				monster.isSeen = false
 				for j,camp in pairs(monster.camps) do
 					camp.enemyTeam = (camp.team == TEAM_ENEMY)
+					camp.textTick = 0
 					camp.status = 0
 					camp.drawText = ""
 					camp.drawColor = 0xFF00FF00
@@ -565,6 +587,11 @@ do
 						else
 							camp.textUnder = false
 						end
+						if MMTConfig.textOnMap and camp.status == 4 and camp.object and camp.object.valid and camp.textTick < GetTickCount() and camp.floatText ~= camp.drawText then
+							camp.floatText = camp.drawText
+							camp.textTick = GetTickCount() + 1000
+							PrintFloatText(camp.object,6,camp.floatText)
+						end
 					end
 				end
 			
@@ -572,11 +599,11 @@ do
 				for i,altar in pairs(altars[mapName]) do
 					if altar.object and altar.object.valid then
 						if altar.locked then
-							local tmpTime = ((altar.object.maxMana - altar.object.mana) / 20100)
 							if GameTime < altar.spawn then
 								altar.secondLeft = math.ceil(math.max(0, altar.spawn - GameTime))
 							else
-								altar.secondLeft = math.ceil(math.max(0, altar.respawn - (tmpTime * altar.respawn)))
+								local tmpTime = ((altar.object.mana > 39600) and (altar.object.mana - 39900) / 20100 or (39600 - altar.object.mana) / 20100)
+								altar.secondLeft = math.ceil(math.max(0, tmpTime * altar.respawn))
 							end
 							altar.unlockTime = math.ceil(GameTime + altar.secondLeft)
 							altar.unlockText = altar.name.." unlock at "..TimerText(altar.unlockTime)
@@ -599,6 +626,11 @@ do
 							else
 								altar.drawText = " "..(altar.secondLeft ~= nil and TimerText(altar.secondLeft) or "")
 								altar.textUnder = false
+							end
+							if MMTConfig.textOnMap and altar.object and altar.object.valid and altar.textTick < GetTickCount() and altar.floatText ~= altar.drawText then
+								altar.floatText = altar.drawText
+								altar.textTick = GetTickCount() + 1000
+								PrintFloatText(altar.object,6,altar.floatText)
 							end
 						end
 					end
@@ -668,6 +700,23 @@ do
 						end
 					end
 				end
+				-- inhib
+				for i,inhibitor in pairs(inhibitors) do
+					if inhibitor.destroyed then
+						local tick = GetTickCount()
+						if inhibitor.rtime < tick then
+							inhibitor.destroyed = false
+						else
+							inhibitor.ltime = (inhibitor.rtime - GetTickCount()) / 1000;
+							inhibitor.drawText = TimerText(inhibitor.ltime)
+							--inhibitor.drawText = (IsKeyDown(16) and TimerText(inhibitor.rtime) or TimerText(inhibitor.rtime))
+							if MMTConfig.textOnMap and inhibitor.textTick < tick then
+								inhibitor.textTick = tick + 1000
+								PrintFloatText(inhibitor.object,6,inhibitor.drawText)
+							end
+						end
+					end
+				end
 			end
 
 			function OnDraw()
@@ -698,6 +747,11 @@ do
 						if healObject.locked then
 							DrawText(healObject.drawText,16,healObject.minimap.x - 9, healObject.minimap.y - 5, healObject.drawColor)
 						end
+					end
+				end
+				for i,inhibitor in pairs(inhibitors) do
+					if inhibitor.destroyed == true then
+						DrawText(inhibitor.drawText,16,inhibitor.minimap.x - 9, inhibitor.minimap.y - 5, 0xFFFFFF00)
 					end
 				end
 			end
