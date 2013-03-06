@@ -1,5 +1,5 @@
 if player == nil then player = GetMyHero() end
-LIB_PATH = package.path:gsub("?.lua", "") -- spudgy, look at that, and correct please
+LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 
@@ -27,6 +27,28 @@ end
 function GetDistanceFromMouse(object)
     if object ~= nil and VectorType(object) then return GetDistance(object, mousePos) end
     return 100000
+end
+
+function GetEnemyHeros()
+	local enemyHeros = {}
+	for i = 1, heroManager.iCount do
+		local hero = heroManager:GetHero(i)
+		if hero.team ~= player.team then
+			table.insert(enemyHeros, hero)
+		end
+	end
+	return enemyHeros
+end
+
+function GetAllyHeros()
+	local allyHeros = {}
+	for i = 1, heroManager.iCount do
+		local hero = heroManager:GetHero(i)
+		if hero.team == player.team then
+			table.insert(allyHeros, hero)
+		end
+	end
+	return allyHeros
 end
 
 if table.copy == nil then
@@ -1894,46 +1916,53 @@ end
 
 ]]
 
-local _gameState = { objects = {}, isOver = false, needCheck = false, nextUpdate = 0, tickUpdate = 500 }
+local _gameState = {}
 
 class'GameState'
 function GameState:__init()
-    if (#_gameState.objects == 0) then
-        local mapIndex = GetMap().index
-        if (mapIndex == 1 or mapIndex == 2 or mapIndex == 3) then
-            for i = 1, objManager.maxObjects, 1 do
-                local object = objManager:getObject(i)
-                if object ~= nil and object.valid and object.type == "obj_HQ" then
-                    table.insert(_gameState.objects, { object = object, team = object.team })
-                end
-            end
-            _gameState.needCheck = (#_gameState.objects > 0)
-        end
-    end
-    self.loser = 0
-    self.winner = 0
+	if not __gameState__OnCreateObj then
+		_gameState = { isOver = false, loser = 0, winner = 0, win = false }
+		function __gameState__GameOver(team)
+			_gameState.isOver = true
+			_gameState.loser = team
+			_gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+			_gameState.win = (player.team == _gameState.winner)
+		end
+		function __gameState__OnCreateObj(object)
+			if object then
+				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
+					__gameState__GameOver(TEAM_RED)
+				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
+					__gameState__GameOver(TEAM_BLUE)
+				end
+			end
+		end
+		AddCreateObjCallback(__gameState__OnCreateObj)
+	end
 end
 
 function GameState:gameIsOver()
-    if _gameState.needCheck then
-        local tick = GetTickCount()
-        if _gameState.nextUpdate > tick then return end
-        _gameState.nextUpdate = tick + _gameState.tickUpdate
-        for i, objectCheck in pairs(_gameState.objects) do
-            if objectCheck.object == nil or objectCheck.object.dead or objectCheck.object.health == 0 then
-                _gameState.isOver = true
-                _gameState.loser = objectCheck.team
-                _gameState.winner = (objectCheck.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-                _gameState.needCheck = false
-                break
-            end
-        end
-    end
-    if _gameState.isOver and self.loser == 0 and self.winner == 0 then
-        self.loser = _gameState.loser
-        self.winner = _gameState.winner
-    end
-    return _gameState.isOver
+	return GameIsOver()
+end
+
+function GameIsOver()
+	GameState:__init()
+	return _gameState.isOver
+end
+
+function GameWinner()
+	GameState:__init()
+	return _gameState.winner
+end
+
+function GameWin()
+	GameState:__init()
+	return _gameState.win
+end
+
+function GameLoser()
+	GameState:__init()
+	return _gameState.loser
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2033,7 +2062,7 @@ end
 ]]
 
 local _minionTable = { {}, {}, {}, {}, {} }
-local _minionManager = { init = true, ally = "##", enemy = "##" }
+local _minionManager = { init = true, tick = 0, ally = "##", enemy = "##" }
 -- Class related constants
 MINION_ALL = 1
 MINION_ENEMY = 2
@@ -2077,28 +2106,33 @@ local function minionManager__OnLoad()
             function __minionManager__OnCreateObj(object)
                 if object and object.type == "obj_AI_Minion" and object.name and not object.dead then
                     local name = object.name
-                    _minionTable[MINION_ALL][name] = object
-
-                    if name:sub(1, #_minionManager.ally) == _minionManager.ally then _minionTable[MINION_ALLY][name] = object
-                    elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then _minionTable[MINION_ENEMY][name] = object
-                    elseif object.team == TEAM_NEUTRAL then _minionTable[MINION_JUNGLE][name] = object
-                    else _minionTable[MINION_OTHER][name] = object
+					local id = object.networkID
+					table.insert(_minionTable[MINION_ALL], object)
+                    if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
+                    elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
+                    elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
+                    else table.insert(_minionTable[MINION_OTHER], object)
                     end
                 end
             end
-
             AddCreateObjCallback(__minionManager__OnCreateObj)
         end
-        if not __minionManager__OnDeleteObj then
-            function __minionManager__OnDeleteObj(object)
-                if object and object.type == "obj_AI_Minion" and object.name then
-                    for i = MINION_ALL, MINION_OTHER do
-                        _minionTable[i][object.name] = nil
-                    end
-                end
+        if not __minionManager__SanityCheck then
+            function __minionManager__SanityCheck()
+				-- sanity check each 10 sec
+				if _minionManager.tick < GetTickCount() then
+					_minionManager.tick = GetTickCount() + 10000
+					for i = MINION_ALL, MINION_OTHER do
+						for j = 1, #_minionTable[i] do
+							if not _minionTable[i][j] or not _minionTable[i][j].valid or _minionTable[i][j].dead then
+								table.remove(_minionTable[i], j)
+								j = j - 1
+							end
+						end
+					end
+				end
             end
-
-            AddDeleteObjCallback(__minionManager__OnDeleteObj)
+            AddTickCallback(__minionManager__SanityCheck)
         end
         for i = 1, objManager.maxObjects do
             __minionManager__OnCreateObj(objManager:getObject(i))
@@ -2108,7 +2142,6 @@ local function minionManager__OnLoad()
 end
 
 class'minionManager'
-
 function minionManager:__init(mode, range, fromPos, sortMode)
     assert(type(mode) == "number" and type(range) == "number", "minionManager: wrong argument types (<mode>, <number> expected)")
     minionManager__OnLoad()
@@ -2124,9 +2157,9 @@ end
 function minionManager:update()
     local i = 1
     self.objects = {}
-    for name, object in pairs(_minionTable[self.mode]) do
+    for i, object in pairs(_minionTable[self.mode]) do
         if object and object.valid and not object.dead and object.visible and GetDistance(self.fromPos, object) <= self.range then
-            self.objects[i] = object; i = i + 1
+            table.insert(self.objects, object)
         end
     end
     if self.sortMode then table.sort(self.objects, self.sortMode) end
@@ -2191,22 +2224,125 @@ function CastItem(itemID, var1, var2)
     return false
 end
 
-local _shop
-function InShop()
-    local function getShop()
-        for i = 1, objManager.maxObjects, 1 do
-            local object = objManager:getObject(i)
-            if object and object.type == "obj_Shop" and object.team == player.team then return object end
-        end
-    end
+-- Shop
+--[[
 
-    if not _shop then
-        local shop = getShop()
-        assert(shop ~= nil, "InShop: Could not get Shop Coordinates")
-        _shop = { x = shop.x, y = shop.y, z = shop.z }
-    end
-    if math.sqrt((_shop.x - player.x) ^ 2 + (_shop.z - player.z) ^ 2) < 1250 then return true, _shop.x, _shop.y, _shop.z, 1250 end
-    return false, _shop.x, _shop.y, _shop.z, 1250
+]]
+local _shop
+local _shopRadius = 1250
+function GetShop()
+	if _shop ~= nil then return _shop end
+	for i = 1, objManager.maxObjects, 1 do
+		local object = objManager:getObject(i)
+		if object and object.type == "obj_Shop" and object.team == player.team then
+			_shop = Vector(object)
+			return _shop
+		end
+	end
+end
+function NearShop(distance)
+	assert(distance == nil or type(distance) == "number", "NearShop: wrong argument types (<number> or nil expected)")
+	assert(GetShop() ~= nil, "GetShop: Could not get Shop Coordinates")
+	if distance == nil then distance = _shopRadius end
+	return (math.sqrt((_shop.x - player.x) ^ 2 + (_shop.z - player.z) ^ 2) < distance), _shop.x, _shop.y, _shop.z, distance
+end
+function InShop()
+	return NearShop()
+end
+
+-- Fountain
+--[[
+
+]]
+local _fountain
+local _fountainRadius = 750
+function GetFountain()
+	if _fountain ~= nil then return _fountain end
+	if GetMap().index == 1 then
+		_fountainRadius = 1050
+	end
+	if GetShop() ~= nil then
+		for i = 1, objManager.maxObjects, 1 do
+			local object = objManager:getObject(i)
+			if object ~= nil and object.type == "obj_SpawnPoint" and GetDistance(_shop, object) < 1000 then
+				_fountain = Vector(object)
+				return _fountain
+			end
+		end
+	end
+end
+function NearFountain(distance)
+	assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
+	assert(GetFountain() ~= nil, "GetFountain: Could not get Fontain Coordinates")
+	if distance == nil then distance = _fountainRadius end
+	return (GetDistance(_fountain) <= distance), _fountain.x, _fountain.y, _fountain.z, distance
+end
+function InFountain()
+	return NearFountain()
+end
+
+-- Turrets
+--[[
+
+]]
+function __Turrets__init()
+	if _turrets == nil then
+		_turrets = {}
+		local turretRange = 950
+		local fountainRange = 1050
+		local visibilityRange = 1300
+		for i = 1, objManager.maxObjects do
+			local object = objManager:getObject(i)
+			if object ~= nil and object.type == "obj_AI_Turret" then
+				local turretName = object.name
+				_turrets[turretName] = {
+					object = object,
+					team = object.team,
+					range = turretRange,
+					x = object.x,
+					y = object.y,
+					z = object.z,
+					active = false,
+				}
+				if turretName == "Turret_OrderTurretShrine_A" or turretName == "Turret_ChaosTurretShrine_A" then
+					_turrets[turretName].range = fountainRange
+					for j = 1, objManager.maxObjects do
+						local object2 = objManager:getObject(j)
+						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance(object, object2) < 1000 then
+							_turrets[turretName].x = object2.x
+							_turrets[turretName].z = object2.z
+						elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then
+							_turrets[turretName].y = object2.y
+						end
+					end
+				end
+			end
+		end
+		function __turrets__OnTick()
+			for name, turret in pairs(_turrets) do
+				if turret.object.valid == false or turret.object.dead or turret.object.health == 0 then
+					_turrets[name] = nil
+				end
+			end
+		end
+		AddTickCallback(__turrets__OnTick)
+	end
+end
+
+function GetTurrets()
+	__Turrets__init()
+	return _turrets
+end
+
+function UnderTurret(pos, enemyTurret)
+	__Turrets__init()
+	local enemyTurret = (enemyTurret ~= false)
+	for name, turret in pairs(_turrets) do
+		if turret ~= nil and (turret.team ~= player.team) == enemyTeam and GetDistance(turret, pos) <= turret.range then
+			return true
+		end
+	end
+	return false
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3132,3 +3268,179 @@ end
 function MuramanaOff()
 	if (MuramanaIsActive()) then CastItem(_muramana.id) end
 end
+
+--  Ward finder
+--[[
+	MuramanaIsActive()						Return true / false
+	MuramanaOn()							Set Muramana On if possible
+	MuramanaOff()							Set Muramana Off if possible
+	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
+	
+	Know limitation :
+	- as we can't get the real state of used stone, reload the script will disable them till base.
+	- as we can't get the real state of WriggleLantern, reload the script will disable it for 3 min
+]]
+local _wards = {
+	WriggleLantern = { id = 3154, nextUse = GetTickCount() + 180000 },
+	Sightstone = { id = 2049 },
+	RSightstone = { id = 2045 },
+	ItemMiniWard = { id = 2050 },
+	SightWard = { id = 2044 },
+	VisionWard = { id = 2043 },
+	Sightstone_Used = 5,
+	SlotUpdateTick = 0,
+	--tmp fix for AddProcessSpellCallback
+	Sightstone_nextUse = 0, 
+}
+
+function _wardsUse()
+	if not __wards__OnTick then
+		function __wards__OnTick()
+			if InFountain() then _wards.Sightstone_Used = 0 end
+			if _wards.SlotUpdateTick < GetTickCount() then
+				_wards.SlotUpdateTick = GetTickCount() + 500
+				_wards.WriggleLantern.slot = GetInventorySlotItem(_wards.WriggleLantern.id)
+				_wards.Sightstone.slot = GetInventorySlotItem(_wards.Sightstone.id)
+				_wards.RSightstone.slot = GetInventorySlotItem(_wards.RSightstone.id)
+				_wards.ItemMiniWard.slot = GetInventorySlotItem(_wards.ItemMiniWard.id)
+				_wards.SightWard.slot = GetInventorySlotItem(_wards.SightWard.id)
+				_wards.VisionWard.slot = GetInventorySlotItem(_wards.VisionWard.id)
+			end
+			_wards.WriggleLantern.r_slot = ((_wards.WriggleLantern.slot and player:CanUseSpell(_wards.WriggleLantern.slot) and _wards.WriggleLantern.nextUse < GetTickCount()) and _wards.WriggleLantern.slot or nil) -- Wriggle lantern
+			_wards.Sightstone.r_slot = ((_wards.Sightstone.slot and _wards.Sightstone_Used < 4 and player:CanUseSpell(_wards.Sightstone.slot)) and _wards.Sightstone.slot or nil) -- Sightstone
+			_wards.RSightstone.r_slot = ((_wards.RSightstone.slot and _wards.Sightstone_Used < 5 and player:CanUseSpell(_wards.RSightstone.slot)) and _wards.RSightstone.slot or nil)
+			_wards.ItemMiniWard.r_slot = ((_wards.ItemMiniWard.slot and player:CanUseSpell(_wards.ItemMiniWard.slot)) and _wards.ItemMiniWard.slot or nil)
+			_wards.SightWard.r_slot = ((_wards.SightWard.slot and player:CanUseSpell(_wards.SightWard.slot)) and _wards.SightWard.slot or nil)
+			_wards.VisionWard.r_slot = ((_wards.VisionWard.slot and player:CanUseSpell(_wards.VisionWard.slot)) and _wards.VisionWard.slot or nil)
+		end	
+		AddTickCallback(__wards__OnTick)
+	end
+	if not __wards__OnProcessSpell then
+		function __wards__OnProcessSpell(unit, spell)
+			if unit.isMe then
+				local spellName = spell.name:lower()
+				if spellName == "itemghostward" and _wards.Sightstone_nextUse < GetTickCount() then
+					_wards.Sightstone_nextUse = GetTickCount() + 500
+					_wards.Sightstone_Used = _wards.Sightstone_Used + 1
+				elseif spellName == "wrigglelantern" then
+					_wards.WriggleLantern.nextUse = GetTickCount() + 180000
+				end
+			end
+		end
+		AddProcessSpellCallback(__wards__OnProcessSpell)
+	end
+end
+
+function GetWardSlot()
+	_wardsUse()
+	if _wards.WriggleLantern.r_slot then return _wards.WriggleLantern.r_slot
+	elseif _wards.Sightstone.r_slot then return _wards.Sightstone.r_slot
+	elseif _wards.RSightstone.r_slot then return _wards.RSightstone.r_slot
+	elseif _wards.ItemMiniWard.r_slot then return _wards.ItemMiniWard.r_slot
+	elseif _wards.SightWard.r_slot then return _wards.SightWard.r_slot
+	elseif _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot
+	end
+end
+
+function GetPinkWardSlot()
+	_wardsUse()
+	if _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot end
+end
+
+function GetWardsSlots()
+	_wardsUse()
+	return _wards.WriggleLantern.r_slot, _wards.Sightstone.r_slot, _wards.RSightstone.r_slot, _wards.ItemMiniWard.r_slot, _wards.SightWard.r_slot, _wards.VisionWard.r_slot
+end
+
+--  Text and circles draws
+--[[
+
+]]
+local _tcDraws = {circle = false, text = false, modes = {}}
+function __tcDraws__init()
+	if not _tcDraws.heros then
+		_tcDraws.heros = {}
+		for i = 1, heroManager.iCount do
+			local hero = heroManager:getHero(i)
+			if hero ~= nil and hero.networkID then
+				_tcDraws.heros[hero.networkID] = { hero = hero, state = 0, tick = 0 }
+			end
+		end
+		function _tcDraws__OnDraw()
+			if myHero.dead then return end
+			if _tcDraws.circle then
+				local tick = GetTickCount()
+				for i, target in pairs(_tcDraws.heros) do
+					if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
+						if _tcDraws.modes[target.state] then
+						local mode = _tcDraws.modes[target.state]
+							if _tcDraws.circle and mode.circle > 0 then
+								local radius = 80
+								for j = 0, mode.circle do
+									for k = 0, 10 do DrawCircle(target.hero.x, target.hero.y, target.hero.z, radius + j*1.5, mode.color) end
+									radius = radius + 30
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		AddDrawCallback(_tcDraws__OnDraw)
+		function _tcDraws__OnTick()
+			if myHero.dead then return end
+			if _tcDraws.text then
+				local tick = GetTickCount()
+				for i, target in pairs(_tcDraws.heros) do
+					if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
+						if _tcDraws.modes[target.state] then
+						local mode = _tcDraws.modes[target.state]
+							if target.tick < tick then
+								target.tick = tick + 1200
+								if mode.text1 then PrintFloatText(target.hero,mode.textType1,mode.text1) end
+								if mode.text2 then PrintFloatText(target.hero,mode.textType2,mode.text2) end
+							end
+						end
+					end
+				end
+			end
+		end
+		AddTickCallback(_tcDraws__OnTick)
+	end
+end
+
+function TCDrawSetMode(index, circle, color, text1, textType1, text2, textType2)
+	_tcDraws.modes[index] = {
+		circle = circle,
+		color = color,
+		text1 = text1,
+		textType1 = textType1,
+		text2 = text2,
+		textType2 = textType2,
+	}
+end
+
+function TCDrawSetDrawCircle(state)
+	assert(type(state) == "boolean", "TCDrawSetDrawCircle: expected <boolean> for State)")
+	__tcDraws__init()
+	_tcDraws.circle = state
+end
+
+function TCDrawSetDrawText(state)
+	assert(type(state) == "boolean", "TCDrawSetDrawText: expected <boolean> for State)")
+	__tcDraws__init()
+	_tcDraws.text = state
+end
+
+function TCDrawSetDraw(circle, text)
+	TCDrawSetDrawCircle(circle)
+	TCDrawSetDrawText(text)
+end
+
+function TCDrawSetHero(hero, level)
+	assert(hero and hero.valid and hero.networkID and type(level) == "number", "TCDrawSetHero: expected <hero>, <number> for level)")
+	__tcDraws__init()
+	if not _tcDraws.heros[hero.networkID] then return end
+	_tcDraws.heros[hero.networkID].state = level
+end
+
