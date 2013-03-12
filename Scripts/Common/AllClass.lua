@@ -305,13 +305,15 @@ end
 local delayedActions = {}
 function DelayAction(func, delay, args) --delay in seconds
     local t = os.clock()+(delay or 0)
+	PrintChat("Started at " .. t)
     if delayedActions[t] then table.insert(delayedActions[t],{func = func, args = args})
     else delayedActions[t] = {{func = func, args = args}} end
 end
 
 local function delayedActionsExecuter()
     for t, funcs in pairs(delayedActions) do
-        if t>=os.clock() then
+        if t<=os.clock() then
+			PrintChat("T: "..t.."Clock"..os.clock())
             for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
             delayedActions[t] = nil
         end
