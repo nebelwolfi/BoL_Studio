@@ -5,11 +5,16 @@ SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
 
-function GetDistance(p1, p2)
+--Faster for comparison of distances, returns the distance^2
+function GetDistanceSqr(p1, p2)
     if p2 == nil then p2 = player end
-    if p1.z == nil or p2.z == nil then return math.sqrt((p1.x - p2.x) ^ 2 + (p1.y - p2.y) ^ 2)
-    else return math.sqrt((p1.x - p2.x) ^ 2 + (p1.z - p2.z) ^ 2)
+    if p1.z == nil or p2.z == nil then return (p1.x - p2.x) ^ 2 + (p1.y - p2.y) ^ 2
+    else return (p1.x - p2.x) ^ 2 + (p1.z - p2.z) ^ 2
     end
+end
+
+function GetDistance(p1, p2)
+    return math.sqrt(GetDistanceSqr(p1,p2))
 end
 
 -- for combat
@@ -17,38 +22,38 @@ GetDistance2D = GetDistance
 
 function ValidTarget(object, distance, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistance(object) <= distance)
+    return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistanceSqr(object) <= distance*distance)
 end
 
 function ValidTargetNear(object, distance, target)
-    return object ~= nil and object.valid and object.team == target.team and object.networkID ~= target.networkID and object.visible and not object.dead and object.bTargetable and GetDistance(target, object) <= distance
+    return object ~= nil and object.valid and object.team == target.team and object.networkID ~= target.networkID and object.visible and not object.dead and object.bTargetable and GetDistanceSqr(target, object) <= distance*distance
 end
 
 function GetDistanceFromMouse(object)
     if object ~= nil and VectorType(object) then return GetDistance(object, mousePos) end
-    return 100000
+    return math.huge
 end
 
 function GetEnemyHeros()
-	local enemyHeros = {}
-	for i = 1, heroManager.iCount do
-		local hero = heroManager:GetHero(i)
-		if hero.team ~= player.team then
-			table.insert(enemyHeros, hero)
-		end
-	end
-	return enemyHeros
+    local enemyHeros = {}
+    for i = 1, heroManager.iCount do
+        local hero = heroManager:GetHero(i)
+        if hero.team ~= player.team then
+            table.insert(enemyHeros, hero)
+        end
+    end
+    return enemyHeros
 end
 
 function GetAllyHeros()
-	local allyHeros = {}
-	for i = 1, heroManager.iCount do
-		local hero = heroManager:GetHero(i)
-		if hero.team == player.team then
-			table.insert(allyHeros, hero)
-		end
-	end
-	return allyHeros
+    local allyHeros = {}
+    for i = 1, heroManager.iCount do
+        local hero = heroManager:GetHero(i)
+        if hero.team == player.team then
+            table.insert(allyHeros, hero)
+        end
+    end
+    return allyHeros
 end
 
 if table.copy == nil then
@@ -82,7 +87,7 @@ function table.serialize(t,tab)
         if vType == "number" then cS = cS .. v
         elseif vType == "string" then cS = cS .. [["]] .. v .. [["]]
         elseif vType == "table" then cS = cS .. table.serialize(v, (tab or "").."\t")
-    	elseif vType == "boolean" then cS = cS .. tostring(v)
+        elseif vType == "boolean" then cS = cS .. tostring(v)
         else break end
         s = s .. cS .. ",\n"
     end
@@ -91,7 +96,7 @@ end
 
 --from http://lua-users.org/wiki/SplitJoin
 string.split = function(str, delim, maxNb)
-    -- Eliminate bad cases...
+-- Eliminate bad cases...
     if not delim or delim == "" or string.find(str, delim) == nil then
         return { str }
     end
@@ -122,7 +127,7 @@ string.join = function(arg, del)
     if not arg or not arg[1] then return str end
     for i, v in ipairs(arg) do
         if i==#arg then str = str .. tostring(v)
-    	else str = str .. tostring(v) .. del end
+        else str = str .. tostring(v) .. del end
     end
     return str
 end
@@ -144,12 +149,175 @@ if math.close == nil then
     end
 end
 
--- return true if file exist
-function file_exists(name)
-    assert(type(name) == "string", "file_exists: wrong argument types (<string> expected for name)")
-    local f = io.open(name, "r")
-    if f ~= nil then io.close(f) return true else return false end
+local fps = 0
+function GetFPS()
+    return fps
 end
+
+local lastFrame = -math.huge
+local function updateFPS()
+    fps = 1/(os.clock() - lastFrame)
+    lastFrame = os.clock()
+end
+AddDrawCallback(updateFPS)
+
+--[=[
+Brings the League of Legends Window in Foreground. Needed after os.execute or other function that minimize the client.
+
+Original PowerShell Script is Base64 encoded:
+Encoding had to be done to bypass the script execution policy of powershell.
+    #Written by gReY
+	$script = {
+		Add-Type(@"
+			using System;
+			using System.Runtime.InteropServices;
+			public class User32 {
+				[DllImport("user32.dll")]
+				[return: MarshalAs(UnmanagedType.Bool)]
+				public static extern bool SetForegroundWindow(IntPtr hWnd);
+				[DllImport("user32.dll")]
+				[return: MarshalAs(UnmanagedType.Bool)]
+				public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);}
+			"@)
+		Write-Host "Add-Type: True";
+		$h = (Get-Process "League of Legends").MainWindowHandle;
+		Write-Host "League of Legends hWnd: "$h;
+		$r = [User32]::ShowWindowAsync($h,9);
+		Write-Host "ShowWindowAsync: "$r;
+		$r = [User32]::SetForegroundWindow($h);
+		Write-Host "SetForegroundWindow: "$r;
+	}
+	[convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+	]=]
+function SetForeground()
+    local base64script = "CgBBAGQAZAAtAFQAeQBwAGUAKABAACIACgB1AHMAaQBuAGcAIABTAHkAcwB0AGUAbQA7AAoAdQBzAGk"
+    base64script = base64script .. "AbgBnACAAUwB5AHMAdABlAG0ALgBSAHUAbgB0AGkAbQBlAC4ASQBuAHQAZQByAG8AcABTAGUAcgB2AG"
+    base64script = base64script .. "kAYwBlAHMAOwAKAHAAdQBiAGwAaQBjACAAYwBsAGEAcwBzACAAVQBzAGUAcgAzADIAIAB7AAoAWwBEA"
+    base64script = base64script .. "GwAbABJAG0AcABvAHIAdAAoACIAdQBzAGUAcgAzADIALgBkAGwAbAAiACkAXQAKAFsAcgBlAHQAdQBy"
+    base64script = base64script .. "AG4AOgAgAE0AYQByAHMAaABhAGwAQQBzACgAVQBuAG0AYQBuAGEAZwBlAGQAVAB5AHAAZQAuAEIAbwB"
+    base64script = base64script .. "vAGwAKQBdAAoAcAB1AGIAbABpAGMAIABzAHQAYQB0AGkAYwAgAGUAeAB0AGUAcgBuACAAYgBvAG8AbA"
+    base64script = base64script .. "AgAFMAZQB0AEYAbwByAGUAZwByAG8AdQBuAGQAVwBpAG4AZABvAHcAKABJAG4AdABQAHQAcgAgAGgAV"
+    base64script = base64script .. "wBuAGQAKQA7AAoAWwBEAGwAbABJAG0AcABvAHIAdAAoACIAdQBzAGUAcgAzADIALgBkAGwAbAAiACkA"
+    base64script = base64script .. "XQAKAFsAcgBlAHQAdQByAG4AOgAgAE0AYQByAHMAaABhAGwAQQBzACgAVQBuAG0AYQBuAGEAZwBlAGQ"
+    base64script = base64script .. "AVAB5AHAAZQAuAEIAbwBvAGwAKQBdAAoAcAB1AGIAbABpAGMAIABzAHQAYQB0AGkAYwAgAGUAeAB0AG"
+    base64script = base64script .. "UAcgBuACAAYgBvAG8AbAAgAFMAaABvAHcAVwBpAG4AZABvAHcAQQBzAHkAbgBjACgASQBuAHQAUAB0A"
+    base64script = base64script .. "HIAIABoAFcAbgBkACwAIABpAG4AdAAgAG4AQwBtAGQAUwBoAG8AdwApADsAfQAKACIAQAApAAoAVwBy"
+    base64script = base64script .. "AGkAdABlAC0ASABvAHMAdAAgACIAQQBkAGQALQBUAHkAcABlADoAIABUAHIAdQBlACIAOwAKACQAaAA"
+    base64script = base64script .. "gAD0AIAAoAEcAZQB0AC0AUAByAG8AYwBlAHMAcwAgACIATABlAGEAZwB1AGUAIABvAGYAIABMAGUAZw"
+    base64script = base64script .. "BlAG4AZABzACIAKQAuAE0AYQBpAG4AVwBpAG4AZABvAHcASABhAG4AZABsAGUAOwAKAFcAcgBpAHQAZ"
+    base64script = base64script .. "QAtAEgAbwBzAHQAIAAiAEwAZQBhAGcAdQBlACAAbwBmACAATABlAGcAZQBuAGQAcwAgAGgAVwBuAGQA"
+    base64script = base64script .. "OgAgACIAJABoADsACgAkAHIAIAA9ACAAWwBVAHMAZQByADMAMgBdADoAOgBTAGgAbwB3AFcAaQBuAGQ"
+    base64script = base64script .. "AbwB3AEEAcwB5AG4AYwAoACQAaAAsADkAKQA7AAoAVwByAGkAdABlAC0ASABvAHMAdAAgACIAUwBoAG"
+    base64script = base64script .. "8AdwBXAGkAbgBkAG8AdwBBAHMAeQBuAGMAOgAgACIAJAByADsACgAkAHIAIAA9ACAAWwBVAHMAZQByA"
+    base64script = base64script .. "DMAMgBdADoAOgBTAGUAdABGAG8AcgBlAGcAcgBvAHUAbgBkAFcAaQBuAGQAbwB3ACgAJABoACkAOwAK"
+    base64script = base64script .. "AFcAcgBpAHQAZQAtAEgAbwBzAHQAIAAiAFMAZQB0AEYAbwByAGUAZwByAG8AdQBuAGQAVwBpAG4AZAB"
+    base64script = base64script .. "vAHcAOgAgACIAJAByADsACgA="
+    os.execute("powershell -encoded " .. base64script)
+end
+
+--Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
+function CreateDirectory(path)
+    assert(type(path) == "string", "CreateDirectory: wrong argument types (<string> expected for path)")
+    return os.execute("mkdir " .. string.gsub(path, [[/]], [[\]])) == 0
+end
+
+--Example: DirectoryExist("C:\\Users")
+function DirectoryExist(path)
+    assert(type(path) == "string", "DirectoryExist: wrong argument types (<string> expected for path)")
+    return os.execute("cd " .. string.gsub(path, [[/]], [[\]])) == 0
+end
+
+--Creates the Common and Sprites Folder if not present, returns true if it created folders
+local folderFixed = false
+local function fixFolders()
+    if folderFixed then return false end
+    local result = true
+    if not DirectoryExist(LIB_PATH) then if not CreateDirectory(LIB_PATH) then
+        result = false
+        PrintChat([[Your library directory is missing and can't be created, please create the folder 'Common' in you BoL\Scripts directory. For further Information visit http://botoflegends.com/forum/]])
+    end end
+    if not DirectoryExist(SPRITE_PATH) then if not CreateDirectory(SPRITE_PATH) then
+        result = false
+        PrintChat([[Your sprite directory is missing and can't be created, please create the folder 'Sprites' in you BoL directory. For further Information visit http://botoflegends.com/forum/]])
+    end end
+    folderFixed = true
+    SetForeground() --Must be called or the League of Legends window will minimize
+    return result
+end
+
+--Return text of a file (you can also insert the filename)
+function ReadFile(path)
+    assert(type(path) == "string", "ReadFile: wrong argument types (<string> expected for path)")
+    local file = io.open(path,"r")
+    if not file then
+        file = io.open(SCRIPT_PATH..path, "r")
+        if not file then
+            file = io.open(LIB_PATH..path, "r")
+            if not file then return end
+        end
+    end
+    local text = file:read("*all")
+    file:close()
+    return text
+end
+
+--Return true if could write to file; mode optional
+function WriteFile(text, path, mode)
+    assert(type(text) == "string" and type(path) == "string" and (not mode or type(mode) == "string"), "WriteFile: wrong argument types (<string> expected for text, path and mode)")
+    local file = io.open(path, mode or "w+")
+    if not file then return false end
+    file:write(text)
+    file:close()
+    return true
+end
+
+--Return true if file exists
+function FileExist(path)
+    assert(type(path) == "string", "FileExist: wrong argument types (<string> expected for path)")
+    local file = io.open(path,"r")
+    if file then file:close() return true else return false end
+end
+file_exists = FileExist --Backward compatibility
+
+function DeleteFile(path)
+    assert(type(path) == "string", "DeleteFile: wrong argument types (<string> expected for path)")
+    return os.remove(path) == 0
+end
+
+function GetFileSize(path)
+    assert(type(path) == "string", "GetFileSize: wrong argument types (<string> expected for path)")
+    local file = io.open(path,"r")
+    if not file then
+        file = io.open(SCRIPT_PATH..path, "r")
+        if not file then
+            file = io.open(LIB_PATH..path, "r")
+            if not file then return end
+        end
+    end
+    local size = file:seek("end")
+    file:close()
+    return size
+end
+--[[
+	Delays a function call
+	example: DelayAction(myFunc, 5)
+]]
+local delayedActions = {}
+function DelayAction(func, delay) --delay in seconds
+    local t = os.clock()+(delay or 0)
+    if delayedActions[t] then table.insert(delayedActions[t],func)
+    else delayedActions[t] = {func} end
+end
+
+local function delayedActionsExecuter()
+    for t, funcs in pairs(delayedActions) do
+        if t>=os.clock() then
+            for i, func in ipairs(funcs) do func() end
+            delayedActions[t] = nil
+        end
+    end
+end
+AddTickCallback(delayedActionsExecuter)
 
 -- return if cursor is under a rectangle
 function CursorIsUnder(x, y, sizeX, sizeY)
@@ -164,11 +332,10 @@ function CursorIsUnder(x, y, sizeX, sizeY)
         y = y + sizeY
         sizeY = -sizeY
     end
-return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
+    return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
 --lua_number = float. This is a very, very dirty fix for all colors (by gReY)
-
 function ARGB(a, r, g, b)
     assert(a >= 0 and a <= 255 and r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "function ARGB: arguments out of range (0-255)")
     a, r, g, b = math.floor(a), math.floor(r), math.floor(g), math.floor(b)
@@ -216,10 +383,10 @@ timerText = TimerText
 -- return sprite
 function GetSprite(file, altFile)
     assert(type(file) == "string", "GetSprite: wrong argument types (<string> expected for file)")
-    if file_exists(SPRITE_PATH .. file) == true then
+    if FileExist(SPRITE_PATH .. file) == true then
         return createSprite(file)
     else
-        if altFile ~= nil and file_exists(SPRITE_PATH .. altFile) == true then
+        if altFile ~= nil and FileExist(SPRITE_PATH .. altFile) == true then
             return createSprite(altFile)
         else
             PrintChat(file .. " not found (sprites installed ?)")
@@ -237,14 +404,14 @@ end
 
 -- return the target particle
 function GetParticleObject(particle, target, range)
-	assert(type(particle) == "string", "GetParticleObject: wrong argument types (<string> expected for particle)")
-	local target = target or player
-	local range = range or 50
-	for i = 1, objManager.maxObjects do
-		local object = objManager:GetObject(i)
-		if object ~= nil and object.valid and object.name == particle and GetDistance(target, object) < range then return object end
-	end
-	return nil
+    assert(type(particle) == "string", "GetParticleObject: wrong argument types (<string> expected for particle)")
+    local target = target or player
+    local range = range or 50
+    for i = 1, objManager.maxObjects do
+        local object = objManager:GetObject(i)
+        if object ~= nil and object.valid and object.name == particle and GetDistanceSqr(target, object) < range*range then return object end
+    end
+    return nil
 end
 -- return if target have particle
 function TargetHaveParticle(particle, target, range)
@@ -294,7 +461,7 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
     local p2 = D3DXVECTOR3(posEnd.x, posEnd.y, posEnd.z)
     local p12 = Vector(p2 - p1)
     local distarrow = p12:len() + 200 --200 is the arrow size
-    p3 = D3DXVECTOR3(p12.x, 0, p12.z)
+    local p3 = D3DXVECTOR3(p12.x, 0, p12.z)
     --split if need
     if splitSize ~= nil and splitSize > 200 and distarrow > splitSize then
         p12:normalize()
@@ -357,7 +524,7 @@ function DrawCircle3D(x, y, z, radius, width, color, quality)
     quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
     local px, py, pz
     for theta = 0, 2 * math.pi + quality, quality do
-        cx, cy, cz = get2DFrom3D(x + radius * math.cos(theta), y, z - radius * math.sin(theta))
+        local cx, cy, cz = get2DFrom3D(x + radius * math.cos(theta), y, z - radius * math.sin(theta))
         if px and (pz or cz) then
             DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
         end
@@ -934,7 +1101,7 @@ function MEC:Compute()
     else
         local a = self:ConvexHull()
         local point_a = a[1]
-        local point_b = nil
+        local point_b
         local point_c = a[2]
         if not point_c then
             self.circle.center = point_a
@@ -1008,7 +1175,7 @@ function _CalcSpellPosForGroup(radius, range, points)
     local mec = MEC()
     local combos = {}
     for j = #points, 2, -1 do
-        local spellPos = nil
+        local spellPos
         combos[j] = {}
         _CalcCombos(j, points, combos[j])
         for i, v in ipairs(combos[j]) do
@@ -1139,7 +1306,7 @@ local function _gameHeros__index(target, assertText, enemyTeam)
 end
 
 local _Prediction = { init = true, delta = 1 }
-
+local __Prediction__OnTick
 local function _Prediction__OnLoad()
     if not __Prediction__OnTick then
         function __Prediction__OnTick()
@@ -1437,7 +1604,7 @@ function TargetSelector__OnSendChat(msg)
         PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
-
+local __TargetSelector__OnSendChat
 local function TargetSelector__OnLoad()
     if not __TargetSelector__OnSendChat then
         function __TargetSelector__OnSendChat(msg)
@@ -1591,7 +1758,7 @@ function TargetSelector:update()
                 nextPosition, nextHealth = Vector(hero), hero.health
             end
             if self._castWidth then minionCollision = GetMinionCollision(player, nextPosition, self._castWidth) end
-            if GetDistance(nextPosition) <= range and minionCollision == false then
+            if GetDistanceSqr(nextPosition) <= range*range and minionCollision == false then
                 if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
                     -- Returns lowest effective HP target that is in range
                     -- Or lowest cast to kill target that is in range
@@ -1621,7 +1788,7 @@ function TargetSelector:update()
                     if not selected or _gameHero.priority < value then selected, index, value = hero, i, _gameHero.priority end
                 elseif self.mode == TARGET_NEAR_MOUSE then
                     -- Returns target that is the closest to the mouse cursor.
-                    local distance = GetDistance(mousePos, hero)
+                    local distance = GetDistanceSqr(mousePos, hero)
                     if not selected or distance < value then selected, index, value = hero, i, distance end
                 end
             end
@@ -1695,13 +1862,13 @@ end
 ]]
 function GetMinionCollision(posStart, posEnd, spellWidth)
     assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
-    local distance = GetDistance(posStart, posEnd)
+    local distance = GetDistanceSqr(posStart, posEnd)
     for i = 0, objManager.maxObjects, 1 do
         local object = objManager:getObject(i)
         if object and object.valid and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
-            if GetDistance(object, posStart) < distance and GetDistance(object, posEnd) < distance then
+            if GetDistanceSqr(object, posStart) < distance and GetDistanceSqr(object, posEnd) < distance then
                 local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, object)
-                if GetDistance(closestPoint, object) <= spellWidth / 2 then return true end
+                if GetDistanceSqr(closestPoint, object) <= spellWidth*spellWidth / 4 then return true end
             end
         end
     end
@@ -1739,6 +1906,7 @@ function TargetPrediction__OnTick()
     end
 end
 
+local __TargetPrediction__OnTick
 local function TargetPrediction__Onload()
     if not __TargetPrediction__OnTick then
         function __TargetPrediction__OnTick()
@@ -1794,7 +1962,7 @@ function TargetPrediction:GetPrediction(target)
         local osTime = os.clock()
         local delay = self.delay / 1000
         local proj_speed = self.proj_speed and self.proj_speed * 1000
-        if GetDistance(selected) < self.range + 300 then
+        if GetDistanceSqr(selected) < (self.range + 300)^2 then
             if osTime - (_gameHeros[index].prediction.calculateTime or 0) > 0 then
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
@@ -1816,7 +1984,7 @@ function TargetPrediction:GetPrediction(target)
                 else
                     self.nextPosition = PositionPrediction:clone()
                 end
-                if GetDistance(PositionPrediction) < self.range then
+                if GetDistanceSqr(PositionPrediction) < (self.range)^2 then
                     --update next Health
                     self.nextHealth = selected.health + (_gameHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
@@ -1919,50 +2087,51 @@ end
 local _gameState = {}
 
 class'GameState'
+local __gameState__GameOver,__gameState__OnCreateObj
 function GameState:__init()
-	if not __gameState__OnCreateObj then
-		_gameState = { isOver = false, loser = 0, winner = 0, win = false }
-		function __gameState__GameOver(team)
-			_gameState.isOver = true
-			_gameState.loser = team
-			_gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-			_gameState.win = (player.team == _gameState.winner)
-		end
-		function __gameState__OnCreateObj(object)
-			if object then
-				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-					__gameState__GameOver(TEAM_RED)
-				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-					__gameState__GameOver(TEAM_BLUE)
-				end
-			end
-		end
-		AddCreateObjCallback(__gameState__OnCreateObj)
-	end
+    if not __gameState__OnCreateObj then
+        _gameState = { isOver = false, loser = 0, winner = 0, win = false }
+        function __gameState__GameOver(team)
+            _gameState.isOver = true
+            _gameState.loser = team
+            _gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+            _gameState.win = (player.team == _gameState.winner)
+        end
+        function __gameState__OnCreateObj(object)
+            if object then
+                if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
+                    __gameState__GameOver(TEAM_RED)
+                elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
+                    __gameState__GameOver(TEAM_BLUE)
+                end
+            end
+        end
+        AddCreateObjCallback(__gameState__OnCreateObj)
+    end
 end
 
 function GameState:gameIsOver()
-	return GameIsOver()
+    return GameIsOver()
 end
 
 function GameIsOver()
-	GameState:__init()
-	return _gameState.isOver
+    GameState:__init()
+    return _gameState.isOver
 end
 
 function GameWinner()
-	GameState:__init()
-	return _gameState.winner
+    GameState:__init()
+    return _gameState.winner
 end
 
 function GameWin()
-	GameState:__init()
-	return _gameState.win
+    GameState:__init()
+    return _gameState.win
 end
 
 function GameLoser()
-	GameState:__init()
-	return _gameState.loser
+    GameState:__init()
+    return _gameState.loser
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1989,7 +2158,7 @@ function GetStart()
         _gameStart.tick = tonumber(GetTickCount())
         _gameStart.osTime = os.time(t)
         _gameStart.save = {}
-        if file_exists(_gameStart.configFile) then dofile(_gameStart.configFile) end
+        if FileExist(_gameStart.configFile) then dofile(_gameStart.configFile) end
         local gameStarted = false
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
@@ -2005,6 +2174,7 @@ function GetStart()
             _gameStart.osTime = _gameStart.save.osTime
         else
             local file = io.open(_gameStart.configFile, "w")
+            if not file and fixFolders() then file = io.open(_gameStart.configFile, "w") end
             if file then
                 file:write("_gameStart.save.osTime = " .. _gameStart.osTime .. "\n")
                 file:write("_gameStart.save.WINDOW_W = " .. _gameStart.WINDOW_W .. "\n")
@@ -2091,7 +2261,7 @@ function minionManager__OnDeleteObj(object)
         PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
-
+local __minionManager__OnCreateObj,__minionManager__SanityCheck
 local function minionManager__OnLoad()
     if _minionManager.init then
         local mapIndex = GetMap().index
@@ -2106,8 +2276,8 @@ local function minionManager__OnLoad()
             function __minionManager__OnCreateObj(object)
                 if object and object.type == "obj_AI_Minion" and object.name and not object.dead then
                     local name = object.name
-					local id = object.networkID
-					table.insert(_minionTable[MINION_ALL], object)
+                    local id = object.networkID
+                    table.insert(_minionTable[MINION_ALL], object)
                     if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
                     elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
                     elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
@@ -2119,18 +2289,18 @@ local function minionManager__OnLoad()
         end
         if not __minionManager__SanityCheck then
             function __minionManager__SanityCheck()
-				-- sanity check each 10 sec
-				if _minionManager.tick < GetTickCount() then
-					_minionManager.tick = GetTickCount() + 10000
-					for i = MINION_ALL, MINION_OTHER do
-						for j = 1, #_minionTable[i] do
-							if not _minionTable[i][j] or not _minionTable[i][j].valid or _minionTable[i][j].dead then
-								table.remove(_minionTable[i], j)
-								j = j - 1
-							end
-						end
-					end
-				end
+                -- sanity check each 10 sec
+                if _minionManager.tick < GetTickCount() then
+                    _minionManager.tick = GetTickCount() + 10000
+                    for i = MINION_ALL, MINION_OTHER do
+                        for j = 1, #_minionTable[i] do
+                            if not _minionTable[i][j] or not _minionTable[i][j].valid or _minionTable[i][j].dead then
+                                table.remove(_minionTable[i], j)
+                                j = j - 1
+                            end
+                        end
+                    end
+                end
             end
             AddTickCallback(__minionManager__SanityCheck)
         end
@@ -2158,7 +2328,7 @@ function minionManager:update()
     local i = 1
     self.objects = {}
     for i, object in pairs(_minionTable[self.mode]) do
-        if object and object.valid and not object.dead and object.visible and GetDistance(self.fromPos, object) <= self.range then
+        if object and object.valid and not object.dead and object.visible and GetDistanceSqr(self.fromPos, object) <= (self.range)^2 then
             table.insert(self.objects, object)
         end
     end
@@ -2231,23 +2401,22 @@ end
 local _shop
 local _shopRadius = 1250
 function GetShop()
-	if _shop ~= nil then return _shop end
-	for i = 1, objManager.maxObjects, 1 do
-		local object = objManager:getObject(i)
-		if object and object.type == "obj_Shop" and object.team == player.team then
-			_shop = Vector(object)
-			return _shop
-		end
-	end
+    if _shop ~= nil then return _shop end
+    for i = 1, objManager.maxObjects, 1 do
+        local object = objManager:getObject(i)
+        if object and object.type == "obj_Shop" and object.team == player.team then
+            _shop = Vector(object)
+            return _shop
+        end
+    end
 end
 function NearShop(distance)
-	assert(distance == nil or type(distance) == "number", "NearShop: wrong argument types (<number> or nil expected)")
-	assert(GetShop() ~= nil, "GetShop: Could not get Shop Coordinates")
-	if distance == nil then distance = _shopRadius end
-	return (math.sqrt((_shop.x - player.x) ^ 2 + (_shop.z - player.z) ^ 2) < distance), _shop.x, _shop.y, _shop.z, distance
+    assert(distance == nil or type(distance) == "number", "NearShop: wrong argument types (<number> or nil expected)")
+    assert(GetShop() ~= nil, "GetShop: Could not get Shop Coordinates")
+    return (GetDistanceSqr(GetShop()) < (distance or _shopRadius)^2), _shop.x, _shop.y, _shop.z, (distance or _shopRadius)
 end
 function InShop()
-	return NearShop()
+    return NearShop()
 end
 
 -- Fountain
@@ -2257,92 +2426,93 @@ end
 local _fountain
 local _fountainRadius = 750
 function GetFountain()
-	if _fountain ~= nil then return _fountain end
-	if GetMap().index == 1 then
-		_fountainRadius = 1050
-	end
-	if GetShop() ~= nil then
-		for i = 1, objManager.maxObjects, 1 do
-			local object = objManager:getObject(i)
-			if object ~= nil and object.type == "obj_SpawnPoint" and GetDistance(_shop, object) < 1000 then
-				_fountain = Vector(object)
-				return _fountain
-			end
-		end
-	end
+    if _fountain ~= nil then return _fountain end
+    if GetMap().index == 1 then
+        _fountainRadius = 1050
+    end
+    if GetShop() ~= nil then
+        for i = 1, objManager.maxObjects, 1 do
+            local object = objManager:getObject(i)
+            if object ~= nil and object.type == "obj_SpawnPoint" and GetDistanceSqr(_shop, object) < 1000000 then
+                _fountain = Vector(object)
+                return _fountain
+            end
+        end
+    end
 end
 function NearFountain(distance)
-	assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
-	assert(GetFountain() ~= nil, "GetFountain: Could not get Fontain Coordinates")
-	if distance == nil then distance = _fountainRadius end
-	return (GetDistance(_fountain) <= distance), _fountain.x, _fountain.y, _fountain.z, distance
+    assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
+    assert(GetFountain() ~= nil, "GetFountain: Could not get Fontain Coordinates")
+    if distance == nil then distance = _fountainRadius end
+    return (GetDistanceSqr(_fountain) <= distance*distance), _fountain.x, _fountain.y, _fountain.z, distance
 end
 function InFountain()
-	return NearFountain()
+    return NearFountain()
 end
 
 -- Turrets
 --[[
 
 ]]
-function __Turrets__init()
-	if _turrets == nil then
-		_turrets = {}
-		local turretRange = 950
-		local fountainRange = 1050
-		local visibilityRange = 1300
-		for i = 1, objManager.maxObjects do
-			local object = objManager:getObject(i)
-			if object ~= nil and object.type == "obj_AI_Turret" then
-				local turretName = object.name
-				_turrets[turretName] = {
-					object = object,
-					team = object.team,
-					range = turretRange,
-					x = object.x,
-					y = object.y,
-					z = object.z,
-					active = false,
-				}
-				if turretName == "Turret_OrderTurretShrine_A" or turretName == "Turret_ChaosTurretShrine_A" then
-					_turrets[turretName].range = fountainRange
-					for j = 1, objManager.maxObjects do
-						local object2 = objManager:getObject(j)
-						if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistance(object, object2) < 1000 then
-							_turrets[turretName].x = object2.x
-							_turrets[turretName].z = object2.z
-						elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then
-							_turrets[turretName].y = object2.y
-						end
-					end
-				end
-			end
-		end
-		function __turrets__OnTick()
-			for name, turret in pairs(_turrets) do
-				if turret.object.valid == false or turret.object.dead or turret.object.health == 0 then
-					_turrets[name] = nil
-				end
-			end
-		end
-		AddTickCallback(__turrets__OnTick)
-	end
+local _turrets,__turrets__OnTick
+local function __Turrets__init()
+    if _turrets == nil then
+        _turrets = {}
+        local turretRange = 950
+        local fountainRange = 1050
+        local visibilityRange = 1300
+        for i = 1, objManager.maxObjects do
+            local object = objManager:getObject(i)
+            if object ~= nil and object.type == "obj_AI_Turret" then
+                local turretName = object.name
+                _turrets[turretName] = {
+                    object = object,
+                    team = object.team,
+                    range = turretRange,
+                    x = object.x,
+                    y = object.y,
+                    z = object.z,
+                    active = false,
+                }
+                if turretName == "Turret_OrderTurretShrine_A" or turretName == "Turret_ChaosTurretShrine_A" then
+                    _turrets[turretName].range = fountainRange
+                    for j = 1, objManager.maxObjects do
+                        local object2 = objManager:getObject(j)
+                        if object2 ~= nil and object2.type == "obj_SpawnPoint" and GetDistanceSqr(object, object2) < 1000000 then
+                            _turrets[turretName].x = object2.x
+                            _turrets[turretName].z = object2.z
+                        elseif object2 ~= nil and object2.type == "obj_HQ" and object2.team == object.team then
+                            _turrets[turretName].y = object2.y
+                        end
+                    end
+                end
+            end
+        end
+        function __turrets__OnTick()
+            for name, turret in pairs(_turrets) do
+                if turret.object.valid == false or turret.object.dead or turret.object.health == 0 then
+                    _turrets[name] = nil
+                end
+            end
+        end
+        AddTickCallback(__turrets__OnTick)
+    end
 end
 
 function GetTurrets()
-	__Turrets__init()
-	return _turrets
+    __Turrets__init()
+    return _turrets
 end
 
 function UnderTurret(pos, enemyTurret)
-	__Turrets__init()
-	local enemyTurret = (enemyTurret ~= false)
-	for name, turret in pairs(_turrets) do
-		if turret ~= nil and (turret.team ~= player.team) == enemyTeam and GetDistance(turret, pos) <= turret.range then
-			return true
-		end
-	end
-	return false
+    __Turrets__init()
+    local enemyTurret = (enemyTurret ~= false)
+    for name, turret in pairs(_turrets) do
+        if turret ~= nil and (turret.team ~= player.team) == enemyTeam and GetDistanceSqr(turret, pos) <= (turret.range)^2 then
+            return true
+        end
+    end
+    return false
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2372,6 +2542,7 @@ _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy
 local function _ChampionLane__Save()
     _championLane.nextSave = GetTickCount() + 30000
     local file = io.open(_championLane.savedFile, "w")
+    if not file and  fixFolders() then file = io.open(_championLane.savedFile, "w") end
     if file then
         file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
         for j, team in pairs({ "ally", "enemy" }) do
@@ -2386,6 +2557,7 @@ local function _ChampionLane__Save()
 end
 
 -- init values
+local __ChampionLane__OnTick
 local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
@@ -2445,9 +2617,9 @@ local function _ChampionLane__OnLoad()
                         -- update champ pos
                         if champion.hero.dead == false then
                             if champion.hero.visible then
-                                if GetDistance(_championLane.top.point, champion.hero) < 2000 then champion.top = champion.top + 10 end
-                                if _championLane.mid ~= nil and GetDistance(_championLane.mid.point, champion.hero) < 2000 then champion.mid = champion.mid + 10 end
-                                if GetDistance(_championLane.bot.point, champion.hero) < 2000 then champion.bot = champion.bot + 10 end
+                                if GetDistanceSqr(_championLane.top.point, champion.hero) < 4000000 then champion.top = champion.top + 10 end
+                                if _championLane.mid ~= nil and GetDistanceSqr(_championLane.mid.point, champion.hero) < 4000000 then champion.mid = champion.mid + 10 end
+                                if GetDistanceSqr(_championLane.bot.point, champion.hero) < 4000000 then champion.bot = champion.bot + 10 end
                             else
                                 champion.jungle = champion.jungle + 1
                             end
@@ -2475,8 +2647,7 @@ local function _ChampionLane__OnLoad()
                     end
                     if _championLane.mapIndex == 1 then
                         -- update carry / support
-                        local carryAD = nil
-                        local support = nil
+                        local carryAD, support
                         for i, hero in pairs(_championLane[team].bot) do
                             if carryAD == nil or hero.totalDamage > carryAD.totalDamage then carryAD = hero end
                             if support == nil or hero.totalDamage < support.totalDamage then support = hero end
@@ -2634,7 +2805,7 @@ function autoLevel__OnTick()
         PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
-
+local __autoLevel__OnTick
 local function autoLevel__OnLoad()
     if not __autoLevel__OnTick then
         function __autoLevel__OnTick()
@@ -2724,25 +2895,31 @@ class'scriptConfig'
 
 local function __SC__remove(name)
     local file = io.open(_SC.configFile, "a+")
-    local nameFound, keepLine, content = false, true, {}
-    for line in file:lines() do
-        if not keepLine and string.find(line, "%[") then keepLine = true end
-        if keepLine and string.find(line, "%[" .. name .. "%]") then keepLine, nameFound = false, true end
-        if keepLine then table.insert(content, line) end
-    end
-    file:close()
-    if nameFound then
-        file = io.open(_SC.configFile, "w+")
-        for i = 1, #content do
-            file:write(string.format("%s\n", content[i]))
+    if not file and  fixFolders() then file = io.open(_SC.configFile, "a+") end
+    if file then
+        local nameFound, keepLine, content = false, true, {}
+        for line in file:lines() do
+            if not keepLine and string.find(line, "%[") then keepLine = true end
+            if keepLine and string.find(line, "%[" .. name .. "%]") then keepLine, nameFound = false, true end
+            if keepLine then table.insert(content, line) end
         end
         file:close()
+        if nameFound then
+            file = io.open(_SC.configFile, "w+")
+            if not file then return end
+            for i = 1, #content do
+                file:write(string.format("%s\n", content[i]))
+            end
+            file:close()
+        end
     end
 end
 
 local function __SC__load(name)
     local keepLine, config = false, {}
     local file = io.open(_SC.configFile, "a+")
+    if not file and  fixFolders() then file = io.open(_SC.configFile, "a+") end
+    if not file then return config end
     for line in file:lines() do
         if keepLine and string.find(line, "%[") then keepLine = false end
         if not keepLine and string.find(line, "%[" .. name .. "%]") then keepLine = true
@@ -2763,6 +2940,8 @@ end
 local function __SC__save(name, content)
     __SC__remove(name)
     local file = io.open(_SC.configFile, "a")
+    if not file and fixFolders() then file = io.open(_SC.configFile, "a") end
+    if not file then return end
     file:write("[" .. name .. "]\n")
     for i = 1, #content do
         file:write(string.format("%s\n", content[i]))
@@ -2826,7 +3005,7 @@ local function __SC__init_draw()
         _SC.pDraw = { x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
         local menuConfig = __SC__load("Menu")
         for var, value in pairs(menuConfig) do
-            vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
+            local vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
             if #vars == 1 then
                 _SC[vars[1]] = value
             elseif #vars == 2 then
@@ -2897,6 +3076,7 @@ local function __SC__DrawInstance(header, selected)
     _SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
 end
 
+local __SC__OnDraw, __SC__OnWndMsg
 local function __SC__OnLoad()
     if not __SC__OnDraw then
         function __SC__OnDraw()
@@ -2954,7 +3134,6 @@ local function __SC__OnLoad()
                 end
             end
         end
-
         AddDrawCallback(__SC__OnDraw)
     end
     if not __SC__OnWndMsg then
@@ -3147,7 +3326,7 @@ end
 function scriptConfig:load()
     local config = __SC__load(self.name)
     for var, value in pairs(config) do
-        vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
+        local vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
         if #vars == 1 then
             if self[vars[1]] ~= nil then self[vars[1]] = value end
         elseif #vars == 2 then
@@ -3216,57 +3395,52 @@ end
 	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
 ]]
 
-_muramana = { init = true, id = 3042, nextTick = 0, tick = 2500, particle = "ItemMuramanaToggle.troy", object = nil }
+local _muramana = { init = true, id = 3042, nextTick = 0, tick = 2500, particle = "ItemMuramanaToggle.troy", object = nil }
 
-function _muramana__OnCreateObj(object)
-	if object and object.valid and object.name == _muramana.particle and GetDistance(object) < 50 then
-		_muramana.object = object
-	end
-end
-
+local __muramana__OnCreateObj
 local function _muramana__Init()
-	if _muramana.init then
-		function __muramana__OnCreateObj(object)
-			if object and object.valid and object.name == _muramana.particle and GetDistance(object) < 50 then
-				_muramana.object = object
-			end
-		end
-		AddCreateObjCallback(__muramana__OnCreateObj)
-		for i = 1, objManager.maxObjects do
+    if _muramana.init then
+        function __muramana__OnCreateObj(object)
+            if object and object.valid and object.name == _muramana.particle and GetDistanceSqr(object) < 2500 then
+                _muramana.object = object
+            end
+        end
+        AddCreateObjCallback(__muramana__OnCreateObj)
+        for i = 1, objManager.maxObjects do
             __muramana__OnCreateObj(objManager:getObject(i))
         end
-		_muramana.init = false
-	end
+        _muramana.init = false
+    end
 end
 
 function MuramanaIsActive()
-	_muramana__Init()
-	return (_muramana.object ~= nil and _muramana.object.valid)
+    _muramana__Init()
+    return (_muramana.object ~= nil and _muramana.object.valid)
 end
 
 function MuramanaToggle(range, extCondition)
-	assert(type(range) == "number", "MuramanaToggle: expected <number> for range)")
-	assert((extCondition == nil or type(extCondition) == "boolean"), "MuramanaToggle: expected <boolean> or nil for extCondition)")
-	if extCondition == nil then extCondition = true end
-	if (_muramana.nextTick > GetTickCount()) then return end
-	_muramana.nextTick = GetTickCount() + _muramana.tick
-	local muramanaActived = MuramanaIsActive()
-	if GetInventoryItemIsCastable(_muramana.id) then
-		_muramana.tick = 200
-		local enemyInRange = (CountEnemyHeroInRange(range) > 0)
-		if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
-			-- toogle muramana
-			CastItem(_muramana.id)
-		end
-	end
+    assert(type(range) == "number", "MuramanaToggle: expected <number> for range)")
+    assert((extCondition == nil or type(extCondition) == "boolean"), "MuramanaToggle: expected <boolean> or nil for extCondition)")
+    if extCondition == nil then extCondition = true end
+    if (_muramana.nextTick > GetTickCount()) then return end
+    _muramana.nextTick = GetTickCount() + _muramana.tick
+    local muramanaActived = MuramanaIsActive()
+    if GetInventoryItemIsCastable(_muramana.id) then
+        _muramana.tick = 200
+        local enemyInRange = (CountEnemyHeroInRange(range) > 0)
+        if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
+            -- toogle muramana
+            CastItem(_muramana.id)
+        end
+    end
 end
 
 function MuramanaOn()
-	if (MuramanaIsActive() == false) then CastItem(_muramana.id) end
+    if (MuramanaIsActive() == false) then CastItem(_muramana.id) end
 end
 
 function MuramanaOff()
-	if (MuramanaIsActive()) then CastItem(_muramana.id) end
+    if (MuramanaIsActive()) then CastItem(_muramana.id) end
 end
 
 --  Ward finder
@@ -3281,166 +3455,165 @@ end
 	- as we can't get the real state of WriggleLantern, reload the script will disable it for 3 min
 ]]
 local _wards = {
-	WriggleLantern = { id = 3154, nextUse = GetTickCount() + 180000 },
-	Sightstone = { id = 2049 },
-	RSightstone = { id = 2045 },
-	ItemMiniWard = { id = 2050 },
-	SightWard = { id = 2044 },
-	VisionWard = { id = 2043 },
-	Sightstone_Used = 5,
-	SlotUpdateTick = 0,
-	--tmp fix for AddProcessSpellCallback
-	Sightstone_nextUse = 0, 
+    WriggleLantern = { id = 3154, nextUse = GetTickCount() + 180000 },
+    Sightstone = { id = 2049 },
+    RSightstone = { id = 2045 },
+    ItemMiniWard = { id = 2050 },
+    SightWard = { id = 2044 },
+    VisionWard = { id = 2043 },
+    Sightstone_Used = 5,
+    SlotUpdateTick = 0,
+    --tmp fix for AddProcessSpellCallback
+    Sightstone_nextUse = 0,
 }
-
-function _wardsUse()
-	if not __wards__OnTick then
-		function __wards__OnTick()
-			if InFountain() then _wards.Sightstone_Used = 0 end
-			if _wards.SlotUpdateTick < GetTickCount() then
-				_wards.SlotUpdateTick = GetTickCount() + 500
-				_wards.WriggleLantern.slot = GetInventorySlotItem(_wards.WriggleLantern.id)
-				_wards.Sightstone.slot = GetInventorySlotItem(_wards.Sightstone.id)
-				_wards.RSightstone.slot = GetInventorySlotItem(_wards.RSightstone.id)
-				_wards.ItemMiniWard.slot = GetInventorySlotItem(_wards.ItemMiniWard.id)
-				_wards.SightWard.slot = GetInventorySlotItem(_wards.SightWard.id)
-				_wards.VisionWard.slot = GetInventorySlotItem(_wards.VisionWard.id)
-			end
-			_wards.WriggleLantern.r_slot = ((_wards.WriggleLantern.slot and player:CanUseSpell(_wards.WriggleLantern.slot) and _wards.WriggleLantern.nextUse < GetTickCount()) and _wards.WriggleLantern.slot or nil) -- Wriggle lantern
-			_wards.Sightstone.r_slot = ((_wards.Sightstone.slot and _wards.Sightstone_Used < 4 and player:CanUseSpell(_wards.Sightstone.slot)) and _wards.Sightstone.slot or nil) -- Sightstone
-			_wards.RSightstone.r_slot = ((_wards.RSightstone.slot and _wards.Sightstone_Used < 5 and player:CanUseSpell(_wards.RSightstone.slot)) and _wards.RSightstone.slot or nil)
-			_wards.ItemMiniWard.r_slot = ((_wards.ItemMiniWard.slot and player:CanUseSpell(_wards.ItemMiniWard.slot)) and _wards.ItemMiniWard.slot or nil)
-			_wards.SightWard.r_slot = ((_wards.SightWard.slot and player:CanUseSpell(_wards.SightWard.slot)) and _wards.SightWard.slot or nil)
-			_wards.VisionWard.r_slot = ((_wards.VisionWard.slot and player:CanUseSpell(_wards.VisionWard.slot)) and _wards.VisionWard.slot or nil)
-		end	
-		AddTickCallback(__wards__OnTick)
-	end
-	if not __wards__OnProcessSpell then
-		function __wards__OnProcessSpell(unit, spell)
-			if unit.isMe then
-				local spellName = spell.name:lower()
-				if spellName == "itemghostward" and _wards.Sightstone_nextUse < GetTickCount() then
-					_wards.Sightstone_nextUse = GetTickCount() + 500
-					_wards.Sightstone_Used = _wards.Sightstone_Used + 1
-				elseif spellName == "wrigglelantern" then
-					_wards.WriggleLantern.nextUse = GetTickCount() + 180000
-				end
-			end
-		end
-		AddProcessSpellCallback(__wards__OnProcessSpell)
-	end
+local __wards__OnTick,__wards__OnProcessSpell
+local function _wardsUse()
+    if not __wards__OnTick then
+        function __wards__OnTick()
+            if InFountain() then _wards.Sightstone_Used = 0 end
+            if _wards.SlotUpdateTick < GetTickCount() then
+                _wards.SlotUpdateTick = GetTickCount() + 500
+                _wards.WriggleLantern.slot = GetInventorySlotItem(_wards.WriggleLantern.id)
+                _wards.Sightstone.slot = GetInventorySlotItem(_wards.Sightstone.id)
+                _wards.RSightstone.slot = GetInventorySlotItem(_wards.RSightstone.id)
+                _wards.ItemMiniWard.slot = GetInventorySlotItem(_wards.ItemMiniWard.id)
+                _wards.SightWard.slot = GetInventorySlotItem(_wards.SightWard.id)
+                _wards.VisionWard.slot = GetInventorySlotItem(_wards.VisionWard.id)
+            end
+            _wards.WriggleLantern.r_slot = ((_wards.WriggleLantern.slot and player:CanUseSpell(_wards.WriggleLantern.slot) and _wards.WriggleLantern.nextUse < GetTickCount()) and _wards.WriggleLantern.slot or nil) -- Wriggle lantern
+            _wards.Sightstone.r_slot = ((_wards.Sightstone.slot and _wards.Sightstone_Used < 4 and player:CanUseSpell(_wards.Sightstone.slot)) and _wards.Sightstone.slot or nil) -- Sightstone
+            _wards.RSightstone.r_slot = ((_wards.RSightstone.slot and _wards.Sightstone_Used < 5 and player:CanUseSpell(_wards.RSightstone.slot)) and _wards.RSightstone.slot or nil)
+            _wards.ItemMiniWard.r_slot = ((_wards.ItemMiniWard.slot and player:CanUseSpell(_wards.ItemMiniWard.slot)) and _wards.ItemMiniWard.slot or nil)
+            _wards.SightWard.r_slot = ((_wards.SightWard.slot and player:CanUseSpell(_wards.SightWard.slot)) and _wards.SightWard.slot or nil)
+            _wards.VisionWard.r_slot = ((_wards.VisionWard.slot and player:CanUseSpell(_wards.VisionWard.slot)) and _wards.VisionWard.slot or nil)
+        end
+        AddTickCallback(__wards__OnTick)
+    end
+    if not __wards__OnProcessSpell then
+        function __wards__OnProcessSpell(unit, spell)
+            if unit.isMe then
+                local spellName = spell.name:lower()
+                if spellName == "itemghostward" and _wards.Sightstone_nextUse < GetTickCount() then
+                    _wards.Sightstone_nextUse = GetTickCount() + 500
+                    _wards.Sightstone_Used = _wards.Sightstone_Used + 1
+                elseif spellName == "wrigglelantern" then
+                    _wards.WriggleLantern.nextUse = GetTickCount() + 180000
+                end
+            end
+        end
+        AddProcessSpellCallback(__wards__OnProcessSpell)
+    end
 end
 
 function GetWardSlot()
-	_wardsUse()
-	if _wards.WriggleLantern.r_slot then return _wards.WriggleLantern.r_slot
-	elseif _wards.Sightstone.r_slot then return _wards.Sightstone.r_slot
-	elseif _wards.RSightstone.r_slot then return _wards.RSightstone.r_slot
-	elseif _wards.ItemMiniWard.r_slot then return _wards.ItemMiniWard.r_slot
-	elseif _wards.SightWard.r_slot then return _wards.SightWard.r_slot
-	elseif _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot
-	end
+    _wardsUse()
+    if _wards.WriggleLantern.r_slot then return _wards.WriggleLantern.r_slot
+    elseif _wards.Sightstone.r_slot then return _wards.Sightstone.r_slot
+    elseif _wards.RSightstone.r_slot then return _wards.RSightstone.r_slot
+    elseif _wards.ItemMiniWard.r_slot then return _wards.ItemMiniWard.r_slot
+    elseif _wards.SightWard.r_slot then return _wards.SightWard.r_slot
+    elseif _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot
+    end
 end
 
 function GetPinkWardSlot()
-	_wardsUse()
-	if _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot end
+    _wardsUse()
+    if _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot end
 end
 
 function GetWardsSlots()
-	_wardsUse()
-	return _wards.WriggleLantern.r_slot, _wards.Sightstone.r_slot, _wards.RSightstone.r_slot, _wards.ItemMiniWard.r_slot, _wards.SightWard.r_slot, _wards.VisionWard.r_slot
+    _wardsUse()
+    return _wards.WriggleLantern.r_slot, _wards.Sightstone.r_slot, _wards.RSightstone.r_slot, _wards.ItemMiniWard.r_slot, _wards.SightWard.r_slot, _wards.VisionWard.r_slot
 end
 
 --  Text and circles draws
 --[[
 
 ]]
-local _tcDraws = {circle = false, text = false, modes = {}}
+local _tcDraws, _tcDraws__OnDraw, _tcDraws__OnTick = {circle = false, text = false, modes = {}}, nil, nil
 function __tcDraws__init()
-	if not _tcDraws.heros then
-		_tcDraws.heros = {}
-		for i = 1, heroManager.iCount do
-			local hero = heroManager:getHero(i)
-			if hero ~= nil and hero.networkID then
-				_tcDraws.heros[hero.networkID] = { hero = hero, state = 0, tick = 0 }
-			end
-		end
-		function _tcDraws__OnDraw()
-			if myHero.dead then return end
-			if _tcDraws.circle then
-				local tick = GetTickCount()
-				for i, target in pairs(_tcDraws.heros) do
-					if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
-						if _tcDraws.modes[target.state] then
-						local mode = _tcDraws.modes[target.state]
-							if _tcDraws.circle and mode.circle > 0 then
-								local radius = 80
-								for j = 0, mode.circle do
-									for k = 0, 10 do DrawCircle(target.hero.x, target.hero.y, target.hero.z, radius + j*1.5, mode.color) end
-									radius = radius + 30
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-		AddDrawCallback(_tcDraws__OnDraw)
-		function _tcDraws__OnTick()
-			if myHero.dead then return end
-			if _tcDraws.text then
-				local tick = GetTickCount()
-				for i, target in pairs(_tcDraws.heros) do
-					if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
-						if _tcDraws.modes[target.state] then
-						local mode = _tcDraws.modes[target.state]
-							if target.tick < tick then
-								target.tick = tick + 1200
-								if mode.text1 then PrintFloatText(target.hero,mode.textType1,mode.text1) end
-								if mode.text2 then PrintFloatText(target.hero,mode.textType2,mode.text2) end
-							end
-						end
-					end
-				end
-			end
-		end
-		AddTickCallback(_tcDraws__OnTick)
-	end
+    if not _tcDraws.heros then
+        _tcDraws.heros = {}
+        for i = 1, heroManager.iCount do
+            local hero = heroManager:getHero(i)
+            if hero ~= nil and hero.networkID then
+                _tcDraws.heros[hero.networkID] = { hero = hero, state = 0, tick = 0 }
+            end
+        end
+        function _tcDraws__OnDraw()
+            if myHero.dead then return end
+            if _tcDraws.circle then
+                local tick = GetTickCount()
+                for i, target in pairs(_tcDraws.heros) do
+                    if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
+                        if _tcDraws.modes[target.state] then
+                            local mode = _tcDraws.modes[target.state]
+                            if _tcDraws.circle and mode.circle > 0 then
+                                local radius = 80
+                                for j = 0, mode.circle do
+                                    for k = 0, 10 do DrawCircle(target.hero.x, target.hero.y, target.hero.z, radius + j*1.5, mode.color) end
+                                    radius = radius + 30
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        AddDrawCallback(_tcDraws__OnDraw)
+        function _tcDraws__OnTick()
+            if myHero.dead then return end
+            if _tcDraws.text then
+                local tick = GetTickCount()
+                for i, target in pairs(_tcDraws.heros) do
+                    if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
+                        if _tcDraws.modes[target.state] then
+                            local mode = _tcDraws.modes[target.state]
+                            if target.tick < tick then
+                                target.tick = tick + 1200
+                                if mode.text1 then PrintFloatText(target.hero,mode.textType1,mode.text1) end
+                                if mode.text2 then PrintFloatText(target.hero,mode.textType2,mode.text2) end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        AddTickCallback(_tcDraws__OnTick)
+    end
 end
 
 function TCDrawSetMode(index, circle, color, text1, textType1, text2, textType2)
-	_tcDraws.modes[index] = {
-		circle = circle,
-		color = color,
-		text1 = text1,
-		textType1 = textType1,
-		text2 = text2,
-		textType2 = textType2,
-	}
+    _tcDraws.modes[index] = {
+        circle = circle,
+        color = color,
+        text1 = text1,
+        textType1 = textType1,
+        text2 = text2,
+        textType2 = textType2,
+    }
 end
 
 function TCDrawSetDrawCircle(state)
-	assert(type(state) == "boolean", "TCDrawSetDrawCircle: expected <boolean> for State)")
-	__tcDraws__init()
-	_tcDraws.circle = state
+    assert(type(state) == "boolean", "TCDrawSetDrawCircle: expected <boolean> for State)")
+    __tcDraws__init()
+    _tcDraws.circle = state
 end
 
 function TCDrawSetDrawText(state)
-	assert(type(state) == "boolean", "TCDrawSetDrawText: expected <boolean> for State)")
-	__tcDraws__init()
-	_tcDraws.text = state
+    assert(type(state) == "boolean", "TCDrawSetDrawText: expected <boolean> for State)")
+    __tcDraws__init()
+    _tcDraws.text = state
 end
 
 function TCDrawSetDraw(circle, text)
-	TCDrawSetDrawCircle(circle)
-	TCDrawSetDrawText(text)
+    TCDrawSetDrawCircle(circle)
+    TCDrawSetDrawText(text)
 end
 
 function TCDrawSetHero(hero, level)
-	assert(hero and hero.valid and hero.networkID and type(level) == "number", "TCDrawSetHero: expected <hero>, <number> for level)")
-	__tcDraws__init()
-	if not _tcDraws.heros[hero.networkID] then return end
-	_tcDraws.heros[hero.networkID].state = level
+    assert(hero and hero.valid and hero.networkID and type(level) == "number", "TCDrawSetHero: expected <hero>, <number> for level)")
+    __tcDraws__init()
+    if not _tcDraws.heros[hero.networkID] then return end
+    _tcDraws.heros[hero.networkID].state = level
 end
-
