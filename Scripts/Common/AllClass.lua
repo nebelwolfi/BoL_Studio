@@ -303,21 +303,30 @@ end
 	example: DelayAction(myFunc, 5)
 ]]
 local delayedActions = {}
-function DelayAction(func, delay) --delay in seconds
+function DelayAction(func, delay, args) --delay in seconds
     local t = os.clock()+(delay or 0)
-    if delayedActions[t] then table.insert(delayedActions[t],func)
-    else delayedActions[t] = {func} end
+    if delayedActions[t] then table.insert(delayedActions[t],{func = func, args = args})
+    else delayedActions[t] = {{func = func, args = args}} end
 end
 
 local function delayedActionsExecuter()
     for t, funcs in pairs(delayedActions) do
         if t>=os.clock() then
-            for i, func in ipairs(funcs) do func() end
+            for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
             delayedActions[t] = nil
         end
     end
 end
 AddTickCallback(delayedActionsExecuter)
+
+local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle
+function EnableOverlay()
+    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle
+end
+
+function DisableOverlay()
+    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = function() end, function() end, function() end, function() end, function() end, function() end
+end
 
 -- return if cursor is under a rectangle
 function CursorIsUnder(x, y, sizeX, sizeY)
