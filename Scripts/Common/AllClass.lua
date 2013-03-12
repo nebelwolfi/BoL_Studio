@@ -305,7 +305,6 @@ end
 local delayedActions = {}
 function DelayAction(func, delay, args) --delay in seconds
     local t = os.clock()+(delay or 0)
-	PrintChat("Started at " .. t)
     if delayedActions[t] then table.insert(delayedActions[t],{func = func, args = args})
     else delayedActions[t] = {{func = func, args = args}} end
 end
@@ -313,7 +312,6 @@ end
 local function delayedActionsExecuter()
     for t, funcs in pairs(delayedActions) do
         if t<=os.clock() then
-			PrintChat("T: "..t.."Clock"..os.clock())
             for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
             delayedActions[t] = nil
         end
@@ -328,6 +326,11 @@ end
 
 function DisableOverlay()
     _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = function() end, function() end, function() end, function() end, function() end, function() end
+end
+
+function QuitGame()
+	os.execute([[taskkill /im "League of Legends.exe"]])
+	DelayAction(os.execute, 5, [[taskkill /f /im "League of Legends.exe"]])
 end
 
 -- return if cursor is under a rectangle
