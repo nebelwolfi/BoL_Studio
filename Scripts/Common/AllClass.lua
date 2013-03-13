@@ -149,70 +149,72 @@ if math.close == nil then
     end
 end
 
-local fps = 0
-function GetFPS()
+local fps, avgFps = 0, 0
+function GetExactFPS()
     return fps
 end
 
-local lastFrame = -math.huge
+function GetFPS()
+    return avgFps
+end
+
+local frameCount, fFrame, lastFrame = 0, -math.huge, -math.huge
 local function updateFPS()
     fps = 1/(os.clock() - lastFrame)
-    lastFrame = os.clock()
+	lastFrame, frameCount = os.clock(), frameCount + 1
+	if os.clock() < 0.5 + fFrame then return end
+	avgFps = math.round(frameCount/(os.clock() - fFrame))
+    fFrame, frameCount = os.clock(), 0
 end
 AddDrawCallback(updateFPS)
 
---[=[
-Brings the League of Legends Window in Foreground. Needed after os.execute or other function that minimize the client.
+--[[
+    Executes a Powershell script
+]]
+function os.executePowerShell(script)
+    local function Base64Unicode(text)
+        -- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
+        local data, b = "", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        text:gsub(".", function(c) data = data .. c .. "\0" end)
+        return ((data:gsub('.', function(x)
+            local r,b='',x:byte()
+            for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+            return r;
+        end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+            if (#x < 6) then return '' end
+            local c=0
+            for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+            return b:sub(c+1,c+1)
+        end)..({ '', '==', '=' })[#data%3+1])
+    end
+    os.execute("powershell -encoded \""..Base64Unicode(script).."\"")
+end
 
-Original PowerShell Script is Base64 encoded:
-Encoding had to be done to bypass the script execution policy of powershell.
-    #Written by gReY
-	$script = {
-		Add-Type(@"
-			using System;
-			using System.Runtime.InteropServices;
-			public class User32 {
-				[DllImport("user32.dll")]
-				[return: MarshalAs(UnmanagedType.Bool)]
-				public static extern bool SetForegroundWindow(IntPtr hWnd);
-				[DllImport("user32.dll")]
-				[return: MarshalAs(UnmanagedType.Bool)]
-				public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);}
-			"@)
-		Write-Host "Add-Type: True";
-		$h = (Get-Process "League of Legends").MainWindowHandle;
-		Write-Host "League of Legends hWnd: "$h;
-		$r = [User32]::ShowWindowAsync($h,9);
-		Write-Host "ShowWindowAsync: "$r;
-		$r = [User32]::SetForegroundWindow($h);
-		Write-Host "SetForegroundWindow: "$r;
-	}
-	[convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
-	]=]
+--[[
+	Brings the League of Legends Window in Foreground. Needed after os.execute or other function that minimize the client.
+]]
 function SetForeground()
-    local base64script = "CgBBAGQAZAAtAFQAeQBwAGUAKABAACIACgB1AHMAaQBuAGcAIABTAHkAcwB0AGUAbQA7AAoAdQBzAGk"
-    base64script = base64script .. "AbgBnACAAUwB5AHMAdABlAG0ALgBSAHUAbgB0AGkAbQBlAC4ASQBuAHQAZQByAG8AcABTAGUAcgB2AG"
-    base64script = base64script .. "kAYwBlAHMAOwAKAHAAdQBiAGwAaQBjACAAYwBsAGEAcwBzACAAVQBzAGUAcgAzADIAIAB7AAoAWwBEA"
-    base64script = base64script .. "GwAbABJAG0AcABvAHIAdAAoACIAdQBzAGUAcgAzADIALgBkAGwAbAAiACkAXQAKAFsAcgBlAHQAdQBy"
-    base64script = base64script .. "AG4AOgAgAE0AYQByAHMAaABhAGwAQQBzACgAVQBuAG0AYQBuAGEAZwBlAGQAVAB5AHAAZQAuAEIAbwB"
-    base64script = base64script .. "vAGwAKQBdAAoAcAB1AGIAbABpAGMAIABzAHQAYQB0AGkAYwAgAGUAeAB0AGUAcgBuACAAYgBvAG8AbA"
-    base64script = base64script .. "AgAFMAZQB0AEYAbwByAGUAZwByAG8AdQBuAGQAVwBpAG4AZABvAHcAKABJAG4AdABQAHQAcgAgAGgAV"
-    base64script = base64script .. "wBuAGQAKQA7AAoAWwBEAGwAbABJAG0AcABvAHIAdAAoACIAdQBzAGUAcgAzADIALgBkAGwAbAAiACkA"
-    base64script = base64script .. "XQAKAFsAcgBlAHQAdQByAG4AOgAgAE0AYQByAHMAaABhAGwAQQBzACgAVQBuAG0AYQBuAGEAZwBlAGQ"
-    base64script = base64script .. "AVAB5AHAAZQAuAEIAbwBvAGwAKQBdAAoAcAB1AGIAbABpAGMAIABzAHQAYQB0AGkAYwAgAGUAeAB0AG"
-    base64script = base64script .. "UAcgBuACAAYgBvAG8AbAAgAFMAaABvAHcAVwBpAG4AZABvAHcAQQBzAHkAbgBjACgASQBuAHQAUAB0A"
-    base64script = base64script .. "HIAIABoAFcAbgBkACwAIABpAG4AdAAgAG4AQwBtAGQAUwBoAG8AdwApADsAfQAKACIAQAApAAoAVwBy"
-    base64script = base64script .. "AGkAdABlAC0ASABvAHMAdAAgACIAQQBkAGQALQBUAHkAcABlADoAIABUAHIAdQBlACIAOwAKACQAaAA"
-    base64script = base64script .. "gAD0AIAAoAEcAZQB0AC0AUAByAG8AYwBlAHMAcwAgACIATABlAGEAZwB1AGUAIABvAGYAIABMAGUAZw"
-    base64script = base64script .. "BlAG4AZABzACIAKQAuAE0AYQBpAG4AVwBpAG4AZABvAHcASABhAG4AZABsAGUAOwAKAFcAcgBpAHQAZ"
-    base64script = base64script .. "QAtAEgAbwBzAHQAIAAiAEwAZQBhAGcAdQBlACAAbwBmACAATABlAGcAZQBuAGQAcwAgAGgAVwBuAGQA"
-    base64script = base64script .. "OgAgACIAJABoADsACgAkAHIAIAA9ACAAWwBVAHMAZQByADMAMgBdADoAOgBTAGgAbwB3AFcAaQBuAGQ"
-    base64script = base64script .. "AbwB3AEEAcwB5AG4AYwAoACQAaAAsADkAKQA7AAoAVwByAGkAdABlAC0ASABvAHMAdAAgACIAUwBoAG"
-    base64script = base64script .. "8AdwBXAGkAbgBkAG8AdwBBAHMAeQBuAGMAOgAgACIAJAByADsACgAkAHIAIAA9ACAAWwBVAHMAZQByA"
-    base64script = base64script .. "DMAMgBdADoAOgBTAGUAdABGAG8AcgBlAGcAcgBvAHUAbgBkAFcAaQBuAGQAbwB3ACgAJABoACkAOwAK"
-    base64script = base64script .. "AFcAcgBpAHQAZQAtAEgAbwBzAHQAIAAiAFMAZQB0AEYAbwByAGUAZwByAG8AdQBuAGQAVwBpAG4AZAB"
-    base64script = base64script .. "vAHcAOgAgACIAJAByADsACgA="
-    os.execute("powershell -encoded " .. base64script)
+    local script = [[
+#Written By gReY
+Add-Type(@"
+    using System;
+    using System.Runtime.InteropServices;
+    public class User32 {
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);}
+"@)
+Write-Host "Add-Type: True";
+$h = (Get-Process "League of Legends").MainWindowHandle;
+Write-Host "League of Legends hWnd: "$h;
+$r = [User32]::ShowWindowAsync($h,9);
+Write-Host "ShowWindowAsync: "$r;
+$r = [User32]::SetForegroundWindow($h);
+Write-Host "SetForegroundWindow: "$r;]]
+	os.executePowerShell(script)
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
@@ -281,7 +283,7 @@ file_exists = FileExist --Backward compatibility
 
 function DeleteFile(path)
     assert(type(path) == "string", "DeleteFile: wrong argument types (<string> expected for path)")
-    return os.remove(path) == 0
+    return os.remove(path) == true
 end
 
 function GetFileSize(path)
@@ -330,7 +332,7 @@ end
 
 function QuitGame()
 	os.execute([[taskkill /im "League of Legends.exe"]])
-	DelayAction(os.execute, 5, [[taskkill /f /im "League of Legends.exe"]])
+	DelayAction(os.exit, 5, {0}) --ForceQuit
 end
 
 -- return if cursor is under a rectangle
