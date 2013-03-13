@@ -187,7 +187,10 @@ function os.executePowerShell(script)
             return b:sub(c+1,c+1)
         end)..({ '', '==', '=' })[#data%3+1])
     end
-    os.execute("powershell -encoded \""..Base64Unicode(script).."\"")
+    local handle = io.popen("powershell -encoded \""..Base64Unicode(script).."\"", "r")
+    if not handle then return false, "" end
+    local output = handle:read("*all")
+    return handle:close() == 0, output
 end
 
 --[[
