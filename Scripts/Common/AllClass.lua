@@ -170,8 +170,9 @@ AddDrawCallback(updateFPS)
 
 --[[
     Executes a Powershell script
+	e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
 ]]
-function os.executePowerShell(script)
+function os.executePowerShell(script, argument)
     local function Base64Unicode(text)
         -- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
         local data, b = "", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -187,18 +188,18 @@ function os.executePowerShell(script)
             return b:sub(c+1,c+1)
         end)..({ '', '==', '=' })[#data%3+1])
     end
-    local handle = io.popen("powershell -encoded \""..Base64Unicode(script).."\"", "r")
+    local handle = io.popen("powershell "..(argument or "").." -encoded \""..Base64Unicode(script).."\"", "r")
     if not handle then return false, "" end
     local output = handle:read("*all")
-    return handle:close() == 0, output
+    return handle:close() == true, output
 end
 
 --[[
 	Brings the League of Legends Window in Foreground. Needed after os.execute or other function that minimize the client.
 ]]
 function SetForeground()
+--Written By gReY
     local script = [[
-#Written By gReY
 Add-Type(@"
     using System;
     using System.Runtime.InteropServices;
@@ -210,26 +211,22 @@ Add-Type(@"
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);}
 "@)
-Write-Host "Add-Type: True";
-$h = (Get-Process "League of Legends").MainWindowHandle;
-Write-Host "League of Legends hWnd: "$h;
-$r = [User32]::ShowWindowAsync($h,9);
-Write-Host "ShowWindowAsync: "$r;
-$r = [User32]::SetForegroundWindow($h);
-Write-Host "SetForegroundWindow: "$r;]]
-	os.executePowerShell(script)
+$h = (ps "League of Legends").MainWindowHandle;
+[User32]::ShowWindowAsync($h,9);
+[User32]::SetForegroundWindow($h);]]
+	os.executePowerShell(script,"-windowstyle hidden")
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
 function CreateDirectory(path)
     assert(type(path) == "string", "CreateDirectory: wrong argument types (<string> expected for path)")
-    return os.execute("mkdir " .. string.gsub(path, [[/]], [[\]])) == 0
+    return os.execute("mkdir " .. string.gsub(path, [[/]], [[\]])) == true
 end
 
 --Example: DirectoryExist("C:\\Users")
 function DirectoryExist(path)
     assert(type(path) == "string", "DirectoryExist: wrong argument types (<string> expected for path)")
-    return os.execute("cd " .. string.gsub(path, [[/]], [[\]])) == 0
+    return os.execute("cd " .. string.gsub(path, [[/]], [[\]])) == true
 end
 
 --Creates the Common and Sprites Folder if not present, returns true if it created folders
