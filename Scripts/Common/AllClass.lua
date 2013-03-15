@@ -17,12 +17,25 @@ function GetDistance(p1, p2)
     return math.sqrt(GetDistanceSqr(p1,p2))
 end
 
--- for combat
+--Backward compatibility
 GetDistance2D = GetDistance
+
+--p1 should be the BBoxed object
+function GetDistanceBBox(p1, p2)
+	if p2 == nil then p2 = player end
+	assert(p1 and p1.minBBox and p2 and p2.minBBox, "GetDistanceBBox: wrong argument types (<object><object> expected for p1, p2)")
+	local bbox1 = GetDistance(p1, p1.minBBox)
+	return GetDistance(p1, p2) - (bbox1)
+end
 
 function ValidTarget(object, distance, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistanceSqr(object) <= distance*distance)
+end
+
+function ValidBBoxTarget(object, distance, enemyTeam)
+    local enemyTeam = (enemyTeam ~= false)
+    return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistanceBBox(object) <= distance)
 end
 
 function ValidTargetNear(object, distance, target)
@@ -393,7 +406,7 @@ function TimerText(seconds)
     return string.format("%i:%02i", seconds / 60, seconds % 60)
 end
 
--- for combat
+--Backward compatibility
 timerText = TimerText
 
 -- return sprite
@@ -435,17 +448,16 @@ function TargetHaveParticle(particle, target, range)
     return (GetParticleObject(particle, target, range) ~= nil)
 end
 
+function BuffIsValid(buff)
+	return buff and buff.name and buff.startT <= GetGameTimer() and buff.endT >= GetGameTimer()
+end
 -- return if target have buff
 function TargetHaveBuff(buffName, target)
     assert(type(buffName) == "string" or type(buffName) == "table", "TargetHaveBuff: wrong argument types (<string> or <table of string> expected for buffName)")
-    local function isBuffValid(buff)
-        return buff and buff.name and buff.startT <= GetGameTimer() and buff.endT >= GetGameTimer()
-    end
-
     local target = target or player
     for i = 1, target.buffCount do
         local tBuff = target:getBuff(i)
-        if isBuffValid(tBuff) then
+        if BuffIsValid(tBuff) then
             if type(buffName) == "string" then
                 if tBuff.name:lower() == buffName:lower() then return true end
             else
@@ -1473,12 +1485,13 @@ TARGET_NEAR_MOUSE = 5
 TARGET_PRIORITY = 6
 TARGET_LOW_HP_PRIORITY = 7
 TARGET_LESS_CAST_PRIORITY = 8
+TARGET_DEAD = 9
 DAMAGE_MAGIC = 1
 DAMAGE_PHYSICAL = 2
 
 -- Class related global
 local _TS_Draw
-local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority" }
+local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority", "Dead" }
 
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
@@ -1657,7 +1670,6 @@ local function TargetSelector__OnLoad()
                 TS_Ignore(args[2], false)
             end
         end
-
         AddChatCallback(__TargetSelector__OnSendChat)
     end
 end
@@ -1680,6 +1692,7 @@ function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTea
     self._conditional = nil
     self._castWidth = nil
     self._pDelay = nil
+	self._BBoxMode = false
 end
 
 function TargetSelector:printMode()
@@ -1696,9 +1709,15 @@ function TargetSelector:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
     self._tDmg = trueDmg or 0
 end
 
-function TargetSelector:SetMinionCollision(castWidth)
+function TargetSelector:SetMinionCollision(castWidth, minionType)
     assert(castWidth == nil or type(castWidth) == "number", "SetMinionCollision: wrong argument types (<number> or nil expected)")
     self._castWidth = ((castWidth ~= nil or castWidth > 0) and castWidth or nil)
+	if self._castWidth then
+		local minionType = minionType or MINION_ENEMY
+		self._minionTable = minionManager(minionType, self.range + 300)
+	else
+		self._minionTable = nil
+	end
 end
 
 function TargetSelector:SetPrediction(delay)
@@ -1718,11 +1737,22 @@ function TargetSelector:SetConditional(func)
     self._conditional = func
 end
 
+function TargetSelector:SetBBoxMode(bbMode)
+    assert(type(bbMode) == "boolean", "SetBBoxMode : wrong argument types (<boolean> expected)")
+    self._BBoxMode = bbMode
+end
+
 function TargetSelector:_targetSelectedByPlayer()
     if self.targetSelected then
         local currentTarget = GetTarget()
-        if ValidTarget(currentTarget, self.range, self.enemyTeam) and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
-            if self.target == nil or self.target.networkID ~= currentTarget.networkID then
+		local validTarget = false
+		if self._BBoxMode then
+			validTarget = ValidBBoxTarget(currentTarget, self.range, self.enemyTeam)
+		else
+			validTarget = ValidTarget(currentTarget, self.range, self.enemyTeam)
+		end
+        if validTarget and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
+            if self.target == nil or not self.target.valid or self.target.networkID ~= currentTarget.networkID then
                 self.target = currentTarget
                 self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
             end
@@ -1756,11 +1786,19 @@ function TargetSelector:update()
     if self:_targetSelectedByPlayer() then return end
     local selected, index, value, nextPosition, nextHealth
     local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
+	if self._minionTable then self._minionTable:update() end
     for i, _gameHero in ipairs(_gameHeros) do
         local hero = _gameHero.hero
-        if ValidTarget(hero, range, self.enemyTeam) and not _gameHero.ignore and (self._conditional == nil or self._conditional(hero, i)) then
+		local validTarget = false
+		if self._BBoxMode then
+			validTarget = ValidBBoxTarget(hero, range, self.enemyTeam)
+		else
+			validTarget = ValidTarget(hero, range, self.enemyTeam)
+		end
+        if validTarget and not _gameHero.ignore and (self._conditional == nil or self._conditional(hero, i)) then
             local minionCollision = false
             local delay = 0
+			local distanceValid = true
             if self._pDelay ~= nil and self._pDelay > 0 then
                 delay = delay + self._pDelay
             end
@@ -1770,11 +1808,12 @@ function TargetSelector:update()
             if delay > 0 then
                 nextPosition = _PredictionPosition(i, delay)
                 nextHealth = _PredictionHealth(i, delay)
+				distanceValid = GetDistance(nextPosition) <= range
             else
                 nextPosition, nextHealth = Vector(hero), hero.health
             end
-            if self._castWidth then minionCollision = GetMinionCollision(player, nextPosition, self._castWidth) end
-            if GetDistanceSqr(nextPosition) <= range*range and minionCollision == false then
+            if self._castWidth then minionCollision = GetMinionCollision(player, nextPosition, self._castWidth, self._minionTable.objects) end
+			if distanceValid and minionCollision == false then
                 if self.mode == TARGET_LOW_HP or self.mode == TARGET_LOW_HP_PRIORITY or self.mode == TARGET_LESS_CAST or self.mode == TARGET_LESS_CAST_PRIORITY then
                     -- Returns lowest effective HP target that is in range
                     -- Or lowest cast to kill target that is in range
@@ -1793,6 +1832,14 @@ function TargetSelector:update()
                         heroValue = hero.health / totalDmg
                     end
                     if not selected or heroValue < value then selected, index, value = hero, i, heroValue end
+				elseif self.mode == TARGET_DEAD then
+                    if self._dmgType == DAMAGE_PHYSICAL then self._pDmgBase = player.totalDamage end
+                    local mDmg = (self._mDmgBase > 0 and player:CalcMagicDamage(hero, self._mDmgBase) or 0)
+                    local pDmg = (self._pDmgBase > 0 and player:CalcDamage(hero, self._pDmgBase) or 0)
+                    local totalDmg = mDmg + pDmg + self._tDmg
+					if hero.health - totalDmg <= 0 then
+						selected, index, value = hero, i, 0
+					end
                 elseif self.mode == TARGET_MOST_AP then
                     -- Returns target that has highest AP that is in range
                     if not selected or hero.ap > selected.ap then selected, index = hero, i end
@@ -1869,25 +1916,37 @@ function TargetSelector:ClickMenu(x, y)
     return y + _TS_Draw.cellSize
 end
 
-
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GetMinionCollision
 --[[
     Goblal Function :
     GetMinionCollision(posEnd, spellWidth)          -> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
-function GetMinionCollision(posStart, posEnd, spellWidth)
+
+local function _minionInCollision(minion, posStart, posEnd, sqrSpell, sqrDist)
+	if GetDistanceSqr(minion, posStart) < sqrDist and GetDistanceSqr(minion, posEnd) < sqrDist then
+		local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, minion)
+		if GetDistanceSqr(closestPoint, minion) <= sqrSpell then return true end
+	end
+	return false
+end
+
+function GetMinionCollision(posStart, posEnd, spellWidth, minionTable)
     assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
-    local distance = GetDistanceSqr(posStart, posEnd)
-    for i = 0, objManager.maxObjects, 1 do
-        local object = objManager:getObject(i)
-        if object and object.valid and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
-            if GetDistanceSqr(object, posStart) < distance and GetDistanceSqr(object, posEnd) < distance then
-                local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, object)
-                if GetDistanceSqr(closestPoint, object) <= spellWidth*spellWidth / 4 then return true end
-            end
-        end
-    end
+    local sqrDist = GetDistanceSqr(posStart, posEnd)
+	local sqrSpell = spellWidth*spellWidth / 4
+	if minionTable then
+		for i, minion in pairs(minionTable) do
+			if _minionInCollision(minion, posStart, posEnd, sqrSpell, sqrDist) then return true end
+		end
+	else
+		for i = 0, objManager.maxObjects, 1 do
+			local object = objManager:getObject(i)
+			if object and object.valid and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
+				if _minionInCollision(object, posStart, posEnd, sqrSpell, sqrDist) then return true end
+			end
+		end
+	end
     return false
 end
 
@@ -1963,6 +2022,17 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
     self.delay = delay or 0
     self.width = widthCollision
     self.smoothness = smoothness
+	if self.width then
+		self.minionTable = minionManager(MINION_ENEMY, self.range + 300)
+	end
+end
+
+function TargetPrediction:SetMinionCollisionType(minionType)
+	if minionType then
+		self.minionTable = minionManager(minionType, self.range + 300)
+	else
+		self.minionTable = nil
+	end
 end
 
 function TargetPrediction:GetPrediction(target)
@@ -1970,6 +2040,7 @@ function TargetPrediction:GetPrediction(target)
     local index = _gameHeros__index(target, "GetPrediction")
     if not index then return end
     local selected = _gameHeros[index].hero
+	if self.minionTable then self.minionTable:update() end
     if _gameHeros[index].prediction and _gameHeros[index].prediction.movement then
         if index ~= self.target then
             self.nextPosition = nil
@@ -2005,8 +2076,8 @@ function TargetPrediction:GetPrediction(target)
                     self.nextHealth = selected.health + (_gameHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
                     self.minions = false
-                    if self.width then
-                        self.minions = GetMinionCollision(player, PositionPrediction, self.width)
+                    if self.width and self.minionTable then
+						self.minions = GetMinionCollision(player, PositionPrediction, self.width, self.minionTable.objects)
                     end
                 else return
                 end
@@ -2074,56 +2145,35 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GameState Class
 --[[
-GameState Class :
-Methods:
-gameState = GameState()             --return a gameState instance
-
-Functions :
-gameState:gameIsOver()              -- update the gameIsOver state
-
-Members:
-gameState.winner            -> TEAM_BLUE / TEAM_RED winner
-gameState.loser             -> TEAM_BLUE / TEAM_RED loser
-
-Usage :
-ex :
-function OnLoad()
-    gameState = GameState()
-end
-
-function OnTick()
-    if gameState:gameIsOver() then
-        if gameState.winner == player.team then PrintChat("you are the best !") end
-        return
-    end
-end
-
 ]]
 
 local _gameState = {}
 
+function __gameState__init()
+	if not __gameState__OnCreateObj then
+		_gameState = { isOver = false, loser = 0, winner = 0, win = false }
+		function __gameState__GameOver(team)
+			_gameState.isOver = true
+			_gameState.loser = team
+			_gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+			_gameState.win = (player.team == _gameState.winner)
+		end
+		function __gameState__OnCreateObj(object)
+			if object then
+				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
+					__gameState__GameOver(TEAM_RED)
+				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
+					__gameState__GameOver(TEAM_BLUE)
+				end
+			end
+		end
+		AddCreateObjCallback(__gameState__OnCreateObj)
+	end
+end
+
 class'GameState'
-local __gameState__GameOver,__gameState__OnCreateObj
 function GameState:__init()
-    if not __gameState__OnCreateObj then
-        _gameState = { isOver = false, loser = 0, winner = 0, win = false }
-        function __gameState__GameOver(team)
-            _gameState.isOver = true
-            _gameState.loser = team
-            _gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-            _gameState.win = (player.team == _gameState.winner)
-        end
-        function __gameState__OnCreateObj(object)
-            if object then
-                if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-                    __gameState__GameOver(TEAM_RED)
-                elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-                    __gameState__GameOver(TEAM_BLUE)
-                end
-            end
-        end
-        AddCreateObjCallback(__gameState__OnCreateObj)
-    end
+	__gameState__init()
 end
 
 function GameState:gameIsOver()
@@ -2131,22 +2181,22 @@ function GameState:gameIsOver()
 end
 
 function GameIsOver()
-    GameState:__init()
+    __gameState__init()
     return _gameState.isOver
 end
 
 function GameWinner()
-    GameState:__init()
+    __gameState__init()
     return _gameState.winner
 end
 
 function GameWin()
-    GameState:__init()
+    __gameState__init()
     return _gameState.win
 end
 
 function GameLoser()
-    GameState:__init()
+    __gameState__init()
     return _gameState.loser
 end
 
@@ -2485,10 +2535,10 @@ local function __Turrets__init()
                     object = object,
                     team = object.team,
                     range = turretRange,
+					visibilityRange = visibilityRange,
                     x = object.x,
                     y = object.y,
                     z = object.z,
-                    active = false,
                 }
                 if turretName == "Turret_OrderTurretShrine_A" or turretName == "Turret_ChaosTurretShrine_A" then
                     _turrets[turretName].range = fountainRange
@@ -2604,7 +2654,7 @@ local function _ChampionLane__OnLoad()
         end
         -- reload saved value if exist
         _championLane.save = {}
-        if file_exists(_championLane.savedFile) then dofile(_championLane.savedFile) end
+        if FileExist(_championLane.savedFile) then dofile(_championLane.savedFile) end
         if _championLane.save.startTime ~= nil and _championLane.startTime == _championLane.save.startTime then
             for j, team in pairs({ "ally", "enemy" }) do
                 for i, champion in pairs(_championLane.save[team]) do
