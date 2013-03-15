@@ -2,6 +2,7 @@ if player == nil then player = GetMyHero() end
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
+GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
 
@@ -2213,11 +2214,28 @@ Members :
     start.WINDOW_H      -- return saved WINDOW_H
 ]]
 
-_gameStart = { configFile = LIB_PATH .. "gameStart.cfg", init = true }
+_gameStart = { configFile = LIB_PATH .. "gameStart.cfg", cmdFile = GAME_PATH.."lastCmd.log", init = true, params = "" }
 
 function GetStart()
     if _gameStart.init then
         -- init values
+		if FileExist(_gameStart.cmdFile) then
+			local cmdStr = ReadFile(_gameStart.cmdFile)
+			local cmdArray = cmdStr:split("\" \"")
+			if #cmdArray == 4 then
+				_gameStart.pid = cmdArray[1]:sub(2)
+				_gameStart.launcher = cmdArray[2]
+				_gameStart.client = cmdArray[3]
+				_gameStart.params = cmdArray[4]:sub(1, cmdArray[4]:find("\"") - 1)
+				local paramArray = _gameStart.params:split(" ")
+				if paramArray[1] ~= "spectator" then
+					_gameStart.server = paramArray[1]
+					_gameStart.port = paramArray[2]
+					_gameStart.key = paramArray[3]
+					_gameStart.id = paramArray[4]
+				end
+			end
+		end
         UpdateWindow()
         _gameStart.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
         _gameStart.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
@@ -2225,15 +2243,7 @@ function GetStart()
         _gameStart.osTime = os.time(t)
         _gameStart.save = {}
         if FileExist(_gameStart.configFile) then dofile(_gameStart.configFile) end
-        local gameStarted = false
-        for i = 1, objManager.maxObjects, 1 do
-            local object = objManager:getObject(i)
-            if object ~= nil and object.valid and object.type == "obj_AI_Minion" and string.find(object.name, "Minion_T") then
-                gameStarted = true
-                break
-            end
-        end
-        if _gameStart.save.osTime ~= nil and (_gameStart.save.osTime > (_gameStart.osTime - 120) or gameStarted) then
+		if _gameStart.save.params and _gameStart.save.params == _gameStart.params then
             _gameStart.WINDOW_W = _gameStart.save.WINDOW_W
             _gameStart.WINDOW_H = _gameStart.save.WINDOW_H
             _gameStart.tick = _gameStart.save.tick
@@ -2242,6 +2252,7 @@ function GetStart()
             local file = io.open(_gameStart.configFile, "w")
             if not file and fixFolders() then file = io.open(_gameStart.configFile, "w") end
             if file then
+				file:write("_gameStart.save.params = \"" .. _gameStart.params .. "\"\n")
                 file:write("_gameStart.save.osTime = " .. _gameStart.osTime .. "\n")
                 file:write("_gameStart.save.WINDOW_W = " .. _gameStart.WINDOW_W .. "\n")
                 file:write("_gameStart.save.WINDOW_H = " .. _gameStart.WINDOW_H .. "\n")
