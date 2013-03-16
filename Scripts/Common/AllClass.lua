@@ -146,6 +146,10 @@ string.join = function(arg, del)
     return str
 end
 
+function string.trim(s)
+  return s:match'^%s*(.*%S)' or ''
+end
+
 -- Round a number
 function math.round(num, idp)
     assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
@@ -314,6 +318,43 @@ function GetFileSize(path)
     file:close()
     return size
 end
+
+function ReadIni(path)
+    local raw = ReadFile(path)
+    if not raw then return {} end
+    local t, section = {}
+    for i, s in ipairs(raw:split("\n")) do
+        local v = s:trim()
+        if v:sub(1,1)=="[" and v:sub(#v, #v)=="]" then
+            section = v:sub(2,#v-1)
+            t[section] = {}
+        elseif section and v:find("=") then
+            kv = v:split("=")
+            if #kv == 2 then
+                local key, value = kv[1], kv[2]
+                if value:lower()=="true" then value = true
+                elseif value:lower()=="false" then value = false
+                elseif tonumber(value) then value = tonumber(value) end
+                if key ~= "" and value ~= "" then
+                    t[section][key] = value
+                end
+            end
+        end
+    end
+    return t
+end
+
+--[[
+ Gets the Gamesettings (path: League of Legends\Config\game.cfg
+ example: 
+	local gameSettings = GetGameSettings()
+	Width, Height = gameSettings.General.Width, gameSettings.General.Height 
+]]
+function GetGameSettings()
+    local path = GAME_PATH:sub(1,GAME_PATH:find("\\RADS")).."Config\\game.cfg"
+    return ReadIni(path)
+end
+
 --[[
 	Delays a function call
 	example: DelayAction(myFunc, 5)
