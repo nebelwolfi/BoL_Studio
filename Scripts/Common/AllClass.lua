@@ -70,19 +70,17 @@ function GetAllyHeros()
     return allyHeros
 end
 
-if table.copy == nil then
-    function table.copy(from)
-        if type(from) == "table" then
-            local to = {}
-            for k, v in pairs(from) do
-                to[k] = v
-            end
-            return to
-        end
-    end
+function table.copy(from)
+	if type(from) == "table" then
+		local to = {}
+		for k, v in pairs(from) do
+			to[k] = v
+		end
+		return to
+	end
 end
 
-table.contains = function(t, what, member) --member is optional
+function table.contains(t, what, member) --member is optional
     assert(type(num) == "table", "table.contains: wrong argument types (<table> expected for t)")
     for i, v in pairs(t) do
         if member and v[member] == what or v == what then return i, v end
@@ -109,7 +107,7 @@ function table.serialize(t,tab)
 end
 
 --from http://lua-users.org/wiki/SplitJoin
-string.split = function(str, delim, maxNb)
+function string.split(str, delim, maxNb)
 -- Eliminate bad cases...
     if not delim or delim == "" or string.find(str, delim) == nil then
         return { str }
@@ -136,7 +134,7 @@ string.split = function(str, delim, maxNb)
     return result
 end
 
-string.join = function(arg, del)
+function string.join(arg, del)
     local str, del = "", del or ""
     if not arg or not arg[1] then return str end
     for i, v in ipairs(arg) do
@@ -159,12 +157,10 @@ function math.round(num, idp)
     return tonumber(string.format("%." .. (idp or 0) .. "f", value))
 end
 
-if math.close == nil then
-    function math.close(a, b, eps)
-        assert(type(a) == "number" and type(b) == "number", "math.close: wrong argument types (at least 2 <number> expected)")
-        eps = eps or 1e-9
-        return math.abs(a - b) <= eps
-    end
+function math.close(a, b, eps)
+	assert(type(a) == "number" and type(b) == "number", "math.close: wrong argument types (at least 2 <number> expected)")
+	eps = eps or 1e-9
+	return math.abs(a - b) <= eps
 end
 
 local fps, avgFps = 0, 0
@@ -181,7 +177,7 @@ local function updateFPS()
     fps = 1/(os.clock() - lastFrame)
 	lastFrame, frameCount = os.clock(), frameCount + 1
 	if os.clock() < 0.5 + fFrame then return end
-	avgFps = math.round(frameCount/(os.clock() - fFrame))
+	avgFps = math.floor(frameCount/(os.clock() - fFrame))
     fFrame, frameCount = os.clock(), 0
 end
 AddDrawCallback(updateFPS)
@@ -206,10 +202,13 @@ function os.executePowerShell(script, argument)
             return b:sub(c+1,c+1)
         end)..({ '', '==', '=' })[#data%3+1])
     end
+	return RunCmdCommand("powershell "..(argument or "").." -encoded \""..Base64Unicode(script).."\"") == 0
+	--[[
     local handle = io.popen("powershell "..(argument or "").." -encoded \""..Base64Unicode(script).."\"", "r")
     if not handle then return false, "" end
     local output = handle:read("*all")
     return handle:close() == true, output
+	]]
 end
 
 --[[
@@ -238,13 +237,13 @@ end
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
 function CreateDirectory(path)
     assert(type(path) == "string", "CreateDirectory: wrong argument types (<string> expected for path)")
-    return os.execute("mkdir " .. string.gsub(path, [[/]], [[\]])) == true
+    return RunCmdCommand("mkdir " .. string.gsub(path, [[/]], [[\]])) == 0
 end
 
 --Example: DirectoryExist("C:\\Users")
 function DirectoryExist(path)
     assert(type(path) == "string", "DirectoryExist: wrong argument types (<string> expected for path)")
-    return os.execute("cd " .. string.gsub(path, [[/]], [[\]])) == true
+    return RunCmdCommand("cd " .. string.gsub(path, [[/]], [[\]])) == 0
 end
 
 --Creates the Common and Sprites Folder if not present, returns true if it created folders
@@ -261,7 +260,6 @@ local function fixFolders()
         PrintChat([[Your sprite directory is missing and can't be created, please create the folder 'Sprites' in you BoL directory. For further Information visit http://botoflegends.com/forum/]])
     end end
     folderFixed = true
-    SetForeground() --Must be called or the League of Legends window will minimize
     return result
 end
 
@@ -320,28 +318,32 @@ function GetFileSize(path)
 end
 
 function ReadIni(path)
-    local raw = ReadFile(path)
-    if not raw then return {} end
-    local t, section = {}
-    for i, s in ipairs(raw:split("\n")) do
-        local v = s:trim()
-        if v:sub(1,1)=="[" and v:sub(#v, #v)=="]" then
-            section = v:sub(2,#v-1)
-            t[section] = {}
-        elseif section and v:find("=") then
-            kv = v:split("=")
-            if #kv == 2 then
-                local key, value = kv[1], kv[2]
-                if value:lower()=="true" then value = true
-                elseif value:lower()=="false" then value = false
-                elseif tonumber(value) then value = tonumber(value) end
-                if key ~= "" and value ~= "" then
-                    t[section][key] = value
-                end
-            end
-        end
-    end
-    return t
+	local raw = ReadFile(path)
+	if not raw then return {} end
+	local t, section = {}
+	for i, s in ipairs(raw:split("\n")) do
+		local v = s:trim()
+		if v:sub(1,1) == "[" and v:sub(#v, #v) == "]" then
+			section = v:sub(2,#v-1):trim()
+			t[section] = {}
+		elseif section and v:find("=") then
+			local kv = v:split("=")
+			if #kv == 2 then
+				local key, value = kv[1]:trim(), kv[2]:trim()
+				if value:lower() == "true" then value = true
+				elseif value:lower() == "false" then value = false
+				elseif tonumber(value) then value = tonumber(value) 
+				elseif (value:sub(1,1) == "\"" and value:sub(#value, #value) == "\"") or
+					   (value:sub(1,1) == "'" and value:sub(#value, #value) == "'") then 
+					value = value:sub(2, #value-1):trim()
+				end
+				if key ~= "" and value ~= "" then
+					t[section][key] = value
+				end
+			end
+		end
+	end
+	return t
 end
 
 --[[
@@ -351,8 +353,8 @@ end
 	Width, Height = gameSettings.General.Width, gameSettings.General.Height 
 ]]
 function GetGameSettings()
-    local path = GAME_PATH:sub(1,GAME_PATH:find("\\RADS")).."Config\\game.cfg"
-    return ReadIni(path)
+	local path = GAME_PATH:sub(1,GAME_PATH:find("\\RADS")).."Config\\game.cfg"
+	return ReadIni(path)
 end
 
 --[[
@@ -2280,7 +2282,14 @@ function GetStart()
         UpdateWindow()
         _gameStart.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
         _gameStart.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
-        _gameStart.tick = tonumber(GetTickCount())
+        if _gameStart.WINDOW_W == 0 or _gameStart.WINDOW_H == 0 then 
+			local gameSettings = GetGameSettings()
+			if gameSettings.General then
+				_gameStart.WINDOW_W = gameSettings.General.Width or 0
+				_gameStart.WINDOW_H = gameSettings.General.Height or 0
+			end
+		end
+		_gameStart.tick = tonumber(GetTickCount())
         _gameStart.osTime = os.time(t)
         _gameStart.save = {}
         if FileExist(_gameStart.configFile) then dofile(_gameStart.configFile) end
