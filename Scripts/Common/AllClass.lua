@@ -29,6 +29,19 @@ function GetDistanceBBox(p1, p2)
 	return GetDistance(p1, p2) - (bbox1)
 end
 
+function print(...)
+	local t = ""
+	for i, v in ipairs(table.pack(...)) do
+		local _type = type(v)
+		if _type == "string" then t = t .. v
+		elseif _type == "number" then t = t .. tostring(v)
+		elseif _type == "table" then t = t .. table.serialize(v)
+		elseif _type == "boolean" then t = t .. (v and "true" or "false")
+		else t = t .. _type end
+	end
+	PrintChat(t)
+end
+
 function ValidTarget(object, distance, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     return object ~= nil and object.valid and (object.team ~= player.team) == enemyTeam and object.visible and not object.dead and object.bTargetable and (enemyTeam == false or object.bInvulnerable == 0) and (distance == nil or GetDistanceSqr(object) <= distance*distance)
@@ -163,24 +176,29 @@ function math.close(a, b, eps)
 	return math.abs(a - b) <= eps
 end
 
-local fps, avgFps = 0, 0
+local fps, avgFps, frameCount, fFrame, lastFrame, updateFPS = 0, 0, 0, -math.huge, -math.huge
+local function startFPSCounter()
+	if not updateFPS then
+		function updateFPS()
+			fps = 1/(os.clock() - lastFrame)
+			lastFrame, frameCount = os.clock(), frameCount + 1
+			if os.clock() < 0.5 + fFrame then return end
+			avgFps = math.floor(frameCount/(os.clock() - fFrame))
+			fFrame, frameCount = os.clock(), 0
+		end
+		AddDrawCallback(updateFPS)
+	end
+end
+
 function GetExactFPS()
+	startFPSCounter()
     return fps
 end
 
 function GetFPS()
+	startFPSCounter()
     return avgFps
 end
-
-local frameCount, fFrame, lastFrame = 0, -math.huge, -math.huge
-local function updateFPS()
-    fps = 1/(os.clock() - lastFrame)
-	lastFrame, frameCount = os.clock(), frameCount + 1
-	if os.clock() < 0.5 + fFrame then return end
-	avgFps = math.floor(frameCount/(os.clock() - fFrame))
-    fFrame, frameCount = os.clock(), 0
-end
-AddDrawCallback(updateFPS)
 
 --[[
     Executes a Powershell script
@@ -361,22 +379,23 @@ end
 	Delays a function call
 	example: DelayAction(myFunc, 5)
 ]]
-local delayedActions = {}
+local delayedActions, delayedActionsExecuter = {}
 function DelayAction(func, delay, args) --delay in seconds
+	if not delayedActionsExecuter then
+		function delayedActionsExecuter()
+			for t, funcs in pairs(delayedActions) do
+				if t<=os.clock() then
+					for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
+					delayedActions[t] = nil
+				end
+			end
+		end
+		AddTickCallback(delayedActionsExecuter)
+	end
     local t = os.clock()+(delay or 0)
     if delayedActions[t] then table.insert(delayedActions[t],{func = func, args = args})
     else delayedActions[t] = {{func = func, args = args}} end
 end
-
-local function delayedActionsExecuter()
-    for t, funcs in pairs(delayedActions) do
-        if t<=os.clock() then
-            for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
-            delayedActions[t] = nil
-        end
-    end
-end
-AddTickCallback(delayedActionsExecuter)
 
 local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle
 function EnableOverlay()
@@ -388,7 +407,7 @@ function DisableOverlay()
 end
 
 function QuitGame()
-	os.execute([[taskkill /im "League of Legends.exe"]])
+	RunCmdCommand([[taskkill /im "League of Legends.exe"]])
 	DelayAction(os.exit, 5, {0}) --ForceQuit
 end
 
