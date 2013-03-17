@@ -18,6 +18,9 @@ function GetDistance(p1, p2)
     return math.sqrt(GetDistanceSqr(p1,p2))
 end
 
+--Backward compatibility
+GetDistance2D = GetDistance
+
 --p1 should be the BBoxed object
 function GetDistanceBBox(p1, p2)
 	if p2 == nil then p2 = player end
@@ -33,7 +36,7 @@ function print(...)
 		if _type == "string" then t = t .. v
 		elseif _type == "number" then t = t .. tostring(v)
 		elseif _type == "table" then t = t .. table.serialize(v)
-		elseif _type == "boolean" then t = t .. (v and "true" or "false")
+		elseif _type == "boolean" then t = t .. (v == true and "true" or "false")
 		else t = t .. _type end
 	end
 	PrintChat(t)
@@ -58,26 +61,26 @@ function GetDistanceFromMouse(object)
     return math.huge
 end
 
-function GetEnemyHeroes()
-    local enemyHeroes = {}
+function GetEnemyHeros()
+    local enemyHeros = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team ~= player.team then
-            table.insert(enemyHeroes, hero)
+            table.insert(enemyHeros, hero)
         end
     end
-    return enemyHeroes
+    return enemyHeros
 end
 
-function GetAllyHeroes()
-    local allyHeroes = {}
+function GetAllyHeros()
+    local allyHeros = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team == player.team then
-            table.insert(allyHeroes, hero)
+            table.insert(allyHeros, hero)
         end
     end
-    return allyHeroes
+    return allyHeros
 end
 
 function table.copy(from)
@@ -201,31 +204,33 @@ end
     Executes a Powershell script
 	e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
 ]]
+local function Base64Unicode(text)
+	-- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
+	local data, b = "", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	text:gsub(".", function(c) data = data .. c .. "\0" end)
+	return ((data:gsub('.', function(x)
+		local r,b='',x:byte()
+		for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+		return r;
+	end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+		if (#x < 6) then return '' end
+		local c=0
+		for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+		return b:sub(c+1,c+1)
+	end)..({ '', '==', '=' })[#data%3+1])
+end
+
 function os.executePowerShell(script, argument)
-    local function Base64Unicode(text)
-        -- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
-        local data, b = "", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        text:gsub(".", function(c) data = data .. c .. "\0" end)
-        return ((data:gsub('.', function(x)
-            local r,b='',x:byte()
-            for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
-            return r;
-        end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
-            if (#x < 6) then return '' end
-            local c=0
-            for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
-            return b:sub(c+1,c+1)
-        end)..({ '', '==', '=' })[#data%3+1])
-    end
-	return RunCmdCommand("powershell "..(argument or "").." -encoded \""..Base64Unicode(script).."\"") == 0
-	--[[
     local handle = io.popen("powershell "..(argument or "").." -encoded \""..Base64Unicode(script).."\"", "r")
     if not handle then return false, "" end
     local output = handle:read("*all")
-    return handle:close() == true, output
-	]]
+    SetForeground()
+	return handle:close() == true, output
 end
 
+function os.executePowerShellAsync(script, argument)
+	RunAsyncCmdCommand("powershell -windowstyle hidden"..(argument or "").." -encoded \""..Base64Unicode(script).."\"")
+end
 --[[
 	Brings the League of Legends Window in Foreground. Needed after os.execute or other function that minimize the client.
 ]]
@@ -246,7 +251,7 @@ Add-Type(@"
 $h = (ps "League of Legends").MainWindowHandle;
 [User32]::ShowWindowAsync($h,9);
 [User32]::SetForegroundWindow($h);]]
-	os.executePowerShell(script,"-windowstyle hidden")
+	os.executePowerShellAsync(script)
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
@@ -310,6 +315,7 @@ function FileExist(path)
     local file = io.open(path,"r")
     if file then file:close() return true else return false end
 end
+file_exists = FileExist --Backward compatibility
 
 function DeleteFile(path)
     assert(type(path) == "string", "DeleteFile: wrong argument types (<string> expected for path)")
@@ -402,9 +408,9 @@ function DisableOverlay()
     _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = function() end, function() end, function() end, function() end, function() end, function() end
 end
 
-function QuitGame()
-	RunCmdCommand([[taskkill /im "League of Legends.exe"]])
-	DelayAction(os.exit, 5, {0}) --ForceQuit
+function QuitGame(timeout)
+	RunAsyncCmdCommand("cmd /c" ..(timeout and (" ping -n " .. math.floor(timeout) .. " 127.0.0.1>nul &&") or "") .. ' taskkill /im "League of Legends.exe"')
+	DelayAction(os.exit, (timeout or 0) + 5, {0}) --ForceQuit
 end
 
 -- return if cursor is under a rectangle
@@ -461,9 +467,13 @@ end
    if you want the full time string, use os.date("%H:%M:%S",seconds+82800)
 ]]
 function TimerText(seconds)
-    if type(seconds) ~= "number" or seconds > 100000 or seconds < 0 then return " ? " end
+    seconds = seconds or GetInGameTimer()
+	if type(seconds) ~= "number" or seconds > 100000 or seconds < 0 then return " ? " end
     return string.format("%i:%02i", seconds / 60, seconds % 60)
 end
+
+--Backward compatibility
+timerText = TimerText
 
 -- return sprite
 function GetSprite(file, altFile)
@@ -479,6 +489,8 @@ function GetSprite(file, altFile)
         end
     end
 end
+
+returnSprite = GetSprite
 
 -- return real hero leveled
 function GetHeroLeveled()
@@ -1065,6 +1077,7 @@ circle.radius           -- radius of the circle
 ]]
 
 class'Circle'
+
 function Circle:__init(center, radius)
     assert((VectorType(center) or center == nil) and (type(radius) == "number" or radius == nil), "Circle: wrong argument types (expected <Vector> or nil, <number> or nil)")
     self.center = Vector(center) or Vector()
@@ -1295,7 +1308,7 @@ end
 -- Prediction Functions
 --[[
 Globals Functions
-GetPredictionPos(iHero, delay)              -- return nextPosition in delay (ms) for iHero (index)
+GetPredictionPos(iHero, delay)              -- return nextPosition in delaydelay (ms) for iHero (index)
 GetPredictionPos(Hero, delay)               -- return nextPosition in delay (ms) for Hero
 GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
 GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
@@ -1316,33 +1329,33 @@ GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (
 ]]
 
 
-local _gameHeroes, _gameAllyCount, _gameEnemyCount = {}, 0, 0
+local _gameHeros, _gameAllyCount, _gameEnemyCount = {}, 0, 0
 -- Class related function
-local function _gameHeroes__init()
-    if #_gameHeroes == 0 then
+local function _gameHeros__init()
+    if #_gameHeros == 0 then
         _gameAllyCount, _gameEnemyCount = 0, 0
         for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid then
                 if hero.team == player.team then
                     _gameAllyCount = _gameAllyCount + 1
-                    table.insert(_gameHeroes, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
+                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
                 else
                     _gameEnemyCount = _gameEnemyCount + 1
-                    table.insert(_gameHeroes, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
+                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
                 end
             end
         end
     end
 end
 
-local function _gameHeroes__extended(target, assertText)
+local function _gameHeros__extended(target, assertText)
     local assertText = assertText or ""
     if type(target) == "number" then
-        return _gameHeroes[target]
+        return _gameHeros[target]
     elseif target ~= nil and target.valid then
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.networkID == target.networkID then
                 return _gameHero
             end
@@ -1350,11 +1363,11 @@ local function _gameHeroes__extended(target, assertText)
     end
 end
 
-local function _gameHeroes__hero(target, assertText, enemyTeam)
+local function _gameHeros__hero(target, assertText, enemyTeam)
     local assertText = assertText or ""
     enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.hero
             end
@@ -1369,11 +1382,11 @@ local function _gameHeroes__hero(target, assertText, enemyTeam)
     end
 end
 
-local function _gameHeroes__index(target, assertText, enemyTeam)
+local function _gameHeros__index(target, assertText, enemyTeam)
     local assertText = assertText or ""
     local enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.index
             end
@@ -1382,7 +1395,7 @@ local function _gameHeroes__index(target, assertText, enemyTeam)
         return target
     else
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
-        return _gameHeroes__index(target.charName, assertText, (target.team ~= player.team))
+        return _gameHeros__index(target.charName, assertText, (target.team ~= player.team))
     end
 end
 
@@ -1394,7 +1407,7 @@ local function _Prediction__OnLoad()
             local tick = GetTickCount()
             _Prediction.delta = 1 / (tick - _Prediction.tick)
             _Prediction.tick = tick
-            for i, _gameHero in ipairs(_gameHeroes) do
+            for i, _gameHero in ipairs(_gameHeros) do
                 if _gameHero.hero ~= nil and _gameHero.hero.valid and _gameHero.hero.dead == false and _gameHero.hero.visible then
                     _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
                     _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1406,9 +1419,9 @@ local function _Prediction__OnLoad()
 
         AddTickCallback(__Prediction__OnTick)
     end
-    _gameHeroes__init()
+    _gameHeros__init()
     _Prediction.tick = GetTickCount()
-    for i, _gameHero in ipairs(_gameHeroes) do
+    for i, _gameHero in ipairs(_gameHeros) do
         if _gameHero.hero ~= nil and _gameHero.hero.valid then
             _gameHero.pVector = Vector()
             _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1420,7 +1433,7 @@ local function _Prediction__OnLoad()
 end
 
 local function _PredictionPosition(iHero, delay)
-    local _gameHero = _gameHeroes[iHero]
+    local _gameHero = _gameHeros[iHero]
     if _gameHero and VectorType(_gameHero.pVector) and VectorType(_gameHero.lastPos) then
         local heroPosition = _gameHero.lastPos + (_gameHero.pVector * (_Prediction.delta * delay))
         heroPosition.y = _gameHero.hero.y
@@ -1429,23 +1442,31 @@ local function _PredictionPosition(iHero, delay)
 end
 
 local function _PredictionHealth(iHero, delay)
-    local _gameHero = _gameHeroes[iHero]
+    local _gameHero = _gameHeros[iHero]
     if _gameHero and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
         return _gameHero.lastHealth + (_gameHero.pHealth * (_Prediction.delta * delay))
+    end
+end
+
+local warning_Prediction__OnTick
+function Prediction__OnTick()
+    if not warning_Prediction__OnTick then
+        warning_Prediction__OnTick = true
+        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
 function GetPredictionPos(target, delay, enemyTeam)
     if _Prediction.init then _Prediction__OnLoad() end
     local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeroes__index(target, "GetPredictionPos", enemyTeam)
+    local iHero = _gameHeros__index(target, "GetPredictionPos", enemyTeam)
     return _PredictionPosition(iHero, delay)
 end
 
 function GetPredictionHealth(target, delay, enemyTeam)
     if _Prediction.init then _Prediction__OnLoad() end
     local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeroes__index(target, "GetPredictionHealth", enemyTeam)
+    local iHero = _gameHeros__index(target, "GetPredictionHealth", enemyTeam)
     return _PredictionHealth(iHero, delay)
 end
 
@@ -1540,7 +1561,7 @@ local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "Near
 
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    for i, target in ipairs(_gameHeroes) do
+    for i, target in ipairs(_gameHeros) do
         if target.hero ~= nil and target.hero.valid and target.enemy == enemyTeam then
             PrintChat("[TS] " .. (enemyTeam and "Enemy " or "Ally ") .. target.tIndex .. " (" .. target.index .. ") : " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .. " Priority=" .. target.priority)
         end
@@ -1549,9 +1570,9 @@ end
 
 function TS_SetFocus(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local selected = _gameHeroes__hero(target, "TS_SetFocus")
+    local selected = _gameHeros__hero(target, "TS_SetFocus")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.enemy == enemyTeam then
                 if _gameHero.hero.networkID == selected.networkID then
                     _gameHero.priority = 1
@@ -1568,11 +1589,11 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local heroCount = (enemyTeam and _gameEnemyCount or _gameAllyCount)
     assert(type(priority) == "number" and priority >= 0 and priority <= heroCount, "TS_SetHeroPriority: wrong argument types (<number> 1 to " .. heroCount .. " expected)")
-    local selected = _gameHeroes__index(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
+    local selected = _gameHeros__index(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
     if selected ~= nil then
-        local oldPriority = _gameHeroes[selected].priority
+        local oldPriority = _gameHeros[selected].priority
         if oldPriority == nil or oldPriority == priority then return end
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.enemy == enemyTeam then
                 if index == selected then
                     _gameHero.priority = priority
@@ -1603,15 +1624,15 @@ end
 
 function TS_GetPriority(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local index = _gameHeroes__index(target, "TS_GetPriority", enemyTeam)
-    return (index and _gameHeroes[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
+    local index = _gameHeros__index(target, "TS_GetPriority", enemyTeam)
+    return (index and _gameHeros[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
 end
 
 function TS_Ignore(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local selected = _gameHeroes__hero(target, "TS_Ignore")
+    local selected = _gameHeros__hero(target, "TS_Ignore")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for index, _gameHero in ipairs(_gameHeros) do
             if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
                 _gameHero.ignore = not _gameHero.ignore
                 --PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
@@ -1634,7 +1655,7 @@ local function TS__DrawMenu(x, y, enemyTeam)
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
     local y1 = y
-    for index, _gameHero in ipairs(_gameHeroes) do
+    for index, _gameHero in ipairs(_gameHeros) do
         if _gameHero.enemy == enemyTeam then
             DrawLine(x - _TS_Draw.border, y1 + _TS_Draw.midSize, x + _TS_Draw.row1 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, (_gameHero.ignore and _TS_Draw.redColor or _TS_Draw.background))
             DrawText(_gameHero.hero.charName, _TS_Draw.fontSize, x, y1, _TS_Draw.textColor)
@@ -1657,7 +1678,7 @@ local function TS_ClickMenu(x, y, enemyTeam)
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
     local y1 = y
-    for index, _gameHero in ipairs(_gameHeroes) do
+    for index, _gameHero in ipairs(_gameHeros) do
         if _gameHero.enemy == enemyTeam then
             if CursorIsUnder(x + _TS_Draw.row2, y1, _TS_Draw.fontSize, _TS_Draw.fontSize) then
                 TS_SetHeroPriority(math.max(1, _gameHero.priority - 1), index)
@@ -1671,6 +1692,13 @@ local function TS_ClickMenu(x, y, enemyTeam)
     return y1
 end
 
+local warning_TargetSelector__OnSendChat
+function TargetSelector__OnSendChat(msg)
+    if not warning_TargetSelector__OnSendChat then
+        warning_TargetSelector__OnSendChat = true
+        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
 local __TargetSelector__OnSendChat
 local function TargetSelector__OnLoad()
     if not __TargetSelector__OnSendChat then
@@ -1717,7 +1745,7 @@ class'TargetSelector'
 function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTeam)
     -- Init Global
     assert(type(mode) == "number" and type(range) == "number", "TargetSelector: wrong argument types (<mode>, <number> expected)")
-    _gameHeroes__init()
+    _gameHeros__init()
     TargetSelector__OnLoad()
     self.mode = mode
     self.range = range
@@ -1792,7 +1820,7 @@ function TargetSelector:_targetSelectedByPlayer()
         if validTarget and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
             if self.target == nil or not self.target.valid or self.target.networkID ~= currentTarget.networkID then
                 self.target = currentTarget
-                self.index = _gameHeroes__index(currentTarget, "_targetSelectedByPlayer")
+                self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
             end
             local delay = 0
             if self._pDelay ~= nil and self._pDelay > 0 then
@@ -1825,7 +1853,7 @@ function TargetSelector:update()
     local selected, index, value, nextPosition, nextHealth
     local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
 	if self._minionTable then self._minionTable:update() end
-    for i, _gameHero in ipairs(_gameHeroes) do
+    for i, _gameHero in ipairs(_gameHeros) do
         local hero = _gameHero.hero
 		local validTarget = false
 		if self._BBoxMode then
@@ -2008,8 +2036,16 @@ tp.width
 tp.smoothness
 ]]
 
--- use _gameHeroes with TargetSelector
+-- use _gameHeros with TargetSelector
 local _TargetPrediction__tick = 0
+
+local warning_TargetPrediction__OnTick
+function TargetPrediction__OnTick()
+    if not warning_TargetPrediction__OnTick then
+        warning_TargetPrediction__OnTick = true
+        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
 
 local __TargetPrediction__OnTick
 local function TargetPrediction__Onload()
@@ -2018,7 +2054,7 @@ local function TargetPrediction__Onload()
             local osTime = os.clock()
             if osTime - _TargetPrediction__tick > 0.35 then
                 _TargetPrediction__tick = osTime
-                for i, _enemyHero in ipairs(_gameHeroes) do
+                for i, _enemyHero in ipairs(_gameHeros) do
                     local hero = _enemyHero.hero
                     if hero.dead then
                         _enemyHero.prediction = nil
@@ -2045,7 +2081,7 @@ end
 class'TargetPrediction'
 function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoothness)
     assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
-    _gameHeroes__init()
+    _gameHeros__init()
     TargetPrediction__Onload()
     self.range = range
     self.proj_speed = proj_speed
@@ -2067,11 +2103,11 @@ end
 
 function TargetPrediction:GetPrediction(target)
     assert(target ~= nil, "GetPrediction: wrong argument types (<target> expected)")
-    local index = _gameHeroes__index(target, "GetPrediction")
+    local index = _gameHeros__index(target, "GetPrediction")
     if not index then return end
-    local selected = _gameHeroes[index].hero
+    local selected = _gameHeros[index].hero
 	if self.minionTable then self.minionTable:update() end
-    if _gameHeroes[index].prediction and _gameHeroes[index].prediction.movement then
+    if _gameHeros[index].prediction and _gameHeros[index].prediction.movement then
         if index ~= self.target then
             self.nextPosition = nil
             self.target = index
@@ -2080,21 +2116,21 @@ function TargetPrediction:GetPrediction(target)
         local delay = self.delay / 1000
         local proj_speed = self.proj_speed and self.proj_speed * 1000
         if GetDistanceSqr(selected) < (self.range + 300)^2 then
-            if osTime - (_gameHeroes[index].prediction.calculateTime or 0) > 0 then
+            if osTime - (_gameHeros[index].prediction.calculateTime or 0) > 0 then
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
                 if selected.visible then
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency)) + selected
-                elseif osTime - _gameHeroes[index].prediction.lastUpdate < 3 then
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency + osTime - _gameHeroes[index].prediction.lastUpdate)) + _gameHeroes[index].prediction.position
-                else _gameHeroes[index].prediction = nil return
+                    PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency)) + selected
+                elseif osTime - _gameHeros[index].prediction.lastUpdate < 3 then
+                    PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency + osTime - _gameHeros[index].prediction.lastUpdate)) + _gameHeros[index].prediction.position
+                else _gameHeros[index].prediction = nil return
                 end
                 local t = 0
                 if proj_speed and proj_speed > 0 then
-                    local a, b, c = PositionPrediction, _gameHeroes[index].prediction.movement, Vector(player)
+                    local a, b, c = PositionPrediction, _gameHeros[index].prediction.movement, Vector(player)
                     local d, e, f, g, h, i, j, k, l = (-a.x + c.x), (-a.z + c.z), b.x * b.x, b.z * b.z, proj_speed * proj_speed, a.x * a.x, a.z * a.z, c.x * c.x, c.z * c.z
                     local t = (-(math.sqrt(-f * (l - 2 * c.z * a.z + j) + 2 * b.x * b.z * d * e - g * (k - 2 * c.x * a.x + i) + (k - 2 * c.x * a.x + l - 2 * c.z * a.z + i + j) * h) - b.x * d - b.z * e)) / (f + g - h)
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * t) + PositionPrediction
+                    PositionPrediction = (_gameHeros[index].prediction.movement * t) + PositionPrediction
                 end
                 if self.smoothness and self.smoothness < 100 and self.nextPosition then
                     self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
@@ -2103,7 +2139,7 @@ function TargetPrediction:GetPrediction(target)
                 end
                 if GetDistanceSqr(PositionPrediction) < (self.range)^2 then
                     --update next Health
-                    self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
+                    self.nextHealth = selected.health + (_gameHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
                     self.minions = false
                     if self.width and self.minionTable then
@@ -2118,114 +2154,201 @@ function TargetPrediction:GetPrediction(target)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Game Values
+-- MAP
 --[[
-	_game.map
-	_game.settings
+Goblal Function :
+GetMap()            -> return map
+
+Members :
+    map.index = 1-4 (0 mean not found)
+    map.name -> return the full map name
+    map.shortName -> return the shorted map name (usefull for using it in table)
+    map.min {x, y} -> return min map x, y
+    map.max{x, y} -> return max map x, y
+    map{x, y} -> return map size x, y
 ]]
 
-local _game = { init = true, configFile = LIB_PATH .. "lastGame.cfg", lastCmd = GAME_PATH.."lastCmd.log", params = "", isOver = false, loser = 0, winner = 0, win = false }
-function GetGame()
-    if _game.init then
+
+-- map 1 = summonerRift
+
+-- map 4 = twistedTreeline
+-- map 10 = twistedTreelineBeta
+
+-- map 8 = odin unranked
+
+-- map 7 = The Proving Grounds
+
+local _gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
+function GetMap()
+    if _gameMap.index == 0 then
+        for i = 1, objManager.maxObjects do
+            local object = objManager:getObject(i)
+            if object ~= nil and object.valid then
+                if object.type == "obj_Shop" and object.team == TEAM_BLUE then
+                    if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
+                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
+                        break
+                    elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
+                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, height = 14474 / 2 } }
+                        break
+                    elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
+                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, height = 12812 / 2 } }
+                        break
+                    elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
+                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
+                        break
+                    elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
+                        _gameMap = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
+                        break
+                    end
+                end
+            end
+        end
+    end
+    return _gameMap
+end
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- GameState Class
+--[[
+]]
+
+local _onGameOver, _gameState = {}, { isOver = false, loser = 0, winner = 0, win = false }
+
+local __gameState__OnCreateObj, __gameState__GameOver
+local function __gameState__init()
+	if not __gameState__OnCreateObj then
+		function __gameState__GameOver(team)
+			_gameState.isOver = true
+			_gameState.loser = team
+			_gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+			_gameState.win = (player.team == _gameState.winner)
+			--Call Callbacks
+			for i, func in ipairs(_onGameOver) do
+				if func then func(_gameState.winner) end 
+			end
+		end
+		function __gameState__OnCreateObj(object)
+			if object then
+				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
+					__gameState__GameOver(TEAM_RED)
+				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
+					__gameState__GameOver(TEAM_BLUE)
+				end
+			end
+		end
+		AddCreateObjCallback(__gameState__OnCreateObj)
+	end
+end
+
+function AddGameOverCallback(func)
+	assert(type(func) == "function", "AddGameOverCallback: Expected function, got " .. type(func))
+	__gameState__init()
+	table.insert(_onGameOver, func)
+end
+
+class'GameState'
+function GameState:__init()
+	__gameState__init()
+end
+
+function GameState:gameIsOver()
+    return GameIsOver()
+end
+
+function GameIsOver()
+    __gameState__init()
+    return _gameState.isOver
+end
+
+function GameWinner()
+    __gameState__init()
+    return _gameState.winner
+end
+
+function GameWin()
+    __gameState__init()
+    return _gameState.win
+end
+
+function GameLoser()
+    __gameState__init()
+    return _gameState.loser
+end
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Start Saved Values
+--[[
+Goblal Function :
+GetStart()          -> return start
+
+Members :
+    start.tick          -- return saved GetTickCount() at start
+    start.osTime        -- return saved os.time at start
+    start.WINDOW_W      -- return saved WINDOW_W
+    start.WINDOW_H      -- return saved WINDOW_H
+]]
+
+_gameStart = { configFile = LIB_PATH .. "gameStart.cfg", cmdFile = GAME_PATH.."lastCmd.log", init = true, params = "" }
+
+function GetStart()
+    if _gameStart.init then
         -- init values
-		if FileExist(_game.lastCmd) then
-			local cmdStr = ReadFile(_game.lastCmd)
+		if FileExist(_gameStart.cmdFile) then
+			local cmdStr = ReadFile(_gameStart.cmdFile)
 			local cmdArray = cmdStr:split("\" \"")
 			if #cmdArray == 4 then
-				_game.pid = cmdArray[1]:sub(2)
-				_game.launcher = cmdArray[2]
-				_game.client = cmdArray[3]
-				_game.params = cmdArray[4]:sub(1, cmdArray[4]:find("\"") - 1)
-				local paramArray = _game.params:split(" ")
+				_gameStart.pid = cmdArray[1]:sub(2)
+				_gameStart.launcher = cmdArray[2]
+				_gameStart.client = cmdArray[3]
+				_gameStart.params = cmdArray[4]:sub(1, cmdArray[4]:find("\"") - 1)
+				local paramArray = _gameStart.params:split(" ")
 				if paramArray[1] ~= "spectator" then
-					_game.server = paramArray[1]
-					_game.port = paramArray[2]
-					_game.key = paramArray[3]
-					_game.id = paramArray[4]
+					_gameStart.server = paramArray[1]
+					_gameStart.port = paramArray[2]
+					_gameStart.key = paramArray[3]
+					_gameStart.id = paramArray[4]
 				end
 			end
 		end
         UpdateWindow()
-        _game.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
-        _game.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
-		_game.settings = GetGameSettings()
-        if _game.WINDOW_W == 0 or _game.WINDOW_H == 0 then
-			if _game.settings.General then
-				_game.WINDOW_W = _game.settings.General.Width or 0
-				_game.WINDOW_H = _game.settings.General.Height or 0
+        _gameStart.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
+        _gameStart.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
+        if _gameStart.WINDOW_W == 0 or _gameStart.WINDOW_H == 0 then 
+			local gameSettings = GetGameSettings()
+			if gameSettings.General then
+				_gameStart.WINDOW_W = gameSettings.General.Width or 0
+				_gameStart.WINDOW_H = gameSettings.General.Height or 0
 			end
 		end
-		_game.tick = tonumber(GetTickCount())
-        _game.osTime = os.time(t)
-        if FileExist(_game.configFile) then dofile(_game.configFile) end
-		if _gameSave.params and _gameSave.params == _game.params then
-            _game.WINDOW_W = _gameSave.WINDOW_W
-            _game.WINDOW_H = _gameSave.WINDOW_H
-            _game.tick = _gameSave.tick
-            _game.osTime = _gameSave.osTime
+		_gameStart.tick = tonumber(GetTickCount())
+        _gameStart.osTime = os.time(t)
+        _gameStart.save = {}
+        if FileExist(_gameStart.configFile) then dofile(_gameStart.configFile) end
+		if _gameStart.save.params and _gameStart.save.params == _gameStart.params then
+            _gameStart.WINDOW_W = _gameStart.save.WINDOW_W
+            _gameStart.WINDOW_H = _gameStart.save.WINDOW_H
+            _gameStart.tick = _gameStart.save.tick
+            _gameStart.osTime = _gameStart.save.osTime
         else
-            local file = io.open(_game.configFile, "w")
-            if not file and fixFolders() then file = io.open(_game.configFile, "w") end
+            local file = io.open(_gameStart.configFile, "w")
+            if not file and fixFolders() then file = io.open(_gameStart.configFile, "w") end
             if file then
-				file:write("_gameSave = {}\n")
-				file:write("_gameSave.params = \"" .. _game.params .. "\"\n")
-                file:write("_gameSave.osTime = " .. _game.osTime .. "\n")
-                file:write("_gameSave.WINDOW_W = " .. _game.WINDOW_W .. "\n")
-                file:write("_gameSave.WINDOW_H = " .. _game.WINDOW_H .. "\n")
-                file:write("_gameSave.tick = " .. _game.tick .. "\n")
+				file:write("_gameStart.save.params = \"" .. _gameStart.params .. "\"\n")
+                file:write("_gameStart.save.osTime = " .. _gameStart.osTime .. "\n")
+                file:write("_gameStart.save.WINDOW_W = " .. _gameStart.WINDOW_W .. "\n")
+                file:write("_gameStart.save.WINDOW_H = " .. _gameStart.WINDOW_H .. "\n")
+                file:write("_gameStart.save.tick = " .. _gameStart.tick .. "\n")
                 file:close()
             end
             file = nil
         end
-		--get map
-		_game.map = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
-		for i = 1, objManager.maxObjects do
-			local object = objManager:getObject(i)
-			if object ~= nil and object.valid then
-				if object.type == "obj_Shop" and object.team == TEAM_BLUE then
-					if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
-						_game.map = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
-						break
-					elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-						_game.map = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, height = 14474 / 2 } }
-						break
-					elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-						_game.map = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, height = 12812 / 2 } }
-						break
-					elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-						_game.map = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
-						break
-					elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
-						_game.map = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
-						break
-					end
-				end
-			end
-		end
-		--update game state
-		function __game__GameOver(team)
-			_game.isOver = true
-			_game.loser = team
-			_game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-			_game.win = (player.team == _game.winner)
-		end
-		function __game__OnCreateObj(object)
-			if object then
-				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-					__game__GameOver(TEAM_RED)
-				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-					__game__GameOver(TEAM_BLUE)
-				end
-			end
-		end
-		AddCreateObjCallback(__game__OnCreateObj)
         --clean
-        _gameSave = nil
-        _game.configFile = nil
-		_game.lastCmd = nil
-        _game.init = nil
+        _gameStart.save = nil
+        _gameStart.configFile = nil
+        _gameStart.init = nil
     end
-    return _game
+    return _gameStart
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2282,10 +2405,25 @@ MINION_SORT_MAXHEALTH_DEC = function(a, b) return a.maxHealth > b.maxHealth end
 MINION_SORT_AD_ASC = function(a, b) return a.ad < b.ad end
 MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
 
+local warning_minionManager__OnCreateObj
+function minionManager__OnCreateObj(object)
+    if not warning_minionManager__OnCreateObj then
+        warning_minionManager__OnCreateObj = true
+        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_minionManager__OnDeleteObj
+function minionManager__OnDeleteObj(object)
+    if not warning_minionManager__OnDeleteObj then
+        warning_minionManager__OnDeleteObj = true
+        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
 local __minionManager__OnCreateObj,__minionManager__SanityCheck
 local function minionManager__OnLoad()
     if _minionManager.init then
-        local mapIndex = GetGame().map.index
+        local mapIndex = GetMap().index
         if mapIndex ~= 4 then
             _minionManager.ally = "Minion_T" .. player.team
             _minionManager.enemy = "Minion_T" .. TEAM_ENEMY
@@ -2448,7 +2586,7 @@ local _fountain
 local _fountainRadius = 750
 function GetFountain()
     if _fountain ~= nil then return _fountain end
-    if GetGame().map.index == 1 then
+    if GetMap().index == 1 then
         _fountainRadius = 1050
     end
     if GetShop() ~= nil then
@@ -2582,8 +2720,8 @@ local __ChampionLane__OnTick
 local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
-        _championLane.mapIndex = GetGame().map.index
-        local start = GetGame()
+        _championLane.mapIndex = GetMap().index
+        local start = GetStart()
         for i = 1, heroManager.iCount, 1 do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid then
@@ -2684,6 +2822,14 @@ local function _ChampionLane__OnLoad()
     end
 end
 
+local warning_ChampionLane__OnTick
+function ChampionLane__OnTick()
+    if not warning_ChampionLane__OnTick then
+        warning_ChampionLane__OnTick = true
+        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
 class'ChampionLane'
 
 function ChampionLane:__init()
@@ -2743,10 +2889,10 @@ local _miniMap = { init = true }
 
 local function _miniMap__OnLoad()
     if _miniMap.init then
-        local map = GetGame().map
+        local map = GetMap()
         if not WINDOW_W or not WINDOW_H then
-            WINDOW_H = GetGame().WINDOW_H
-            WINDOW_W = GetGame().WINDOW_W
+            WINDOW_H = GetStart().WINDOW_H
+            WINDOW_W = GetStart().WINDOW_W
         end
         if WINDOW_H < 500 or WINDOW_W < 500 then return true end
         local percent = math.max(WINDOW_W / 1920, WINDOW_H / 1080)
@@ -2811,6 +2957,13 @@ autoLevelSetFunction(func)      -- set the function used if sequence level == 0
 
 local _autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
 
+local warning_autoLevel__OnTick
+function autoLevel__OnTick()
+    if not warning_autoLevel__OnTick then
+        warning_autoLevel__OnTick = true
+        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
 local __autoLevel__OnTick
 local function autoLevel__OnLoad()
     if not __autoLevel__OnTick then
@@ -2898,6 +3051,7 @@ SCRIPT_PARAM_INFO = 5
 _SC = { init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH .. "scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 
 class'scriptConfig'
+
 local function __SC__remove(name)
     local file = io.open(_SC.configFile, "a+")
     if not file and  fixFolders() then file = io.open(_SC.configFile, "a+") end
@@ -3034,7 +3188,7 @@ local function __SC__init(name)
     if _SC.init then
         _SC.init = nil
         __SC__init_draw()
-        local gameStart = GetGame()
+        local gameStart = GetStart()
         _SC.master = __SC__load("Master")
         if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
             for i = 1, _SC.master.iCount do
@@ -3065,6 +3219,14 @@ end
 
 local function __SC__txtKey(key)
     return (key > 32 and key < 96 and " " .. string.char(key) .. " " or "(" .. tostring(key) .. ")")
+end
+
+local warning_SC__OnDraw
+function SC__OnDraw()
+    if not warning_SC__OnDraw then
+        warning_SC__OnDraw = true
+        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
 end
 
 local function __SC__DrawInstance(header, selected)
@@ -3208,6 +3370,14 @@ local function __SC__OnLoad()
         end
 
         AddMsgCallback(__SC__OnWndMsg)
+    end
+end
+
+local warning_SC__OnWndMsg
+function SC__OnWndMsg(msg, key)
+    if not warning_SC__OnWndMsg then
+        warning_SC__OnWndMsg = true
+        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
@@ -3418,6 +3588,7 @@ function MuramanaToggle(range, extCondition)
         _muramana.tick = 200
         local enemyInRange = (CountEnemyHeroInRange(range) > 0)
         if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
+            -- toogle muramana
             CastItem(_muramana.id)
         end
     end
@@ -3451,6 +3622,7 @@ local _wards = {
     VisionWard = { id = 2043 },
     Sightstone_Used = 5,
     SlotUpdateTick = 0,
+    --tmp fix for AddProcessSpellCallback
     Sightstone_nextUse = 0,
 }
 local __wards__OnTick,__wards__OnProcessSpell
@@ -3519,19 +3691,19 @@ end
 ]]
 local _tcDraws, _tcDraws__OnDraw, _tcDraws__OnTick = {circle = false, text = false, modes = {}}, nil, nil
 function __tcDraws__init()
-    if not _tcDraws.heroes then
-        _tcDraws.heroes = {}
+    if not _tcDraws.heros then
+        _tcDraws.heros = {}
         for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.networkID then
-                _tcDraws.heroes[hero.networkID] = { hero = hero, state = 0, tick = 0 }
+                _tcDraws.heros[hero.networkID] = { hero = hero, state = 0, tick = 0 }
             end
         end
         function _tcDraws__OnDraw()
             if myHero.dead then return end
             if _tcDraws.circle then
                 local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heroes) do
+                for i, target in pairs(_tcDraws.heros) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
@@ -3552,7 +3724,7 @@ function __tcDraws__init()
             if myHero.dead then return end
             if _tcDraws.text then
                 local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heroes) do
+                for i, target in pairs(_tcDraws.heros) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
@@ -3601,124 +3773,6 @@ end
 function TCDrawSetHero(hero, level)
     assert(hero and hero.valid and hero.networkID and type(level) == "number", "TCDrawSetHero: expected <hero>, <number> for level)")
     __tcDraws__init()
-    if not _tcDraws.heroes[hero.networkID] then return end
-    _tcDraws.heroes[hero.networkID].state = level
+    if not _tcDraws.heros[hero.networkID] then return end
+    _tcDraws.heros[hero.networkID].state = level
 end
-
--------------------- OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -----------------
-
-GetDistance2D = GetDistance
-file_exists = FileExist
-timerText = TimerText
-returnSprite = GetSprite
-GetEnemyHeros = GetEnemyHeroes
-GetAllyHeros = GetAllyHeroes
-
-class'GameState'
-function GameState:__init()
-	GetGame()
-end
-
-function GameState:gameIsOver()
-    return GetGame().isOver
-end
-
-function GameIsOver()
-    return GetGame().isOver
-end
-
-function GameWinner()
-    return GetGame().winner
-end
-
-function GameWin()
-    return GetGame().win
-end
-
-function GameLoser()
-    return GetGame().loser
-end
-
-function GetMap()
-    return GetGame().map
-end
-
-GetStart = GetGame
-
--------------------- END OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -------------
-
--------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE --------------------------
-
-local warning_Prediction__OnTick
-function Prediction__OnTick()
-    if not warning_Prediction__OnTick then
-        warning_Prediction__OnTick = true
-        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_SC__OnWndMsg
-function SC__OnWndMsg(msg, key)
-    if not warning_SC__OnWndMsg then
-        warning_SC__OnWndMsg = true
-        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_SC__OnDraw
-function SC__OnDraw()
-    if not warning_SC__OnDraw then
-        warning_SC__OnDraw = true
-        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_autoLevel__OnTick
-function autoLevel__OnTick()
-    if not warning_autoLevel__OnTick then
-        warning_autoLevel__OnTick = true
-        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_TargetSelector__OnSendChat
-function TargetSelector__OnSendChat(msg)
-    if not warning_TargetSelector__OnSendChat then
-        warning_TargetSelector__OnSendChat = true
-        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_TargetPrediction__OnTick
-function TargetPrediction__OnTick()
-    if not warning_TargetPrediction__OnTick then
-        warning_TargetPrediction__OnTick = true
-        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_minionManager__OnCreateObj
-function minionManager__OnCreateObj(object)
-    if not warning_minionManager__OnCreateObj then
-        warning_minionManager__OnCreateObj = true
-        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_minionManager__OnDeleteObj
-function minionManager__OnDeleteObj(object)
-    if not warning_minionManager__OnDeleteObj then
-        warning_minionManager__OnDeleteObj = true
-        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_ChampionLane__OnTick
-function ChampionLane__OnTick()
-    if not warning_ChampionLane__OnTick then
-        warning_ChampionLane__OnTick = true
-        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
--------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
