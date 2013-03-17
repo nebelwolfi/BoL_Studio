@@ -2235,7 +2235,7 @@ function GetGame()
             _game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
             _game.win = (player.team == _game.winner)
             for i, func in ipairs(_onGameOver) do
-                if func then func(_gameState.winner) end
+                if func then func(_game.winner) end
             end
         end
 
