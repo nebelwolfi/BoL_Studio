@@ -18,9 +18,6 @@ function GetDistance(p1, p2)
     return math.sqrt(GetDistanceSqr(p1,p2))
 end
 
---Backward compatibility
-GetDistance2D = GetDistance
-
 --p1 should be the BBoxed object
 function GetDistanceBBox(p1, p2)
 	if p2 == nil then p2 = player end
@@ -61,26 +58,26 @@ function GetDistanceFromMouse(object)
     return math.huge
 end
 
-function GetEnemyHeros()
-    local enemyHeros = {}
+function GetEnemyHeroes()
+    local enemyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team ~= player.team then
-            table.insert(enemyHeros, hero)
+            table.insert(enemyHeroes, hero)
         end
     end
-    return enemyHeros
+    return enemyHeroes
 end
 
-function GetAllyHeros()
-    local allyHeros = {}
+function GetAllyHeroes()
+    local allyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team == player.team then
-            table.insert(allyHeros, hero)
+            table.insert(allyHeroes, hero)
         end
     end
-    return allyHeros
+    return allyHeroes
 end
 
 function table.copy(from)
@@ -313,7 +310,6 @@ function FileExist(path)
     local file = io.open(path,"r")
     if file then file:close() return true else return false end
 end
-file_exists = FileExist --Backward compatibility
 
 function DeleteFile(path)
     assert(type(path) == "string", "DeleteFile: wrong argument types (<string> expected for path)")
@@ -469,9 +465,6 @@ function TimerText(seconds)
     return string.format("%i:%02i", seconds / 60, seconds % 60)
 end
 
---Backward compatibility
-timerText = TimerText
-
 -- return sprite
 function GetSprite(file, altFile)
     assert(type(file) == "string", "GetSprite: wrong argument types (<string> expected for file)")
@@ -487,7 +480,7 @@ function GetSprite(file, altFile)
     end
 end
 
-returnSprite = GetSprite
+
 
 -- return real hero leveled
 function GetHeroLeveled()
@@ -1326,33 +1319,33 @@ GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (
 ]]
 
 
-local _gameHeros, _gameAllyCount, _gameEnemyCount = {}, 0, 0
+local _gameHeroes, _gameAllyCount, _gameEnemyCount = {}, 0, 0
 -- Class related function
-local function _gameHeros__init()
-    if #_gameHeros == 0 then
+local function _gameHeroes__init()
+    if #_gameHeroes == 0 then
         _gameAllyCount, _gameEnemyCount = 0, 0
         for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid then
                 if hero.team == player.team then
                     _gameAllyCount = _gameAllyCount + 1
-                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
+                    table.insert(_gameHeroes, { hero = hero, index = i, tIndex = _gameAllyCount, ignore = false, priority = 1, enemy = false })
                 else
                     _gameEnemyCount = _gameEnemyCount + 1
-                    table.insert(_gameHeros, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
+                    table.insert(_gameHeroes, { hero = hero, index = i, tIndex = _gameEnemyCount, ignore = false, priority = 1, enemy = true })
                 end
             end
         end
     end
 end
 
-local function _gameHeros__extended(target, assertText)
+local function _gameHeroes__extended(target, assertText)
     local assertText = assertText or ""
     if type(target) == "number" then
-        return _gameHeros[target]
+        return _gameHeroes[target]
     elseif target ~= nil and target.valid then
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.networkID == target.networkID then
                 return _gameHero
             end
@@ -1360,11 +1353,11 @@ local function _gameHeros__extended(target, assertText)
     end
 end
 
-local function _gameHeros__hero(target, assertText, enemyTeam)
+local function _gameHeroes__hero(target, assertText, enemyTeam)
     local assertText = assertText or ""
     enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.hero
             end
@@ -1379,11 +1372,11 @@ local function _gameHeros__hero(target, assertText, enemyTeam)
     end
 end
 
-local function _gameHeros__index(target, assertText, enemyTeam)
+local function _gameHeroes__index(target, assertText, enemyTeam)
     local assertText = assertText or ""
     local enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.index
             end
@@ -1392,7 +1385,7 @@ local function _gameHeros__index(target, assertText, enemyTeam)
         return target
     else
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)")
-        return _gameHeros__index(target.charName, assertText, (target.team ~= player.team))
+        return _gameHeroes__index(target.charName, assertText, (target.team ~= player.team))
     end
 end
 
@@ -1404,7 +1397,7 @@ local function _Prediction__OnLoad()
             local tick = GetTickCount()
             _Prediction.delta = 1 / (tick - _Prediction.tick)
             _Prediction.tick = tick
-            for i, _gameHero in ipairs(_gameHeros) do
+            for i, _gameHero in ipairs(_gameHeroes) do
                 if _gameHero.hero ~= nil and _gameHero.hero.valid and _gameHero.hero.dead == false and _gameHero.hero.visible then
                     _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
                     _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1416,9 +1409,9 @@ local function _Prediction__OnLoad()
 
         AddTickCallback(__Prediction__OnTick)
     end
-    _gameHeros__init()
+    _gameHeroes__init()
     _Prediction.tick = GetTickCount()
-    for i, _gameHero in ipairs(_gameHeros) do
+    for i, _gameHero in ipairs(_gameHeroes) do
         if _gameHero.hero ~= nil and _gameHero.hero.valid then
             _gameHero.pVector = Vector()
             _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1430,7 +1423,7 @@ local function _Prediction__OnLoad()
 end
 
 local function _PredictionPosition(iHero, delay)
-    local _gameHero = _gameHeros[iHero]
+    local _gameHero = _gameHeroes[iHero]
     if _gameHero and VectorType(_gameHero.pVector) and VectorType(_gameHero.lastPos) then
         local heroPosition = _gameHero.lastPos + (_gameHero.pVector * (_Prediction.delta * delay))
         heroPosition.y = _gameHero.hero.y
@@ -1439,31 +1432,23 @@ local function _PredictionPosition(iHero, delay)
 end
 
 local function _PredictionHealth(iHero, delay)
-    local _gameHero = _gameHeros[iHero]
+    local _gameHero = _gameHeroes[iHero]
     if _gameHero and _gameHero.pHealth ~= nil and _gameHero.lastHealth ~= nil then
         return _gameHero.lastHealth + (_gameHero.pHealth * (_Prediction.delta * delay))
-    end
-end
-
-local warning_Prediction__OnTick
-function Prediction__OnTick()
-    if not warning_Prediction__OnTick then
-        warning_Prediction__OnTick = true
-        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
 function GetPredictionPos(target, delay, enemyTeam)
     if _Prediction.init then _Prediction__OnLoad() end
     local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeros__index(target, "GetPredictionPos", enemyTeam)
+    local iHero = _gameHeroes__index(target, "GetPredictionPos", enemyTeam)
     return _PredictionPosition(iHero, delay)
 end
 
 function GetPredictionHealth(target, delay, enemyTeam)
     if _Prediction.init then _Prediction__OnLoad() end
     local enemyTeam = (enemyTeam ~= false)
-    local iHero = _gameHeros__index(target, "GetPredictionHealth", enemyTeam)
+    local iHero = _gameHeroes__index(target, "GetPredictionHealth", enemyTeam)
     return _PredictionHealth(iHero, delay)
 end
 
@@ -1558,7 +1543,7 @@ local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "Near
 
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    for i, target in ipairs(_gameHeros) do
+    for i, target in ipairs(_gameHeroes) do
         if target.hero ~= nil and target.hero.valid and target.enemy == enemyTeam then
             PrintChat("[TS] " .. (enemyTeam and "Enemy " or "Ally ") .. target.tIndex .. " (" .. target.index .. ") : " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .. " Priority=" .. target.priority)
         end
@@ -1567,9 +1552,9 @@ end
 
 function TS_SetFocus(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local selected = _gameHeros__hero(target, "TS_SetFocus")
+    local selected = _gameHeroes__hero(target, "TS_SetFocus")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.enemy == enemyTeam then
                 if _gameHero.hero.networkID == selected.networkID then
                     _gameHero.priority = 1
@@ -1586,11 +1571,11 @@ function TS_SetHeroPriority(priority, target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local heroCount = (enemyTeam and _gameEnemyCount or _gameAllyCount)
     assert(type(priority) == "number" and priority >= 0 and priority <= heroCount, "TS_SetHeroPriority: wrong argument types (<number> 1 to " .. heroCount .. " expected)")
-    local selected = _gameHeros__index(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
+    local selected = _gameHeroes__index(target, "TS_SetHeroPriority: wrong argument types (<charName> or <heroIndex> or <hero> or nil expected)", enemyTeam)
     if selected ~= nil then
-        local oldPriority = _gameHeros[selected].priority
+        local oldPriority = _gameHeroes[selected].priority
         if oldPriority == nil or oldPriority == priority then return end
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.enemy == enemyTeam then
                 if index == selected then
                     _gameHero.priority = priority
@@ -1621,15 +1606,15 @@ end
 
 function TS_GetPriority(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local index = _gameHeros__index(target, "TS_GetPriority", enemyTeam)
-    return (index and _gameHeros[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
+    local index = _gameHeroes__index(target, "TS_GetPriority", enemyTeam)
+    return (index and _gameHeroes[index].priority or nil), (enemyTeam and _gameEnemyCount or _gameAllyCount)
 end
 
 function TS_Ignore(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    local selected = _gameHeros__hero(target, "TS_Ignore")
+    local selected = _gameHeroes__hero(target, "TS_Ignore")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeros) do
+        for index, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
                 _gameHero.ignore = not _gameHero.ignore
                 --PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
@@ -1652,7 +1637,7 @@ local function TS__DrawMenu(x, y, enemyTeam)
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
     local y1 = y
-    for index, _gameHero in ipairs(_gameHeros) do
+    for index, _gameHero in ipairs(_gameHeroes) do
         if _gameHero.enemy == enemyTeam then
             DrawLine(x - _TS_Draw.border, y1 + _TS_Draw.midSize, x + _TS_Draw.row1 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, (_gameHero.ignore and _TS_Draw.redColor or _TS_Draw.background))
             DrawText(_gameHero.hero.charName, _TS_Draw.fontSize, x, y1, _TS_Draw.textColor)
@@ -1675,7 +1660,7 @@ local function TS_ClickMenu(x, y, enemyTeam)
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
     local y1 = y
-    for index, _gameHero in ipairs(_gameHeros) do
+    for index, _gameHero in ipairs(_gameHeroes) do
         if _gameHero.enemy == enemyTeam then
             if CursorIsUnder(x + _TS_Draw.row2, y1, _TS_Draw.fontSize, _TS_Draw.fontSize) then
                 TS_SetHeroPriority(math.max(1, _gameHero.priority - 1), index)
@@ -1689,13 +1674,6 @@ local function TS_ClickMenu(x, y, enemyTeam)
     return y1
 end
 
-local warning_TargetSelector__OnSendChat
-function TargetSelector__OnSendChat(msg)
-    if not warning_TargetSelector__OnSendChat then
-        warning_TargetSelector__OnSendChat = true
-        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
 local __TargetSelector__OnSendChat
 local function TargetSelector__OnLoad()
     if not __TargetSelector__OnSendChat then
@@ -1742,7 +1720,7 @@ class'TargetSelector'
 function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTeam)
     -- Init Global
     assert(type(mode) == "number" and type(range) == "number", "TargetSelector: wrong argument types (<mode>, <number> expected)")
-    _gameHeros__init()
+    _gameHeroes__init()
     TargetSelector__OnLoad()
     self.mode = mode
     self.range = range
@@ -1817,7 +1795,7 @@ function TargetSelector:_targetSelectedByPlayer()
         if validTarget and (currentTarget.type == "obj_AI_Hero" or currentTarget.type == "obj_AI_Minion") and (self._conditional == nil or self._conditional(currentTarget)) then
             if self.target == nil or not self.target.valid or self.target.networkID ~= currentTarget.networkID then
                 self.target = currentTarget
-                self.index = _gameHeros__index(currentTarget, "_targetSelectedByPlayer")
+                self.index = _gameHeroes__index(currentTarget, "_targetSelectedByPlayer")
             end
             local delay = 0
             if self._pDelay ~= nil and self._pDelay > 0 then
@@ -1850,7 +1828,7 @@ function TargetSelector:update()
     local selected, index, value, nextPosition, nextHealth
     local range = (self.mode == TARGET_NEAR_MOUSE and 2000 or self.range)
 	if self._minionTable then self._minionTable:update() end
-    for i, _gameHero in ipairs(_gameHeros) do
+    for i, _gameHero in ipairs(_gameHeroes) do
         local hero = _gameHero.hero
 		local validTarget = false
 		if self._BBoxMode then
@@ -2033,16 +2011,8 @@ tp.width
 tp.smoothness
 ]]
 
--- use _gameHeros with TargetSelector
+-- use _gameHeroes with TargetSelector
 local _TargetPrediction__tick = 0
-
-local warning_TargetPrediction__OnTick
-function TargetPrediction__OnTick()
-    if not warning_TargetPrediction__OnTick then
-        warning_TargetPrediction__OnTick = true
-        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
 
 local __TargetPrediction__OnTick
 local function TargetPrediction__Onload()
@@ -2051,7 +2021,7 @@ local function TargetPrediction__Onload()
             local osTime = os.clock()
             if osTime - _TargetPrediction__tick > 0.35 then
                 _TargetPrediction__tick = osTime
-                for i, _enemyHero in ipairs(_gameHeros) do
+                for i, _enemyHero in ipairs(_gameHeroes) do
                     local hero = _enemyHero.hero
                     if hero.dead then
                         _enemyHero.prediction = nil
@@ -2078,7 +2048,7 @@ end
 class'TargetPrediction'
 function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoothness)
     assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
-    _gameHeros__init()
+    _gameHeroes__init()
     TargetPrediction__Onload()
     self.range = range
     self.proj_speed = proj_speed
@@ -2100,11 +2070,11 @@ end
 
 function TargetPrediction:GetPrediction(target)
     assert(target ~= nil, "GetPrediction: wrong argument types (<target> expected)")
-    local index = _gameHeros__index(target, "GetPrediction")
+    local index = _gameHeroes__index(target, "GetPrediction")
     if not index then return end
-    local selected = _gameHeros[index].hero
+    local selected = _gameHeroes[index].hero
 	if self.minionTable then self.minionTable:update() end
-    if _gameHeros[index].prediction and _gameHeros[index].prediction.movement then
+    if _gameHeroes[index].prediction and _gameHeroes[index].prediction.movement then
         if index ~= self.target then
             self.nextPosition = nil
             self.target = index
@@ -2113,21 +2083,21 @@ function TargetPrediction:GetPrediction(target)
         local delay = self.delay / 1000
         local proj_speed = self.proj_speed and self.proj_speed * 1000
         if GetDistanceSqr(selected) < (self.range + 300)^2 then
-            if osTime - (_gameHeros[index].prediction.calculateTime or 0) > 0 then
+            if osTime - (_gameHeroes[index].prediction.calculateTime or 0) > 0 then
                 local latency = (GetLatency() / 1000) or 0
                 local PositionPrediction
                 if selected.visible then
-                    PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency)) + selected
-                elseif osTime - _gameHeros[index].prediction.lastUpdate < 3 then
-                    PositionPrediction = (_gameHeros[index].prediction.movement * (delay + latency + osTime - _gameHeros[index].prediction.lastUpdate)) + _gameHeros[index].prediction.position
-                else _gameHeros[index].prediction = nil return
+                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency)) + selected
+                elseif osTime - _gameHeroes[index].prediction.lastUpdate < 3 then
+                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency + osTime - _gameHeroes[index].prediction.lastUpdate)) + _gameHeroes[index].prediction.position
+                else _gameHeroes[index].prediction = nil return
                 end
                 local t = 0
                 if proj_speed and proj_speed > 0 then
-                    local a, b, c = PositionPrediction, _gameHeros[index].prediction.movement, Vector(player)
+                    local a, b, c = PositionPrediction, _gameHeroes[index].prediction.movement, Vector(player)
                     local d, e, f, g, h, i, j, k, l = (-a.x + c.x), (-a.z + c.z), b.x * b.x, b.z * b.z, proj_speed * proj_speed, a.x * a.x, a.z * a.z, c.x * c.x, c.z * c.z
                     local t = (-(math.sqrt(-f * (l - 2 * c.z * a.z + j) + 2 * b.x * b.z * d * e - g * (k - 2 * c.x * a.x + i) + (k - 2 * c.x * a.x + l - 2 * c.z * a.z + i + j) * h) - b.x * d - b.z * e)) / (f + g - h)
-                    PositionPrediction = (_gameHeros[index].prediction.movement * t) + PositionPrediction
+                    PositionPrediction = (_gameHeroes[index].prediction.movement * t) + PositionPrediction
                 end
                 if self.smoothness and self.smoothness < 100 and self.nextPosition then
                     self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
@@ -2136,7 +2106,7 @@ function TargetPrediction:GetPrediction(target)
                 end
                 if GetDistanceSqr(PositionPrediction) < (self.range)^2 then
                     --update next Health
-                    self.nextHealth = selected.health + (_gameHeros[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
+                    self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
                     --update minions collision
                     self.minions = false
                     if self.width and self.minionTable then
@@ -2392,21 +2362,6 @@ MINION_SORT_MAXHEALTH_DEC = function(a, b) return a.maxHealth > b.maxHealth end
 MINION_SORT_AD_ASC = function(a, b) return a.ad < b.ad end
 MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
 
-local warning_minionManager__OnCreateObj
-function minionManager__OnCreateObj(object)
-    if not warning_minionManager__OnCreateObj then
-        warning_minionManager__OnCreateObj = true
-        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
-local warning_minionManager__OnDeleteObj
-function minionManager__OnDeleteObj(object)
-    if not warning_minionManager__OnDeleteObj then
-        warning_minionManager__OnDeleteObj = true
-        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
 local __minionManager__OnCreateObj,__minionManager__SanityCheck
 local function minionManager__OnLoad()
     if _minionManager.init then
@@ -2809,14 +2764,6 @@ local function _ChampionLane__OnLoad()
     end
 end
 
-local warning_ChampionLane__OnTick
-function ChampionLane__OnTick()
-    if not warning_ChampionLane__OnTick then
-        warning_ChampionLane__OnTick = true
-        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
 class'ChampionLane'
 
 function ChampionLane:__init()
@@ -2944,13 +2891,6 @@ autoLevelSetFunction(func)      -- set the function used if sequence level == 0
 
 local _autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
 
-local warning_autoLevel__OnTick
-function autoLevel__OnTick()
-    if not warning_autoLevel__OnTick then
-        warning_autoLevel__OnTick = true
-        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
 local __autoLevel__OnTick
 local function autoLevel__OnLoad()
     if not __autoLevel__OnTick then
@@ -3208,14 +3148,6 @@ local function __SC__txtKey(key)
     return (key > 32 and key < 96 and " " .. string.char(key) .. " " or "(" .. tostring(key) .. ")")
 end
 
-local warning_SC__OnDraw
-function SC__OnDraw()
-    if not warning_SC__OnDraw then
-        warning_SC__OnDraw = true
-        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
-end
-
 local function __SC__DrawInstance(header, selected)
     DrawLine(_SC.draw.x + _SC.draw.width / 2, _SC.draw.y1, _SC.draw.x + _SC.draw.width / 2, _SC.draw.y1 + _SC.draw.cellSize, _SC.draw.width + _SC.draw.border * 2, (selected and _SC.color.red or _SC.color.lgrey))
     DrawText(header, _SC.draw.fontSize, _SC.draw.x, _SC.draw.y1, (selected and _SC.color.ivory or _SC.color.grey))
@@ -3357,14 +3289,6 @@ local function __SC__OnLoad()
         end
 
         AddMsgCallback(__SC__OnWndMsg)
-    end
-end
-
-local warning_SC__OnWndMsg
-function SC__OnWndMsg(msg, key)
-    if not warning_SC__OnWndMsg then
-        warning_SC__OnWndMsg = true
-        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
     end
 end
 
@@ -3575,7 +3499,6 @@ function MuramanaToggle(range, extCondition)
         _muramana.tick = 200
         local enemyInRange = (CountEnemyHeroInRange(range) > 0)
         if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
-            -- toogle muramana
             CastItem(_muramana.id)
         end
     end
@@ -3609,7 +3532,6 @@ local _wards = {
     VisionWard = { id = 2043 },
     Sightstone_Used = 5,
     SlotUpdateTick = 0,
-    --tmp fix for AddProcessSpellCallback
     Sightstone_nextUse = 0,
 }
 local __wards__OnTick,__wards__OnProcessSpell
@@ -3678,19 +3600,19 @@ end
 ]]
 local _tcDraws, _tcDraws__OnDraw, _tcDraws__OnTick = {circle = false, text = false, modes = {}}, nil, nil
 function __tcDraws__init()
-    if not _tcDraws.heros then
-        _tcDraws.heros = {}
+    if not _tcDraws.heroes then
+        _tcDraws.heroes = {}
         for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.networkID then
-                _tcDraws.heros[hero.networkID] = { hero = hero, state = 0, tick = 0 }
+                _tcDraws.heroes[hero.networkID] = { hero = hero, state = 0, tick = 0 }
             end
         end
         function _tcDraws__OnDraw()
             if myHero.dead then return end
             if _tcDraws.circle then
                 local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heros) do
+                for i, target in pairs(_tcDraws.heroes) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
@@ -3711,7 +3633,7 @@ function __tcDraws__init()
             if myHero.dead then return end
             if _tcDraws.text then
                 local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heros) do
+                for i, target in pairs(_tcDraws.heroes) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
@@ -3760,6 +3682,93 @@ end
 function TCDrawSetHero(hero, level)
     assert(hero and hero.valid and hero.networkID and type(level) == "number", "TCDrawSetHero: expected <hero>, <number> for level)")
     __tcDraws__init()
-    if not _tcDraws.heros[hero.networkID] then return end
-    _tcDraws.heros[hero.networkID].state = level
+    if not _tcDraws.heroes[hero.networkID] then return end
+    _tcDraws.heroes[hero.networkID].state = level
 end
+
+-------------------- OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -----------------
+
+GetDistance2D = GetDistance
+file_exists = FileExist
+timerText = TimerText
+returnSprite = GetSprite
+GetEnemyHeros = GetEnemyHeroes
+GetAllyHeros = GetAllyHeroes
+
+-------------------- END OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -------------
+
+-------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE --------------------------
+
+local warning_Prediction__OnTick
+function Prediction__OnTick()
+    if not warning_Prediction__OnTick then
+        warning_Prediction__OnTick = true
+        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_SC__OnWndMsg
+function SC__OnWndMsg(msg, key)
+    if not warning_SC__OnWndMsg then
+        warning_SC__OnWndMsg = true
+        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_SC__OnDraw
+function SC__OnDraw()
+    if not warning_SC__OnDraw then
+        warning_SC__OnDraw = true
+        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_autoLevel__OnTick
+function autoLevel__OnTick()
+    if not warning_autoLevel__OnTick then
+        warning_autoLevel__OnTick = true
+        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_TargetSelector__OnSendChat
+function TargetSelector__OnSendChat(msg)
+    if not warning_TargetSelector__OnSendChat then
+        warning_TargetSelector__OnSendChat = true
+        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_TargetPrediction__OnTick
+function TargetPrediction__OnTick()
+    if not warning_TargetPrediction__OnTick then
+        warning_TargetPrediction__OnTick = true
+        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_minionManager__OnCreateObj
+function minionManager__OnCreateObj(object)
+    if not warning_minionManager__OnCreateObj then
+        warning_minionManager__OnCreateObj = true
+        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_minionManager__OnDeleteObj
+function minionManager__OnDeleteObj(object)
+    if not warning_minionManager__OnDeleteObj then
+        warning_minionManager__OnDeleteObj = true
+        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+local warning_ChampionLane__OnTick
+function ChampionLane__OnTick()
+    if not warning_ChampionLane__OnTick then
+        warning_ChampionLane__OnTick = true
+        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
+    end
+end
+
+-------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
