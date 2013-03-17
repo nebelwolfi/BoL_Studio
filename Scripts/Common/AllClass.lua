@@ -480,8 +480,6 @@ function GetSprite(file, altFile)
     end
 end
 
-
-
 -- return real hero leveled
 function GetHeroLeveled()
     return player:GetSpellData(SPELL_1).level + player:GetSpellData(SPELL_2).level + player:GetSpellData(SPELL_3).level + player:GetSpellData(SPELL_4).level
@@ -1067,7 +1065,6 @@ circle.radius           -- radius of the circle
 ]]
 
 class'Circle'
-
 function Circle:__init(center, radius)
     assert((VectorType(center) or center == nil) and (type(radius) == "number" or radius == nil), "Circle: wrong argument types (expected <Vector> or nil, <number> or nil)")
     self.center = Vector(center) or Vector()
@@ -2121,191 +2118,114 @@ function TargetPrediction:GetPrediction(target)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- MAP
+-- Game Values
 --[[
-Goblal Function :
-GetMap()            -> return map
-
-Members :
-    map.index = 1-4 (0 mean not found)
-    map.name -> return the full map name
-    map.shortName -> return the shorted map name (usefull for using it in table)
-    map.min {x, y} -> return min map x, y
-    map.max{x, y} -> return max map x, y
-    map{x, y} -> return map size x, y
+	_game.map
+	_game.settings
 ]]
 
-
--- map 1 = summonerRift
-
--- map 4 = twistedTreeline
--- map 10 = twistedTreelineBeta
-
--- map 8 = odin unranked
-
--- map 7 = The Proving Grounds
-
-local _gameMap = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
-function GetMap()
-    if _gameMap.index == 0 then
-        for i = 1, objManager.maxObjects do
-            local object = objManager:getObject(i)
-            if object ~= nil and object.valid then
-                if object.type == "obj_Shop" and object.team == TEAM_BLUE then
-                    if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
-                        _gameMap = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
-                        break
-                    elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
-                        _gameMap = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, height = 14474 / 2 } }
-                        break
-                    elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
-                        _gameMap = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, height = 12812 / 2 } }
-                        break
-                    elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
-                        _gameMap = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
-                        break
-                    elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
-                        _gameMap = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
-                        break
-                    end
-                end
-            end
-        end
-    end
-    return _gameMap
-end
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- GameState Class
---[[
-]]
-
-local _gameState = {}
-
-function __gameState__init()
-	if not __gameState__OnCreateObj then
-		_gameState = { isOver = false, loser = 0, winner = 0, win = false }
-		function __gameState__GameOver(team)
-			_gameState.isOver = true
-			_gameState.loser = team
-			_gameState.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-			_gameState.win = (player.team == _gameState.winner)
-		end
-		function __gameState__OnCreateObj(object)
-			if object then
-				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-					__gameState__GameOver(TEAM_RED)
-				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-					__gameState__GameOver(TEAM_BLUE)
-				end
-			end
-		end
-		AddCreateObjCallback(__gameState__OnCreateObj)
-	end
-end
-
-class'GameState'
-function GameState:__init()
-	__gameState__init()
-end
-
-function GameState:gameIsOver()
-    return GameIsOver()
-end
-
-function GameIsOver()
-    __gameState__init()
-    return _gameState.isOver
-end
-
-function GameWinner()
-    __gameState__init()
-    return _gameState.winner
-end
-
-function GameWin()
-    __gameState__init()
-    return _gameState.win
-end
-
-function GameLoser()
-    __gameState__init()
-    return _gameState.loser
-end
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Start Saved Values
---[[
-Goblal Function :
-GetStart()          -> return start
-
-Members :
-    start.tick          -- return saved GetTickCount() at start
-    start.osTime        -- return saved os.time at start
-    start.WINDOW_W      -- return saved WINDOW_W
-    start.WINDOW_H      -- return saved WINDOW_H
-]]
-
-_gameStart = { configFile = LIB_PATH .. "gameStart.cfg", cmdFile = GAME_PATH.."lastCmd.log", init = true, params = "" }
-
-function GetStart()
-    if _gameStart.init then
+local _game = { init = true, configFile = LIB_PATH .. "lastGame.cfg", lastCmd = GAME_PATH.."lastCmd.log", params = "", isOver = false, loser = 0, winner = 0, win = false }
+function GetGame()
+    if _game.init then
         -- init values
-		if FileExist(_gameStart.cmdFile) then
-			local cmdStr = ReadFile(_gameStart.cmdFile)
+		if FileExist(_game.lastCmd) then
+			local cmdStr = ReadFile(_game.lastCmd)
 			local cmdArray = cmdStr:split("\" \"")
 			if #cmdArray == 4 then
-				_gameStart.pid = cmdArray[1]:sub(2)
-				_gameStart.launcher = cmdArray[2]
-				_gameStart.client = cmdArray[3]
-				_gameStart.params = cmdArray[4]:sub(1, cmdArray[4]:find("\"") - 1)
-				local paramArray = _gameStart.params:split(" ")
+				_game.pid = cmdArray[1]:sub(2)
+				_game.launcher = cmdArray[2]
+				_game.client = cmdArray[3]
+				_game.params = cmdArray[4]:sub(1, cmdArray[4]:find("\"") - 1)
+				local paramArray = _game.params:split(" ")
 				if paramArray[1] ~= "spectator" then
-					_gameStart.server = paramArray[1]
-					_gameStart.port = paramArray[2]
-					_gameStart.key = paramArray[3]
-					_gameStart.id = paramArray[4]
+					_game.server = paramArray[1]
+					_game.port = paramArray[2]
+					_game.key = paramArray[3]
+					_game.id = paramArray[4]
 				end
 			end
 		end
         UpdateWindow()
-        _gameStart.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
-        _gameStart.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
-        if _gameStart.WINDOW_W == 0 or _gameStart.WINDOW_H == 0 then 
-			local gameSettings = GetGameSettings()
-			if gameSettings.General then
-				_gameStart.WINDOW_W = gameSettings.General.Width or 0
-				_gameStart.WINDOW_H = gameSettings.General.Height or 0
+        _game.WINDOW_W = tonumber(WINDOW_W ~= nil and WINDOW_W or 0)
+        _game.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
+		_game.settings = GetGameSettings()
+        if _game.WINDOW_W == 0 or _game.WINDOW_H == 0 then
+			if _game.settings.General then
+				_game.WINDOW_W = _game.settings.General.Width or 0
+				_game.WINDOW_H = _game.settings.General.Height or 0
 			end
 		end
-		_gameStart.tick = tonumber(GetTickCount())
-        _gameStart.osTime = os.time(t)
-        _gameStart.save = {}
-        if FileExist(_gameStart.configFile) then dofile(_gameStart.configFile) end
-		if _gameStart.save.params and _gameStart.save.params == _gameStart.params then
-            _gameStart.WINDOW_W = _gameStart.save.WINDOW_W
-            _gameStart.WINDOW_H = _gameStart.save.WINDOW_H
-            _gameStart.tick = _gameStart.save.tick
-            _gameStart.osTime = _gameStart.save.osTime
+		_game.tick = tonumber(GetTickCount())
+        _game.osTime = os.time(t)
+        if FileExist(_game.configFile) then dofile(_game.configFile) end
+		if _gameSave.params and _gameSave.params == _game.params then
+            _game.WINDOW_W = _gameSave.WINDOW_W
+            _game.WINDOW_H = _gameSave.WINDOW_H
+            _game.tick = _gameSave.tick
+            _game.osTime = _gameSave.osTime
         else
-            local file = io.open(_gameStart.configFile, "w")
-            if not file and fixFolders() then file = io.open(_gameStart.configFile, "w") end
+            local file = io.open(_game.configFile, "w")
+            if not file and fixFolders() then file = io.open(_game.configFile, "w") end
             if file then
-				file:write("_gameStart.save.params = \"" .. _gameStart.params .. "\"\n")
-                file:write("_gameStart.save.osTime = " .. _gameStart.osTime .. "\n")
-                file:write("_gameStart.save.WINDOW_W = " .. _gameStart.WINDOW_W .. "\n")
-                file:write("_gameStart.save.WINDOW_H = " .. _gameStart.WINDOW_H .. "\n")
-                file:write("_gameStart.save.tick = " .. _gameStart.tick .. "\n")
+				file:write("_gameSave = {}\n")
+				file:write("_gameSave.params = \"" .. _game.params .. "\"\n")
+                file:write("_gameSave.osTime = " .. _game.osTime .. "\n")
+                file:write("_gameSave.WINDOW_W = " .. _game.WINDOW_W .. "\n")
+                file:write("_gameSave.WINDOW_H = " .. _game.WINDOW_H .. "\n")
+                file:write("_gameSave.tick = " .. _game.tick .. "\n")
                 file:close()
             end
             file = nil
         end
+		--get map
+		_game.map = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
+		for i = 1, objManager.maxObjects do
+			local object = objManager:getObject(i)
+			if object ~= nil and object.valid then
+				if object.type == "obj_Shop" and object.team == TEAM_BLUE then
+					if math.floor(object.x) == -175 and math.floor(object.y) == 163 and math.floor(object.z) == 1056 then
+						_game.map = { index = 1, name = "Summoner's Rift", shortName = "summonerRift", min = { x = -538, y = -165 }, max = { x = 14279, y = 14527 }, x = 14817, y = 14692, grid = { width = 13982 / 2, height = 14446 / 2 } }
+						break
+					elseif math.floor(object.x) == -217 and math.floor(object.y) == 276 and math.floor(object.z) == 7039 then
+						_game.map = { index = 4, name = "The Twisted Treeline", shortName = "twistedTreeline", min = { x = -996, y = -1239 }, max = { x = 14120, y = 13877 }, x = 15116, y = 15116, grid = { width = 15436 / 2, height = 14474 / 2 } }
+						break
+					elseif math.floor(object.x) == 556 and math.floor(object.y) == 191 and math.floor(object.z) == 1887 then
+						_game.map = { index = 7, name = "The Proving Grounds", shortName = "provingGrounds", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12948 / 2, height = 12812 / 2 } }
+						break
+					elseif math.floor(object.x) == 16 and math.floor(object.y) == 168 and math.floor(object.z) == 4452 then
+						_game.map = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
+						break
+					elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
+						_game.map = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
+						break
+					end
+				end
+			end
+		end
+		--update game state
+		function __game__GameOver(team)
+			_game.isOver = true
+			_game.loser = team
+			_game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+			_game.win = (player.team == _game.winner)
+		end
+		function __game__OnCreateObj(object)
+			if object then
+				if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
+					__game__GameOver(TEAM_RED)
+				elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
+					__game__GameOver(TEAM_BLUE)
+				end
+			end
+		end
+		AddCreateObjCallback(__game__OnCreateObj)
         --clean
-        _gameStart.save = nil
-        _gameStart.configFile = nil
-        _gameStart.init = nil
+        _gameSave = nil
+        _game.configFile = nil
+		_game.lastCmd = nil
+        _game.init = nil
     end
-    return _gameStart
+    return _game
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2365,7 +2285,7 @@ MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
 local __minionManager__OnCreateObj,__minionManager__SanityCheck
 local function minionManager__OnLoad()
     if _minionManager.init then
-        local mapIndex = GetMap().index
+        local mapIndex = GetGame().map.index
         if mapIndex ~= 4 then
             _minionManager.ally = "Minion_T" .. player.team
             _minionManager.enemy = "Minion_T" .. TEAM_ENEMY
@@ -2528,7 +2448,7 @@ local _fountain
 local _fountainRadius = 750
 function GetFountain()
     if _fountain ~= nil then return _fountain end
-    if GetMap().index == 1 then
+    if GetGame().map.index == 1 then
         _fountainRadius = 1050
     end
     if GetShop() ~= nil then
@@ -2662,8 +2582,8 @@ local __ChampionLane__OnTick
 local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
-        _championLane.mapIndex = GetMap().index
-        local start = GetStart()
+        _championLane.mapIndex = GetGame().map.index
+        local start = GetGame()
         for i = 1, heroManager.iCount, 1 do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid then
@@ -2823,10 +2743,10 @@ local _miniMap = { init = true }
 
 local function _miniMap__OnLoad()
     if _miniMap.init then
-        local map = GetMap()
+        local map = GetGame().map
         if not WINDOW_W or not WINDOW_H then
-            WINDOW_H = GetStart().WINDOW_H
-            WINDOW_W = GetStart().WINDOW_W
+            WINDOW_H = GetGame().WINDOW_H
+            WINDOW_W = GetGame().WINDOW_W
         end
         if WINDOW_H < 500 or WINDOW_W < 500 then return true end
         local percent = math.max(WINDOW_W / 1920, WINDOW_H / 1080)
@@ -2978,7 +2898,6 @@ SCRIPT_PARAM_INFO = 5
 _SC = { init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH .. "scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 
 class'scriptConfig'
-
 local function __SC__remove(name)
     local file = io.open(_SC.configFile, "a+")
     if not file and  fixFolders() then file = io.open(_SC.configFile, "a+") end
@@ -3115,7 +3034,7 @@ local function __SC__init(name)
     if _SC.init then
         _SC.init = nil
         __SC__init_draw()
-        local gameStart = GetStart()
+        local gameStart = GetGame()
         _SC.master = __SC__load("Master")
         if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
             for i = 1, _SC.master.iCount do
@@ -3694,6 +3613,37 @@ timerText = TimerText
 returnSprite = GetSprite
 GetEnemyHeros = GetEnemyHeroes
 GetAllyHeros = GetAllyHeroes
+
+class'GameState'
+function GameState:__init()
+	GetGame()
+end
+
+function GameState:gameIsOver()
+    return GetGame().isOver
+end
+
+function GameIsOver()
+    return GetGame().isOver
+end
+
+function GameWinner()
+    return GetGame().winner
+end
+
+function GameWin()
+    return GetGame().win
+end
+
+function GameLoser()
+    return GetGame().loser
+end
+
+function GetMap()
+    return GetGame().map
+end
+
+GetStart = GetGame
 
 -------------------- END OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -------------
 
