@@ -3641,7 +3641,7 @@ function TCDrawSetHero(hero, level)
     _tcDraws.heroes[hero.networkID].state = level
 end
 
--------------------- OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -----------------
+-------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
 GetDistance2D = GetDistance
 file_exists = FileExist
 timerText = TimerText
@@ -3678,7 +3678,7 @@ function GetMap()
 end
 
 GetStart = GetGame
--------------------- END OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -------------
+-------------------- END OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -------------
 -------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE --------------------------
 local warning_Prediction__OnTick
 function Prediction__OnTick()
