@@ -6,10 +6,9 @@ GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
-    if p2 == nil then p2 = player end
-    if p1.z == nil or p2.z == nil then return (p1.x - p2.x) ^ 2 + (p1.y - p2.y) ^ 2
-    else return (p1.x - p2.x) ^ 2 + (p1.z - p2.z) ^ 2
-    end
+    p2 = p2 or player
+	local ax, ay, bx, by = p1.x, (p1.z or p1.y), p2.x, (p2.z or p2.y)
+    return (ax - bx) ^ 2 + (ay - by) ^ 2
 end
 
 function GetDistance(p1, p2)
@@ -229,7 +228,7 @@ function os.executePowerShell(script, argument)
 end
 
 function os.executePowerShellAsync(script, argument)
-    RunAsyncCmdCommand("powershell -windowstyle hidden" .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"")
+    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"")
 end
 
 --[[
@@ -738,39 +737,22 @@ function VectorPointProjectionOnLine(v1, v2, v)
 end
 
 --[[
-    v1 and v2 are the start and end point of the line
+	VectorPointProjectionOnLineSegment: Extended VectorPointProjectionOnLine in 2D Space
+    v1 and v2 are the start and end point of the linesegment
     v is the point next to the line
     return:
-        distanceSegment = distance from the point to the line segment
-        distanceLine = distance from the point to the line (assuming infinite extent in both directions)
-        point = the point closest to the line segment
-    
-    http://forums.codeguru.com/showthread.php?194400-Distance-between-point-and-line-segment
+		pointSegment = the point closest to the line segment (table with x and y member)
+		pointLine = the point closest to the line (assuming infinite extent in both directions) (table with x and y member), same as VectorPointProjectionOnLine
+		isOnSegment = if the point closest to the line is on the segment
 ]]
-function VectorDistanceToLine(v1, v2, v)
+function VectorPointProjectionOnLineSegment(v1, v2, v)
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
-    local r_numerator = (cx - ax) * (bx - ax) + (cy - ay) * (by - ay)
-    local r_denomenator = (bx - ax) * (bx - ax) + (by - ay) * (by - ay)
-    local r = r_numerator / r_denomenator
-    local px = ax + r * (bx - ax)
-    local py = ay + r * (by - ay)
-    local s = ((ay - cy) * (bx - ax) - (ax - cx) * (by - ay)) / r_denomenator
-    local distanceLine = math.abs(s) * math.sqrt(r_denomenator)
-    local xx, yy = px, py
-    local distanceSegment
-    if r >= 0 and r <= 1 then distanceSegment = distanceLine
-    else
-        local dist1 = (cx - ax) * (cx - ax) + (cy - ay) * (cy - ay)
-        local dist2 = (cx - bx) * (cx - bx) + (cy - by) * (cy - by)
-        if dist1 < dist2 then
-            xx, yy = ax, ay
-            distanceSegment = math.sqrt(dist1)
-        else
-            xx, yy = bx, by
-            distanceSegment = math.sqrt(dist2)
-        end
-    end
-    return distanceSegment, distanceLine, { x = xx, y = yy }
+    local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+    local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+	rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+	local isOnSegment = rS == rL
+	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+    return pointSegment, pointLine, isOnSegment
 end
 
 class'Vector'
@@ -1352,23 +1334,23 @@ function WayPointManager:__init()
 end
 
 function WayPointManager:GetWayPoints(object)
-    local wayPoints, lineSegment, distance, fPoint = WayPoints[object.networkID], 0, math.huge, nil
+    local wayPoints, lineSegment, distanceSqr, fPoint = WayPoints[object.networkID], 0, math.huge, nil
     if not wayPoints then return { x = object.x, y = object.z } end
-    for i, wayPoint in ipairs(wayPoints) do
-        local nextWayPoint = wayPoints[i + 1]
-        if not nextWayPoint then break end
-        local cDistance, infDistance, point = VectorDistanceToLine(wayPoint, nextWayPoint, object)
-        if cDistance < distance then
-            fPoint = point
+    for i = 1, #wayPoints - 1 do
+        local p1, p2, isOnLineSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
+        local distanceSegmentSqr = GetDistanceSqr(p1, object)
+		if distanceSegmentSqr < distanceSqr then
+            fPoint = p1
             lineSegment = i
-            distance = cDistance
+            distanceSqr = distanceSegmentSqr
         end
     end
-    local result = { fPoint }
+    local result = { fPoint or { x = object.x, y = object.z }}
     for i = lineSegment + 1, #wayPoints do
         result[#result + 1] = wayPoints[i]
     end
     if #result == 2 and GetDistanceSqr(result[1], result[2]) < 400 then result[2] = nil end
+	WayPoints[object.networkID] = result --not necessary, but makes later runs faster
     return result
 end
 
@@ -2017,10 +1999,10 @@ end
     Goblal Function :
     GetMinionCollision(posEnd, spellWidth)          -> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
-local function _minionInCollision(minion, posStart, posEnd, sqrSpell, sqrDist)
+local function _minionInCollision(minion, posStart, posEnd, spellSqr, sqrDist)
     if GetDistanceSqr(minion, posStart) < sqrDist and GetDistanceSqr(minion, posEnd) < sqrDist then
-        local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, minion)
-        if GetDistanceSqr(closestPoint, minion) <= sqrSpell then return true end
+        local p1, p2, isOnLineSegment = VectorPointProjectionOnLineSegment(posStart, posEnd, minion)
+        if isOnLineSegment and GetDistanceSqr(minion, p2) <= spellSqr then return true end
     end
     return false
 end
@@ -2028,16 +2010,16 @@ end
 function GetMinionCollision(posStart, posEnd, spellWidth, minionTable)
     assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
     local sqrDist = GetDistanceSqr(posStart, posEnd)
-    local sqrSpell = spellWidth * spellWidth / 4
+    local spellSqr = spellWidth*spellWidth / 4
     if minionTable then
         for i, minion in pairs(minionTable) do
-            if _minionInCollision(minion, posStart, posEnd, sqrSpell, sqrDist) then return true end
+            if _minionInCollision(minion, posStart, posEnd, spellSqr, sqrDist) then return true end
         end
     else
         for i = 0, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
             if object and object.valid and object.team ~= player.team and object.type == "obj_AI_Minion" and not object.dead and object.visible and object.bTargetable then
-                if _minionInCollision(object, posStart, posEnd, sqrSpell, sqrDist) then return true end
+                if _minionInCollision(object, posStart, posEnd, spellSqr, sqrDist) then return true end
             end
         end
     end
