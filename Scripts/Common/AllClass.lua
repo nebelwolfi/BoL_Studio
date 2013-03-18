@@ -1,11 +1,9 @@
-﻿player = GetMyHero()
+player = GetMyHero()
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
-
 TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
     if p2 == nil then p2 = player end
@@ -60,7 +58,6 @@ function GetDistanceFromMouse(object)
 end
 
 function GetEnemyHeroes()
-
     local enemyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
@@ -68,12 +65,10 @@ function GetEnemyHeroes()
             table.insert(enemyHeroes, hero)
         end
     end
-
     return enemyHeroes
 end
 
 function GetAllyHeroes()
-
     local allyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
@@ -81,7 +76,6 @@ function GetAllyHeroes()
             table.insert(allyHeroes, hero)
         end
     end
-
     return allyHeroes
 end
 
@@ -208,7 +202,7 @@ end
 
 --[[
     Executes a Powershell script
-	e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
+    e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
 ]]
 local function Base64Unicode(text)
     -- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
@@ -375,8 +369,8 @@ end
 --[[
  Gets the Gamesettings (path: League of Legends\Config\game.cfg
  example: 
-	local gameSettings = GetGameSettings()
-	Width, Height = gameSettings.General.Width, gameSettings.General.Height 
+    local gameSettings = GetGameSettings()
+    Width, Height = gameSettings.General.Width, gameSettings.General.Height 
 ]]
 function GetGameSettings()
     local path = GAME_PATH:sub(1, GAME_PATH:find("\\RADS")) .. "Config\\game.cfg"
@@ -384,8 +378,8 @@ function GetGameSettings()
 end
 
 --[[
-	Delays a function call
-	example: DelayAction(myFunc, 5)
+    Delays a function call
+    example: DelayAction(myFunc, 5)
 ]]
 local delayedActions, delayedActionsExecuter = {}, nil
 function DelayAction(func, delay, args) --delay in seconds
@@ -666,17 +660,14 @@ function DrawHitBox(object, linesize, linecolor)
         local x6, y6, z6 = get2DFrom3D(object.minBBox.x, object.maxBBox.y, object.maxBBox.z)
         local x7, y7, z7 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.maxBBox.z)
         local x8, y8, z8 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.minBBox.z)
-
         if z1 or z2 then DrawLine(x1, y1, x2, y2, linesize, linecolor) end
         if z2 or z3 then DrawLine(x2, y2, x3, y3, linesize, linecolor) end
         if z3 or z4 then DrawLine(x3, y3, x4, y4, linesize, linecolor) end
         if z4 or z1 then DrawLine(x4, y4, x1, y1, linesize, linecolor) end
-
         if z1 or z5 then DrawLine(x1, y1, x5, y5, linesize, linecolor) end
         if z2 or z6 then DrawLine(x2, y2, x6, y6, linesize, linecolor) end
         if z3 or z7 then DrawLine(x3, y3, x7, y7, linesize, linecolor) end
         if z4 or z8 then DrawLine(x4, y4, x8, y8, linesize, linecolor) end
-
         if z5 or z6 then DrawLine(x5, y5, x6, y6, linesize, linecolor) end
         if z6 or z7 then DrawLine(x6, y6, x7, y7, linesize, linecolor) end
         if z7 or z8 then DrawLine(x7, y7, x8, y8, linesize, linecolor) end
@@ -686,7 +677,6 @@ end
 
 --[[
         Class: Vector
-
         API :
         ---- functions ----
         VectorType(v)                           -- return if as vector
@@ -694,12 +684,10 @@ end
         VectorDirection(v1,v2,v)
         VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
         Vector(a,b,c)                           -- return a vector from x,y,z pos or from another vector
-
         ---- Vector Members ----
         x
         y
         z
-
         ---- Vector Functions ----
         vector:clone()                          -- return a new Vector from vector
         vector:unpack()                         -- x, z
@@ -716,14 +704,12 @@ end
         vector:center(v)                        -- return center between vector and v
         vector:crossP()                         -- return cross product of vector
         vector:dotP()                           -- return dot product of vector
-
         vector:polar()                          -- return the angle from axe
         vector:angleBetween(v1, v2)             -- return the angle formed from vector to v1,v2
         vector:compare(v)                       -- compare vector and v
         vector:perpendicular()                  -- return new Vector rotated 90° rigth
         vector:perpendicular2()                 -- return new Vector rotated 90° left
 ]]
-
 -- STAND ALONE FUNCTIONS
 function VectorType(v)
     return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and type(v.z) == "number"))
@@ -749,6 +735,42 @@ function VectorPointProjectionOnLine(v1, v2, v)
     local line = Vector(v2) - v1
     local t = ((-(v1.x * line.x - line.x * v.x + (v1.z - v.z) * line.z)) / line:len2())
     return (line * t) + v1
+end
+
+--[[
+    v1 and v2 are the start and end point of the line
+    v is the point next to the line
+    return:
+        distanceSegment = distance from the point to the line segment
+        distanceLine = distance from the point to the line (assuming infinite extent in both directions)
+        point = the point closest to the line segment
+    
+    http://forums.codeguru.com/showthread.php?194400-Distance-between-point-and-line-segment
+]]
+function VectorDistanceToLine(v1, v2, v)
+    local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+    local r_numerator = (cx - ax) * (bx - ax) + (cy - ay) * (by - ay)
+    local r_denomenator = (bx - ax) * (bx - ax) + (by - ay) * (by - ay)
+    local r = r_numerator / r_denomenator
+    local px = ax + r * (bx - ax)
+    local py = ay + r * (by - ay)
+    local s = ((ay - cy) * (bx - ax) - (ax - cx) * (by - ay)) / r_denomenator
+    local distanceLine = math.abs(s) * math.sqrt(r_denomenator)
+    local xx, yy = px, py
+    local distanceSegment
+    if r >= 0 and r <= 1 then distanceSegment = distanceLine
+    else
+        local dist1 = (cx - ax) * (cx - ax) + (cy - ay) * (cy - ay)
+        local dist2 = (cx - bx) * (cx - bx) + (cy - by) * (cy - by)
+        if dist1 < dist2 then
+            xx, yy = ax, ay
+            distanceSegment = math.sqrt(dist1)
+        else
+            xx, yy = bx, by
+            distanceSegment = math.sqrt(dist2)
+        end
+    end
+    return distanceSegment, distanceLine, { x = xx, y = yy }
 end
 
 class'Vector'
@@ -965,7 +987,6 @@ function Vector:rotated(phiX, phiY, phiZ)
 end
 
 -- not yet full 3D functions
-
 function Vector:polar()
     if math.close(self.x, 0) then
         if self.z > 0 then return 90
@@ -1012,19 +1033,16 @@ end
             pushright
             popleft
             popright
-
         Sample:
             local myQueue = Queue()
             myQueue:pushleft("a"); myQueue:pushright(2);
             for i=1, #myQueue, 1 do
                 PrintChat(tostring(myQueue[i]))
             end
-
         Notes:
             Don't use ipairs or pairs!
             It's a queue, dont try to insert values by yourself, only use the push functions to add values
 ]]
-
 function Queue()
     local _queue = { first = 0, last = -1, list = {} }
     _queue.pushleft = function(self, value)
@@ -1068,22 +1086,17 @@ end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Circle Class
-
 --[[
 Circle Class :
 Methods:
 circle = Circle(center (opt),radius (opt))
-
 Function :
 circle:Contains(v)      -- return if Vector point v is in the circle
-
 Members :
 circle.center       -- Vector point for circle's center
 circle.radius           -- radius of the circle
 ]]
-
 class'Circle'
-
 function Circle:__init(center, radius)
     assert((VectorType(center) or center == nil) and (type(radius) == "number" or radius == nil), "Circle: wrong argument types (expected <Vector> or nil, <number> or nil)")
     self.center = Vector(center) or Vector()
@@ -1105,24 +1118,19 @@ end
 Global function ;
 GetMEC(R, range)                    -- Find Group Center From Nearest Enemies
 GetMEC(R, range, target)            -- Find Group Center Near Target
-
 MEC Class :
 Methods:
 mec = MEC(points (opt))
-
 Function :
 mec:SetPoints(points)
 mec:HalfHull(left, right, pointTable, factor)       -- return table
 mec:ConvexHull()                        -- return table
 mec:Compute()
-
 Members :
 mec.circle
 mec.points
 ]]
-
 class'MEC'
-
 function MEC:__init(points)
     self.circle = Circle()
     self.points = {}
@@ -1310,6 +1318,60 @@ function FindGroupCenterNearTarget(target, radius, range)
     return GetMEC(radius, range, target)
 end
 
+--[[
+    Class: WayPointManager
+        Note: Only works for VIP user
+            uses the Packet Conversion Library, might change in future
+    
+    Methods:
+        WayPointManager:GetWayPoints(object) --returns all next waypoints of an object
+                                             --The first WayPoint is always close to the position of the object itself.
+                                             --A Waypoint is a Point with x and y values.
+]]
+class'WayPointManager'
+local WayPoints
+local function WayPointManager_OnRecvPacket(p)
+    if p.header == 0xBA then
+        local packet = Packet(p)
+        local networkID = packet:get("networkId")
+        if not networkID then return end
+        WayPoints[networkID] = packet:get("wayPoints")
+    elseif p.header == 0x60 then
+        local packet = Packet(p)
+        for networkID, wayPoints in pairs(packet:get("wayPoints")) do
+            WayPoints[networkID] = wayPoints
+        end
+    end
+end
+
+function WayPointManager:__init()
+    if not WayPoints then
+        WayPoints = {}
+        AddRecvPacketCallback(WayPointManager_OnRecvPacket)
+    end
+end
+
+function WayPointManager:GetWayPoints(object)
+    local wayPoints, lineSegment, distance, fPoint = WayPoints[object.networkID], 0, math.huge, nil
+    if not wayPoints then return { x = object.x, y = object.z } end
+    for i, wayPoint in ipairs(wayPoints) do
+        local nextWayPoint = wayPoints[i + 1]
+        if not nextWayPoint then break end
+        local cDistance, infDistance, point = VectorDistanceToLine(wayPoint, nextWayPoint, object)
+        if cDistance < distance then
+            fPoint = point
+            lineSegment = i
+            distance = cDistance
+        end
+    end
+    local result = { fPoint }
+    for i = lineSegment + 1, #wayPoints do
+        result[#result + 1] = wayPoints[i]
+    end
+    if #result == 2 and GetDistanceSqr(result[1], result[2]) < 400 then result[2] = nil end
+    return result
+end
+
 -- Prediction Functions
 --[[
 Globals Functions
@@ -1319,7 +1381,6 @@ GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in de
 GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
 GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
 GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
-
 ]]
 -- Prediction Functions
 --[[
@@ -1330,9 +1391,7 @@ GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in de
 GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
 GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
 GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
-
 ]]
-
 local _gameHeroes, _gameAllyCount, _gameEnemyCount = {}, 0, 0
 -- Class related function
 local function _gameHeroes__init()
@@ -1468,30 +1527,23 @@ end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TargetSelector Class
-
 --[[
 TargetSelector Class :
 Methods:
 ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
-
 Goblal Functions :
 TS_Print(enemyTeam (opt))           -> print Priority (global)
-
 TS_SetFocus()           -> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(id)         -> set priority to the championID (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(charName, enemyTeam (opt))  -> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
 TS_SetFocus(hero)       -> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
-
 TS_SetHeroPriority(priority, target, enemyTeam (opt))                   -> set the priority to target
 TS_SetPriority(target1, target2, target3, target4, target5)     -> set priority in order to enemy targets
 TS_SetPriorityA(target1, target2, target3, target4, target5)    -> set priority in order to ally targets
-
 TS_GetPriority(target, enemyTeam)       -> return the current priority, and the max allowed
-
 Functions :
 ts:update()                                             -- update the instance target
 ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
-
 ts:SetPrediction()                          -- prediction off
 ts:SetPrediction(delay)                     -- predict movement for champs (need Prediction__OnTick())
 ts:SetMinionCollision()                     -- minion colission off
@@ -1499,7 +1551,6 @@ ts:SetMinionCollision(spellWidth)           -- avoid champ if minion between pla
 ts:SetConditional()                         -- erase external function use
 ts:SetConditional(func)                     -- set external function that return true/false to allow filter -- function(hero, index (opt))
 ts:SetProjectileSpeed(pSpeed)               -- set projectile speed (need Prediction__OnTick())
-
 Members:
 ts.mode                     -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 ts.range                    -> number > 0
@@ -1508,34 +1559,27 @@ ts.target                   -> return the target (object or nil)
 ts.index        -> index of target (if hero)
 ts.nextPosition -> nextPosition predicted
 ts.nextHealth       -> nextHealth predicted
-
 Usage :
 variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
 targetSelected is set to true if not filled
 Damages are set as default to magic 100 if none is set
 enemyTeam is false if ally, nil or true if enemy
-
 when you want to update, call variable:update()
-
 Values you can change on instance :
 variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
 variable.range -> number > 0
 variable.targetSelected -> true/false (if you clicked on a champ)
-
 ex :
 function OnLoad()
     ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
 end
-
 function OnTick()
     if ts.target ~= nil then
         PrintChat(ts.target.charName)
         ts:SetDamages((player.ap * 10), 0, 0)
     end
 end
-
 ]]
-
 -- Class related constants
 TARGET_LOW_HP = 1
 TARGET_MOST_AP = 2
@@ -1548,11 +1592,9 @@ TARGET_LESS_CAST_PRIORITY = 8
 TARGET_DEAD = 9
 DAMAGE_MAGIC = 1
 DAMAGE_PHYSICAL = 2
-
 -- Class related global
 local _TS_Draw
 local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority", "Dead" }
-
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     for i, target in ipairs(_gameHeroes) do
@@ -1975,7 +2017,6 @@ end
     Goblal Function :
     GetMinionCollision(posEnd, spellWidth)          -> return true/false if collision with minion from player to posEnd with spellWidth.
 ]]
-
 local function _minionInCollision(minion, posStart, posEnd, sqrSpell, sqrDist)
     if GetDistanceSqr(minion, posStart) < sqrDist and GetDistanceSqr(minion, posEnd) < sqrDist then
         local closestPoint = VectorPointProjectionOnLine(posStart, posEnd, minion)
@@ -2008,10 +2049,8 @@ end
 --[[
 Methods:
 tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
-
 Functions :
 tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
-
 members :
 tp.nextPosition                     -- vector pos
 tp.minions
@@ -2022,10 +2061,8 @@ tp.delay
 tp.width
 tp.smoothness
 ]]
-
 -- use _gameHeroes with TargetSelector
 local _TargetPrediction__tick = 0
-
 local __TargetPrediction__OnTick
 local function TargetPrediction__Onload()
     if not __TargetPrediction__OnTick then
@@ -2133,17 +2170,13 @@ function TargetPrediction:GetPrediction(target)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 -- Game Values
 --[[
-
 	_game.map
 	_game.settings
 ]]
-
 local _game, _gameSave = { init = true, configFile = LIB_PATH .. "lastGame.cfg", lastCmd = GAME_PATH .. "lastCmd.log", params = "", isOver = false, loser = 0, winner = 0, win = false }, nil
 local _onGameOver, __game__OnCreateObj, __game__GameOver = {}, nil, nil
-
 function GetGame()
     if _game.init then
         -- init values
@@ -2169,7 +2202,6 @@ function GetGame()
         _game.WINDOW_H = tonumber(WINDOW_H ~= nil and WINDOW_H or 0)
         _game.settings = GetGameSettings()
         if _game.WINDOW_W == 0 or _game.WINDOW_H == 0 then
-
             if _game.settings.General then
                 _game.WINDOW_W = _game.settings.General.Width or 0
                 _game.WINDOW_H = _game.settings.General.Height or 0
@@ -2177,12 +2209,10 @@ function GetGame()
         end
         _game.tick = tonumber(GetTickCount())
         _game.osTime = os.time(t)
-
         if FileExist(_game.configFile) then _gameSave = loadfile(_game.configFile)() end
         if _gameSave and _gameSave.params and _gameSave.params == _game.params then
             _game.WINDOW_W = _gameSave.WINDOW_W
             _game.WINDOW_H = _gameSave.WINDOW_H
-
             _game.tick = _gameSave.tick
             _game.osTime = _gameSave.osTime
         else
@@ -2195,7 +2225,7 @@ function GetGame()
                 file:write("_gameSave.WINDOW_W = " .. _game.WINDOW_W .. "\n")
                 file:write("_gameSave.WINDOW_H = " .. _game.WINDOW_H .. "\n")
                 file:write("_gameSave.tick = " .. _game.tick .. "\n")
-				file:write("return _gameSave")
+                file:write("return _gameSave")
                 file:close()
             end
             file = nil
@@ -2248,13 +2278,11 @@ function GetGame()
 
         AddCreateObjCallback(__game__OnCreateObj)
         --clean
-
         _gameSave = nil
         _game.configFile = nil
         _game.lastCmd = nil
         _game.init = nil
     end
-
     return _game
 end
 
@@ -2268,13 +2296,10 @@ end
 -- minionManager
 --[[
 minionManager Class :
-
 Methods:
 minionArray = minionManager(mode, range, fromPos, sortMode)     --return a minionArray instance
-
 Functions :
 minionArray:update()                -- update the minionArray instance
-
 Members:
 minionArray.objects                 -- minionArray objects table
 minionArray.iCount                  -- minionArray objects count
@@ -2282,14 +2307,12 @@ minionArray.mode                    -- minionArray instance mode (MINION_ALL, et
 minionArray.range                   -- minionArray instance range
 minionArray.fromPos                 -- minionArray instance x, z from which the range is based (player by default)
 minionArray.sortMode                -- minionArray instance sort mode (MINION_SORT_HEALTH_ASC, etc... or nil if no sorted)
-
 Usage :
 ex :
 function OnLoad()
     enemyMinions = minionManager(MINION_ENEMY, 600, player, MINION_SORT_HEALTH_ASC)
     allyMinions = minionManager(MINION_ALLY, 300, player, MINION_SORT_HEALTH_DES)
 end
-
 function OnTick()
     enemyMinions:update()
     allyMinions:update()
@@ -2300,9 +2323,7 @@ function OnTick()
     enemyMinions.range = 250
     enemyMinions:update() --not needed
 end
-
 ]]
-
 local _minionTable = { {}, {}, {}, {}, {} }
 local _minionManager = { init = true, tick = 0, ally = "##", enemy = "##" }
 -- Class related constants
@@ -2317,7 +2338,6 @@ MINION_SORT_MAXHEALTH_ASC = function(a, b) return a.maxHealth < b.maxHealth end
 MINION_SORT_MAXHEALTH_DEC = function(a, b) return a.maxHealth > b.maxHealth end
 MINION_SORT_AD_ASC = function(a, b) return a.ad < b.ad end
 MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
-
 local __minionManager__OnCreateObj, __minionManager__SanityCheck
 local function minionManager__OnLoad()
     if _minionManager.init then
@@ -2402,15 +2422,12 @@ Goblal Function :
 CastItem(itemID)                    -- Cast item
 CastItem(itemID, hero)              -- Cast item on hero
 CastItem(itemID, x, z)              -- Cast item on pos x,z
-
 GetInventorySlotItem(itemID)        -- return the slot or nil
 GetInventoryHaveItem(itemID)        -- return true/false
 GetInventorySlotIsEmpty(slot)       -- return true/false
 GetInventoryItemIsCastable(itemID)  -- return true/false
-
 InShop()                -- return true/false, x, y, z, range
 ]]
-
 function GetInventorySlotItem(itemID, target)
     assert(type(itemID) == "number", "GetInventorySlotItem: wrong argument types (<number> expected)")
     local target = target or player
@@ -2455,7 +2472,6 @@ end
 
 -- Shop
 --[[
-
 ]]
 local _shop
 local _shopRadius = 1250
@@ -2482,7 +2498,6 @@ end
 
 -- Fountain
 --[[
-
 ]]
 local _fountain
 local _fountainRadius = 750
@@ -2515,7 +2530,6 @@ end
 
 -- Turrets
 --[[
-
 ]]
 local _turrets, __turrets__OnTick
 local function __Turrets__init()
@@ -2582,10 +2596,8 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Class : ChampionLane
 --[[
-
 Method :
 CL = ChampionLane()
-
 Functions :
 CL:GetMyLane()          -- return lane name
 CL:GetPoint(lane)           -- return the 3D point of the center of the lane
@@ -2600,15 +2612,13 @@ CL:GetSupport(team)     -- return the object of the team support or nil
 CL:GetJungler()         -- return the object of the enemy jungler or nil
 CL:GetJungler(team)     -- return the object of the team jungler or nil
 ]]
-
 local _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 250 }
-
 local function _ChampionLane__Save()
     _championLane.nextSave = GetTickCount() + 30000
     local file = io.open(_championLane.savedFile, "w")
     if not file and fixFolders() then file = io.open(_championLane.savedFile, "w") end
     if file then
-		file:write("local _championLane = {save = {}}\n")
+        file:write("local _championLane = {save = {}}\n")
         file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
         for j, team in pairs({ "ally", "enemy" }) do
             file:write("_championLane.save." .. team .. " = {}\n")
@@ -2616,7 +2626,7 @@ local function _ChampionLane__Save()
                 file:write("_championLane.save." .. team .. "[" .. i .. "] = {top = " .. _championLane[team].champions[i].top .. ", mid = " .. _championLane[team].champions[i].mid .. ", bot = " .. _championLane[team].champions[i].bot .. ", jungle = " .. _championLane[team].champions[i].jungle .. " }\n")
             end
         end
-		file:write("return _championLane")
+        file:write("return _championLane")
         file:close()
     end
     file = nil
@@ -2627,7 +2637,7 @@ local __ChampionLane__OnTick
 local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
-		local GameValues = GetGame()
+        local GameValues = GetGame()
         _championLane.mapIndex = GameValues.map.index
         for i = 1, heroManager.iCount, 1 do
             local hero = heroManager:getHero(i)
@@ -2730,7 +2740,6 @@ local function _ChampionLane__OnLoad()
 end
 
 class'ChampionLane'
-
 function ChampionLane:__init()
     _ChampionLane__OnLoad()
 end
@@ -2783,9 +2792,7 @@ GetMinimapY(y)                  -- Return y minimap value
 GetMinimap(v)                   -- Get minimap point {x, y} from object
 GetMinimap(x, y)                -- Get minimap point {x, y}
 ]]
-
 local _miniMap = { init = true }
-
 local function _miniMap__OnLoad()
     if _miniMap.init then
         local map = GetGame().map
@@ -2842,7 +2849,6 @@ autoLevelSetFunction(func)      -- set the function used if sequence level == 0
                 1-4 = spell 1 to 4
                 nil = will not auto level on this one
                 0 = will use your own function for this one, that return a number between 1-4
-
         Set the function if you use 0, example :
             local onChoiceFunction = function()
                 if player:GetSpellData(SPELL_2).level < player:GetSpellData(SPELL_3).level then
@@ -2853,9 +2859,7 @@ autoLevelSetFunction(func)      -- set the function used if sequence level == 0
             end
             autoLevelSetFunction(onChoiceFunction)
 ]]
-
 local _autoLevel = { spellsSlots = { SPELL_1, SPELL_2, SPELL_3, SPELL_4 }, levelSequence = {}, nextUpdate = 0, tickUpdate = 500 }
-
 local __autoLevel__OnTick
 local function autoLevel__OnLoad()
     if not __autoLevel__OnTick then
@@ -2897,20 +2901,14 @@ end
 
 --  scriptConfig
 --[[
-
 myConfig = scriptConfig("My Script Config Header", "thisScript")
-
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONOFF, defaultValue)
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
 myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
-
 myConfig:permaShow(pvar)    -- show this var in perma menu
-
 myConfig:addTS(ts)          -- add a ts instance
-
 var are myConfig.var
-
 function OnLoad()
     myConfig = scriptConfig("My Script Config", "thisScript.cfg")
     myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
@@ -2923,7 +2921,6 @@ function OnLoad()
     ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
     myConfig:addTS(ts)
 end
-
 function OnTick()
     if myConfig.combo == true then
         -- bla
@@ -2932,17 +2929,13 @@ function OnTick()
     end
 end
 ]]
-
 SCRIPT_PARAM_ONOFF = 1
 SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
-
 _SC = { init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH .. "scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
-
 class'scriptConfig'
-
 local function __SC__remove(name)
     local file = io.open(_SC.configFile, "a+")
     if not file and fixFolders() then file = io.open(_SC.configFile, "a+") end
@@ -3429,9 +3422,7 @@ end
 	MuramanaOff()							Set Muramana Off if possible
 	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
 ]]
-
 local _muramana = { init = true, id = 3042, nextTick = 0, tick = 2500, particle = "ItemMuramanaToggle.troy", object = nil }
-
 local __muramana__OnCreateObj
 local function _muramana__Init()
     if _muramana.init then
@@ -3465,7 +3456,6 @@ function MuramanaToggle(range, extCondition)
         _muramana.tick = 200
         local enemyInRange = (CountEnemyHeroInRange(range) > 0)
         if (not muramanaActived and enemyInRange and extCondition) or (muramanaActived and (not enemyInRange or not extCondition)) then
-
             CastItem(_muramana.id)
         end
     end
@@ -3560,7 +3550,6 @@ end
 
 --  Text and circles draws
 --[[
-
 ]]
 local _tcDraws, _tcDraws__OnDraw, _tcDraws__OnTick = { circle = false, text = false, modes = {} }, nil, nil
 function __tcDraws__init()
@@ -3612,6 +3601,7 @@ function __tcDraws__init()
                 end
             end
         end
+
         AddTickCallback(_tcDraws__OnTick)
     end
 end
@@ -3652,14 +3642,12 @@ function TCDrawSetHero(hero, level)
 end
 
 -------------------- OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -----------------
-
 GetDistance2D = GetDistance
 file_exists = FileExist
 timerText = TimerText
 returnSprite = GetSprite
 GetEnemyHeros = GetEnemyHeroes
 GetAllyHeros = GetAllyHeroes
-
 class'GameState'
 function GameState:__init()
     GetGame()
@@ -3690,11 +3678,8 @@ function GetMap()
 end
 
 GetStart = GetGame
-
 -------------------- END OLD FUNCTIONS KEEPED FOR BACKWARD COMPATIBILITY -------------
-
 -------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE --------------------------
-
 local warning_Prediction__OnTick
 function Prediction__OnTick()
     if not warning_Prediction__OnTick then
@@ -3768,4 +3753,3 @@ function ChampionLane__OnTick()
 end
 
 -------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
-
