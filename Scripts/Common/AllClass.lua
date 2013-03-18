@@ -1,4 +1,4 @@
-player = GetMyHero()
+﻿player = GetMyHero()
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
@@ -278,15 +278,13 @@ local folderFixed = false
 local function fixFolders()
     if folderFixed then return false end
     local result = true
-    if not DirectoryExist(LIB_PATH) then if not CreateDirectory(LIB_PATH) then
+    if not DirectoryExist(LIB_PATH) and not CreateDirectory(LIB_PATH) then
         result = false
         PrintChat([[Your library directory is missing and can't be created, please create the folder 'Common' in you BoL\Scripts directory. For further Information visit http://botoflegends.com/forum/]])
     end
-    end
-    if not DirectoryExist(SPRITE_PATH) then if not CreateDirectory(SPRITE_PATH) then
+    if not DirectoryExist(SPRITE_PATH) and not CreateDirectory(SPRITE_PATH) then
         result = false
         PrintChat([[Your sprite directory is missing and can't be created, please create the folder 'Sprites' in you BoL directory. For further Information visit http://botoflegends.com/forum/]])
-    end
     end
     folderFixed = true
     return result
@@ -420,7 +418,6 @@ end
 
 function QuitGame(timeout)
     RunAsyncCmdCommand("cmd /c" .. (timeout and (" ping -n " .. math.floor(timeout) .. " 127.0.0.1>nul &&") or "") .. ' taskkill /im "League of Legends.exe"')
-
     DelayAction(os.exit, (timeout or 0) + 5, { 0 }) --ForceQuit
 end
 
@@ -2630,8 +2627,8 @@ local __ChampionLane__OnTick
 local function _ChampionLane__OnLoad()
     if _championLane.init then
         _championLane.init = nil
-        _championLane.mapIndex = GetGame().map.index
-        local start = GetGame()
+		local GameValues = GetGame()
+        _championLane.mapIndex = GameValues.map.index
         for i = 1, heroManager.iCount, 1 do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid then
@@ -2643,9 +2640,9 @@ local function _ChampionLane__OnLoad()
             end
         end
         if _championLane.mapIndex == 1 or _championLane.mapIndex == 2 then
-            _championLane.startTime = start.tick + 120000 --2 min from start
-            _championLane.stopTime = start.tick + 600000 --10 min from start
-            _championLane.nextSave = start.tick + 150000 --2 min 30 from start
+            _championLane.startTime = GameValues.tick + 120000 --2 min from start
+            _championLane.stopTime = GameValues.tick + 600000 --10 min from start
+            _championLane.nextSave = GameValues.tick + 150000 --2 min 30 from start
             if _championLane.mapIndex == 1 then
                 _championLane.top = { point = { x = 1900, y = 0, z = 12600 } }
                 _championLane.mid = { point = { x = 7100, y = 0, z = 7100 } }
@@ -2791,7 +2788,6 @@ local _miniMap = { init = true }
 
 local function _miniMap__OnLoad()
     if _miniMap.init then
-
         local map = GetGame().map
         if not WINDOW_W or not WINDOW_H then
             WINDOW_H = GetGame().WINDOW_H
@@ -3485,11 +3481,6 @@ end
 
 --  Ward finder
 --[[
-	MuramanaIsActive()						Return true / false
-	MuramanaOn()							Set Muramana On if possible
-	MuramanaOff()							Set Muramana Off if possible
-	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
-	
 	Know limitation :
 	- as we can't get the real state of used stone, reload the script will disable them till base.
 	- as we can't get the real state of WriggleLantern, reload the script will disable it for 3 min
@@ -3621,7 +3612,6 @@ function __tcDraws__init()
                 end
             end
         end
-
         AddTickCallback(_tcDraws__OnTick)
     end
 end
@@ -3778,3 +3768,4 @@ function ChampionLane__OnTick()
 end
 
 -------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
+
