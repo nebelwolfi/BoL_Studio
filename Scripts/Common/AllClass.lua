@@ -3,12 +3,12 @@ LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
-TEAM_ENEMY = (player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
+TEAM_ENEMY = player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE
+VIP_USER = CLoLPacket and true or false
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
     p2 = p2 or player
-	local ax, ay, bx, by = p1.x, (p1.z or p1.y), p2.x, (p2.z or p2.y)
-    return (ax - bx) ^ 2 + (ay - by) ^ 2
+    return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
 end
 
 function GetDistance(p1, p2)
@@ -56,8 +56,10 @@ function GetDistanceFromMouse(object)
     return math.huge
 end
 
+local enemyHeroes
 function GetEnemyHeroes()
-    local enemyHeroes = {}
+    if enemyHeroes then return enemyHeroes end
+    enemyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team ~= player.team then
@@ -67,11 +69,13 @@ function GetEnemyHeroes()
     return enemyHeroes
 end
 
+local allyHeroes
 function GetAllyHeroes()
-    local allyHeroes = {}
+    if allyHeroes then return allyHeroes end
+    allyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
-        if hero.team == player.team then
+        if hero.team == player.team and hero.networkID ~= player.networkID then
             table.insert(allyHeroes, hero)
         end
     end
@@ -159,13 +163,14 @@ function string.trim(s)
     return s:match'^%s*(.*%S)' or ''
 end
 
--- Round a number
+-- Round half away from zero
 function math.round(num, idp)
     assert(type(num) == "number", "math.round: wrong argument types (<number> expected for num)")
     assert(type(idp) == "number" or idp == nil, "math.round: wrong argument types (<integer> expected for idp)")
-    local mult = math.floor(10 ^ (idp or 0))
-    local value = (num >= 0 and math.floor(num * mult + 0.5) / mult or math.ceil(num * mult - 0.5) / mult)
-    return tonumber(string.format("%." .. (idp or 0) .. "f", value))
+    local mult = 10 ^ (idp or 0)
+    if num >= 0 then return math.floor(num * mult + 0.5) / mult
+    else return math.ceil(num * mult - 0.5) / mult
+    end
 end
 
 function math.close(a, b, eps)
@@ -379,6 +384,7 @@ end
 --[[
     Delays a function call
     example: DelayAction(myFunc, 5)
+	Note: Due to limitations to BoL
 ]]
 local delayedActions, delayedActionsExecuter = {}, nil
 function DelayAction(func, delay, args) --delay in seconds
@@ -717,7 +723,7 @@ end
 function VectorIntersection(a1, b1, a2, b2)
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
     --http://en.wikipedia.org/wiki/Line-line_intersection#Mathematics
-    local x1, y1, x2, y2, x3, y3, x4, y4 = a1.x, a1.y or a1.z, b1.x, b1.y or b1.z, a2.x, a2.y or a2.z, b2.x, b2.y or b2.z
+    local x1, y1, x2, y2, x3, y3, x4, y4 = a1.x, a1.z or a1.y, b1.x, b1.z or b1.y, a2.x, a2.z or a2.y, b2.x, b2.z or b2.y
     local px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
     local py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
     local divisor = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
@@ -747,11 +753,11 @@ end
 ]]
 function VectorPointProjectionOnLineSegment(v1, v2, v)
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
-    local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+    local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
     local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
-	rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
-	local isOnSegment = rS == rL
-	local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+    local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+    local isOnSegment = rS == rL
+    local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
     return pointSegment, pointLine, isOnSegment
 end
 
@@ -953,7 +959,6 @@ function Vector:rotateZaxis(phi)
     self.x, self.y = self.x * c - self.z * s, self.y * c + self.x * s
 end
 
--- TODO
 function Vector:rotate(phiX, phiY, phiZ)
     assert(type(phiX) == "number" and type(phiY) == "number" and type(phiZ) == "number", "Rotate: wrong argument types (expected <number> for phi)")
     if phiX ~= 0 then self:rotateXaxis(phiX) end
@@ -1069,14 +1074,13 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Circle Class
 --[[
-Circle Class :
-Methods:
-circle = Circle(center (opt),radius (opt))
-Function :
-circle:Contains(v)      -- return if Vector point v is in the circle
-Members :
-circle.center       -- Vector point for circle's center
-circle.radius           -- radius of the circle
+    Methods:
+        circle = Circle(center (opt),radius (opt))
+    Function :
+        circle:Contains(v)      -- return if Vector point v is in the circle
+    Members :
+        circle.center           -- Vector point for circle's center
+        circle.radius           -- radius of the circle
 ]]
 class'Circle'
 function Circle:__init(center, radius)
@@ -1097,20 +1101,20 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Minimum Enclosing Circle class
 --[[
-Global function ;
-GetMEC(R, range)                    -- Find Group Center From Nearest Enemies
-GetMEC(R, range, target)            -- Find Group Center Near Target
-MEC Class :
-Methods:
-mec = MEC(points (opt))
-Function :
-mec:SetPoints(points)
-mec:HalfHull(left, right, pointTable, factor)       -- return table
-mec:ConvexHull()                        -- return table
-mec:Compute()
-Members :
-mec.circle
-mec.points
+    Global function ;
+        GetMEC(R, range)                    -- Find Group Center From Nearest Enemies
+        GetMEC(R, range, target)            -- Find Group Center Near Target
+    MEC Class :
+        Methods:
+            mec = MEC(points (opt))
+        Function :
+            mec:SetPoints(points)
+            mec:HalfHull(left, right, pointTable, factor)   -- return table
+            mec:ConvexHull()                                -- return table
+            mec:Compute()
+        Members :
+            mec.circle
+            mec.points
 ]]
 class'MEC'
 function MEC:__init(points)
@@ -1329,7 +1333,7 @@ end
 function WayPointManager:__init()
     if not WayPoints then
         WayPoints = {}
-        AddRecvPacketCallback(WayPointManager_OnRecvPacket)
+        if AddRecvPacketCallback then AddRecvPacketCallback(WayPointManager_OnRecvPacket) end
     end
 end
 
@@ -1337,21 +1341,35 @@ function WayPointManager:GetWayPoints(object)
     local wayPoints, lineSegment, distanceSqr, fPoint = WayPoints[object.networkID], 0, math.huge, nil
     if not wayPoints then return { x = object.x, y = object.z } end
     for i = 1, #wayPoints - 1 do
-        local p1, p2, isOnLineSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
+        local p1, p2, isOnSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
         local distanceSegmentSqr = GetDistanceSqr(p1, object)
-		if distanceSegmentSqr < distanceSqr then
+        if distanceSegmentSqr < distanceSqr then
             fPoint = p1
             lineSegment = i
             distanceSqr = distanceSegmentSqr
+        else break
         end
     end
-    local result = { fPoint or { x = object.x, y = object.z }}
+    local result = { fPoint or { x = object.x, y = object.z } }
     for i = lineSegment + 1, #wayPoints do
         result[#result + 1] = wayPoints[i]
     end
     if #result == 2 and GetDistanceSqr(result[1], result[2]) < 400 then result[2] = nil end
-	WayPoints[object.networkID] = result --not necessary, but makes later runs faster
+    WayPoints[object.networkID] = result --not necessary, but makes later runs faster
     return result
+end
+
+function WayPointManager:DrawWayPoints(obj, color, size)
+    local wayPoints = self:GetWayPoints(obj)
+    local lx, ly
+    for i = 1, #wayPoints do
+        local wayPoint = wayPoints[i]
+        local cx, cy = get2DFrom3D(wayPoint.x, obj.y, wayPoint.y)
+        if lx then
+            DrawLine(cx, cy, lx, ly, size or 1, color or 4294967295)
+        end
+        lx, ly = cx, cy
+    end
 end
 
 -- Prediction Functions
@@ -2010,7 +2028,7 @@ end
 function GetMinionCollision(posStart, posEnd, spellWidth, minionTable)
     assert(VectorType(posStart) and VectorType(posEnd) and type(spellWidth) == "number", "GetMinionCollision: wrong argument types (<Vector>, <Vector>, <number> expected)")
     local sqrDist = GetDistanceSqr(posStart, posEnd)
-    local spellSqr = spellWidth*spellWidth / 4
+    local spellSqr = spellWidth * spellWidth / 4
     if minionTable then
         for i, minion in pairs(minionTable) do
             if _minionInCollision(minion, posStart, posEnd, spellSqr, sqrDist) then return true end
