@@ -34,7 +34,7 @@ function print(...)
         else t = t .. _type
         end
     end
-    PrintChat(t)
+    if t then PrintChat(t) end
 end
 
 function ValidTarget(object, distance, enemyTeam)
@@ -645,8 +645,11 @@ end
 
 function DrawLines3D(points, width, color)
     local lx, ly, ly
-    for i, v in ipairs(points) do
-        local cx, cy, cz = get2DFrom3D(v.x, v.y and v.z or player.y, v.z or v.y)
+    for i, point in ipairs(points) do
+        local p = {x = point.x, y = point.y, z = point.z}
+        if not p.z then p.z = p.y; p.y = nil end
+        p.y = p.y or player.y
+        local cx, cy, cz = get2DFrom3D(p.x, p.y, p.z)
         if lx and (ly or cz or OnScreen({x = lx, y = ly}, {x = cx, y = cy})) then
             DrawLine(lx, ly, cx, cy, width or 1, color or 4294967295)
         end
@@ -1322,6 +1325,7 @@ end
     Class: WayPointManager
         Note: Only works for VIP user
             uses the Packet Conversion Library, might change in future
+        ToDo: Handle Fog of War
     
     Methods:
         WayPointManager:GetWayPoints(object) --returns all next waypoints of an object
@@ -1403,7 +1407,7 @@ end
 
 function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
-    if (fromT == 0 and toT == math.huge) or #wayPoints<=1 then return wayPoints end
+    if (fromT <= 0 and toT == math.huge) or #wayPoints<=1 then return wayPoints end
     local tTime, result =  0, {}
     for i = 1, #wayPoints - 1 do
         local A, B = wayPoints[i], wayPoints[i + 1]
@@ -1420,6 +1424,7 @@ function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
         end
         tTime = tTime + cTime
     end
+    if #result == 0 and tTime >= toT then result[1] = wayPoints[#wayPoints] end
     return result
 end
 
