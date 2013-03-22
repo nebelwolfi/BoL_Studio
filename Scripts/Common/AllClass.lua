@@ -600,8 +600,11 @@ function get2DFrom3D(x, y, z)
     return x2d, y2d, onScreen
 end
 
-function OnScreen(x, y)
-    return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H
+function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
+    if type(x)=="number" then return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H end
+    if not y then return OnScreen(x.x, x.z or x.y) end
+    local P1, P2, P3, P4 = {x = 0, y = 0}, {x = 0, y = WINDOW_H}, {x = WINDOW_W, y = 0}, {x = WINDOW_W, y = WINDOW_H }
+    return OnScreen(VectorIntersection(x, y, P1, P2)) or OnScreen(VectorIntersection(x, y, P1, P3)) or OnScreen(VectorIntersection(x, y, P4, P2)) or OnScreen(VectorIntersection(x, y, P4, P3))
 end
 
 --ToDo: Add Different Overloads
@@ -632,11 +635,22 @@ function DrawCircle3D(x, y, z, radius, width, color, quality)
     end
 end
 
-function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color, forceDraw)
+function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color)
     x1, y1, z1 = get2DFrom3D(x1, y1, z1)
     x2, y2, z2 = get2DFrom3D(x2, y2, z2)
-    if z1 or z2 or forceDraw then
+    if z1 or z2 or OnScreen({x = x1, y = y1}, {x = x2, y = y2}) then
         DrawLine(x1, y1, x2, y2, width or 1, color or 4294967295)
+    end
+end
+
+function DrawLines3D(points, width, color)
+    local lx, ly, ly
+    for i, v in ipairs(points) do
+        local cx, cy, cz = get2DFrom3D(v.x, v.y and v.z or player.y, v.z or v.y)
+        if lx and (ly or cz or OnScreen({x = lx, y = ly}, {x = cx, y = cy})) then
+            DrawLine(lx, ly, cx, cy, width or 1, color or 4294967295)
+        end
+        lx, ly, lz = cx, cy, cz
     end
 end
 
@@ -720,9 +734,9 @@ function VectorType(v)
     return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and type(v.z) == "number"))
 end
 
-function VectorIntersection(a1, b1, a2, b2)
+function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines intersect (assuming they have an infinite length)
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
-    --http://en.wikipedia.org/wiki/Line-line_intersection#Mathematics
+    --http://thirdpartyninjas.com/blog/2008/10/07/line-segment-intersection/
     local x1, y1, x2, y2, x3, y3, x4, y4 = a1.x, a1.z or a1.y, b1.x, b1.z or b1.y, a2.x, a2.z or a2.y, b2.x, b2.z or b2.y
     local px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
     local py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
@@ -1313,18 +1327,45 @@ end
         WayPointManager:GetWayPoints(object) --returns all next waypoints of an object
                                              --The first WayPoint is always close to the position of the object itself.
                                              --A Waypoint is a Point with x and y values.
+        WayPointManager:GetSimulatedWayPoints(object, [fromT, toT])
+                                             --Simulates the WayPoints in a time interval
+        WayPointManager:GetWayPointChangeRate(object, [time])
+                                             --return how often the wayPoints changed in the last specific amount of time (default 1s)
+                                             --max. Value when you hold MouseRight is 4s^-1, max. is 6s^-1
+        WayPointManager:DrawWayPoints(obj, [color, size, fromT, toT])
+                                             --Draws the WayPoints of an Object
+    Example: local wayPointManager = WayPointManager()
+    function OnDraw()
+        wayPointManager:DrawWayPoints(player)
+        wayPointManager:DrawWayPoints(player, ARGB(255,0,0,255), 2, 1, 2) --Draws from 1second ahead to 2seconds ahead of the object
+        DrawText3D(tostring(wayPointManager:GetWayPointChangeRate(player)), player.x, player.y, player.z, 30, ARGB(255,0,255,0), true)
+    end
 ]]
 class'WayPointManager'
 local WayPoints
+local WayPointRate
+
 local function WayPointManager_OnRecvPacket(p)
-    if p.header == 0xBA then
+    if p.header == Packet.headers.R_WAYPOINT then
         local packet = Packet(p)
         local networkID = packet:get("networkId")
         if not networkID then return end
         WayPoints[networkID] = packet:get("wayPoints")
-    elseif p.header == 0x60 then
+    elseif p.header == Packet.headers.R_WAYPOINTS then
         local packet = Packet(p)
         for networkID, wayPoints in pairs(packet:get("wayPoints")) do
+            if WayPoints[networkID] then
+                local wps = WayPoints[networkID]
+                local lwp = wps[#wps]
+                if GetDistanceSqr(lwp, wayPoints[#wayPoints]) < 100 or (#wayPoints>2 and GetDistanceSqr(lwp, wayPoints[#wayPoints-1]) < 100 ) then
+                    --Old WayPoint
+                else 
+                    --New WayPoint
+                    if not WayPointRate[networkID] then WayPointRate[networkID] = Queue() end
+                    WayPointRate[networkID]:pushleft(os.clock())
+                    if #WayPointRate[networkID]>20 then WayPointRate[networkID]:popright() end --I dont like memory leaks
+                end
+            end
             WayPoints[networkID] = wayPoints
         end
     end
@@ -1333,6 +1374,7 @@ end
 function WayPointManager:__init()
     if not WayPoints then
         WayPoints = {}
+        WayPointRate = {}
         if AddRecvPacketCallback then AddRecvPacketCallback(WayPointManager_OnRecvPacket) end
     end
 end
@@ -1347,7 +1389,7 @@ function WayPointManager:GetWayPoints(object)
             fPoint = p1
             lineSegment = i
             distanceSqr = distanceSegmentSqr
-        else break
+        --else break
         end
     end
     local result = { fPoint or { x = object.x, y = object.z } }
@@ -1359,8 +1401,42 @@ function WayPointManager:GetWayPoints(object)
     return result
 end
 
-function WayPointManager:DrawWayPoints(obj, color, size)
-    local wayPoints = self:GetWayPoints(obj)
+function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
+    local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
+    if (fromT == 0 and toT == math.huge) or #wayPoints<=1 then return wayPoints end
+    local tTime, result =  0, {}
+    for i = 1, #wayPoints - 1 do
+        local A, B = wayPoints[i], wayPoints[i + 1]
+        local dist = GetDistance(A, B)
+        local cTime = dist/object.ms
+        if tTime + cTime >= fromT then
+            if #result == 0 then 
+                result[1] = {x = A.x+object.ms*(fromT-tTime)*((B.x-A.x)/dist), y = A.y+object.ms*(fromT-tTime)*((B.y-A.y)/dist)}
+            end
+            if tTime + cTime >= toT then
+                result[#result+1] = {x = A.x + object.ms * (toT-tTime)*((B.x-A.x)/dist), y = A.y+object.ms*(toT-tTime)*((B.y-A.y)/dist)}
+                break
+            else result[#result+1] = B end
+        end
+        tTime = tTime + cTime
+    end
+    return result
+end
+
+function WayPointManager:GetWayPointChangeRate(object, time)
+    local lastChanges = WayPointRate[object.networkID]
+    if not lastChanges then return 0 end
+    local time, rate = time or 1, 0
+    for i = 1, #lastChanges do
+        local t = lastChanges[i]
+        if os.clock() - t >= time then break end
+        rate = rate + 1
+    end
+    return rate
+end
+
+function WayPointManager:DrawWayPoints(obj, color, size, fromT, toT)
+    local wayPoints = self:GetSimulatedWayPoints(obj, fromT, toT)
     local lx, ly
     for i = 1, #wayPoints do
         local wayPoint = wayPoints[i]
