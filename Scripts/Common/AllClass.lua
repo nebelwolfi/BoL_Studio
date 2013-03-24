@@ -34,7 +34,7 @@ function print(...)
         else t = t .. _type
         end
     end
-    if t then PrintChat(t) end
+    if t~="" then PrintChat(t) end
 end
 
 function ValidTarget(object, distance, enemyTeam)
@@ -93,7 +93,7 @@ function table.copy(from)
 end
 
 function table.contains(t, what, member) --member is optional
-    assert(type(num) == "table", "table.contains: wrong argument types (<table> expected for t)")
+    assert(type(t) == "table", "table.contains: wrong argument types (<table> expected for t)")
     for i, v in pairs(t) do
         if member and v[member] == what or v == what then return i, v end
     end
@@ -347,10 +347,11 @@ function ReadIni(path)
     local t, section = {}, nil
     for i, s in ipairs(raw:split("\n")) do
         local v = s:trim()
-        if v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then
+        if v:sub(1,1) == ";" or v:sub(1,1) == "#" then --Comment
+        elseif v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
             section = v:sub(2, #v - 1):trim()
             t[section] = {}
-        elseif section and v:find("=") then
+        elseif section and v:find("=") then --Key = Value
             local kv = v:split("=")
             if #kv == 2 then
                 local key, value = kv[1]:trim(), kv[2]:trim()
@@ -602,9 +603,11 @@ end
 
 function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
     if type(x)=="number" then return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H end
-    if not y then return OnScreen(x.x, x.z or x.y) end
-    local P1, P2, P3, P4 = {x = 0, y = 0}, {x = 0, y = WINDOW_H}, {x = WINDOW_W, y = 0}, {x = WINDOW_W, y = WINDOW_H }
-    return OnScreen(VectorIntersection(x, y, P1, P2)) or OnScreen(VectorIntersection(x, y, P1, P3)) or OnScreen(VectorIntersection(x, y, P4, P2)) or OnScreen(VectorIntersection(x, y, P4, P3))
+    if type(x)=="userdata" or type(x) == "table" then
+        if not y then return OnScreen(x.x, x.z or x.y) end
+        local P1, P2, P3, P4 = {x = 0, y = 0}, {x = 0, y = WINDOW_H}, {x = WINDOW_W, y = 0}, {x = WINDOW_W, y = WINDOW_H }
+        return OnScreen(VectorIntersection(x, y, P1, P2)) or OnScreen(VectorIntersection(x, y, P1, P3)) or OnScreen(VectorIntersection(x, y, P4, P2)) or OnScreen(VectorIntersection(x, y, P4, P3))
+    end
 end
 
 --ToDo: Add Different Overloads
@@ -1332,7 +1335,9 @@ end
                                              --The first WayPoint is always close to the position of the object itself.
                                              --A Waypoint is a Point with x and y values.
         WayPointManager:GetSimulatedWayPoints(object, [fromT, toT])
+                                             --return waypoints, estimated time when reaching the last wayPoint
                                              --Simulates the WayPoints in a time interval
+                                             --Will simulate the target movement after going in FoW
         WayPointManager:GetWayPointChangeRate(object, [time])
                                              --return how often the wayPoints changed in the last specific amount of time (default 1s)
                                              --max. Value when you hold MouseRight is 4s^-1, max. is 6s^-1
@@ -1346,8 +1351,14 @@ end
     end
 ]]
 class'WayPointManager'
-local WayPoints
-local WayPointRate
+local WayPoints, WayPointRate, WayPointVisibility
+
+local function WayPointManager_OnTick()
+    for i, hero in ipairs(GetEnemyHeroes()) do
+        if hero.visible then WayPointVisibility[hero.networkID] = nil
+        elseif not WayPointVisibility[hero.networkID] then WayPointVisibility[hero.networkID] = os.clock() end
+    end
+end
 
 local function WayPointManager_OnRecvPacket(p)
     if p.header == Packet.headers.R_WAYPOINT then
@@ -1379,7 +1390,11 @@ function WayPointManager:__init()
     if not WayPoints then
         WayPoints = {}
         WayPointRate = {}
-        if AddRecvPacketCallback then AddRecvPacketCallback(WayPointManager_OnRecvPacket) end
+        WayPointVisibility = {}
+        if AddRecvPacketCallback then 
+            AddRecvPacketCallback(WayPointManager_OnRecvPacket) 
+            AddTickCallback(WayPointManager_OnTick) --I hope I can replace this in future with a status update callback
+        end
     end
 end
 
@@ -1405,9 +1420,18 @@ function WayPointManager:GetWayPoints(object)
     return result
 end
 
+function WayPointManager:GetPathLength(wayPointList, startIndex, endIndex)
+    local tDist = 0
+    for i = math.max(startIndex or 1, 1) , math.min(#wayPointList, endIndex or math.huge) - 1 do
+        tDist = tDist + GetDistance(wayPoints[i], wayPoints[i + 1])
+    end
+    return tDist
+end
+
 function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
-    if (fromT <= 0 and toT == math.huge) or #wayPoints<=1 then return wayPoints end
+    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID]
+    fromT = fromT + (invisDur or 0)
     local tTime, result =  0, {}
     for i = 1, #wayPoints - 1 do
         local A, B = wayPoints[i], wayPoints[i + 1]
@@ -1424,9 +1448,10 @@ function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
         end
         tTime = tTime + cTime
     end
-    if #result == 0 and tTime >= toT then result[1] = wayPoints[#wayPoints] end
-    return result
+    if #result == 0 and (tTime >= toT or invisDur) then result[1] = wayPoints[#wayPoints] end
+    return result, os.clock() + math.min(tTime, toT)
 end
+
 
 function WayPointManager:GetWayPointChangeRate(object, time)
     local lastChanges = WayPointRate[object.networkID]
@@ -1455,23 +1480,23 @@ end
 
 -- Prediction Functions
 --[[
-Globals Functions
-GetPredictionPos(iHero, delay)              -- return nextPosition in delay (ms) for iHero (index)
-GetPredictionPos(Hero, delay)               -- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
-GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
-GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+    Globals Functions
+        GetPredictionPos(iHero, delay)                  -- return nextPosition in delay (ms) for iHero (index)
+        GetPredictionPos(Hero, delay)                   -- return nextPosition in delay (ms) for Hero
+        GetPredictionPos(charName, delay, enemyTeam)    -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+        GetPredictionHealth(iHero, delay)               -- return next Health in delay (ms) for iHero (index)
+        GetPredictionHealth(Hero, delay)                -- return next Health in delay (ms) for Hero
+        GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
 ]]
 -- Prediction Functions
 --[[
-Globals Functions
-GetPredictionPos(iHero, delay)              -- return nextPosition in delay (ms) for iHero (index)
-GetPredictionPos(Hero, delay)               -- return nextPosition in delay (ms) for Hero
-GetPredictionPos(charName, delay, enemyTeam)        -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
-GetPredictionHealth(iHero, delay)           -- return next Health in delay (ms) for iHero (index)
-GetPredictionHealth(Hero, delay)            -- return next Health in delay (ms) for Hero
-GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
+    Globals Functions
+        GetPredictionPos(iHero, delay)                  -- return nextPosition in delay (ms) for iHero (index)
+        GetPredictionPos(Hero, delay)                   -- return nextPosition in delay (ms) for Hero
+        GetPredictionPos(charName, delay, enemyTeam)    -- return nextPosition in delay (ms) for charName in enemyTeam (true/false, default true)
+        GetPredictionHealth(iHero, delay)               -- return next Health in delay (ms) for iHero (index)
+        GetPredictionHealth(Hero, delay)                -- return next Health in delay (ms) for Hero
+        GetPredictionHealth(charName, delay, enemyTeam) -- return next Health in delay (ms) for charName in enemyTeam (true/false, default true)
 ]]
 local _gameHeroes, _gameAllyCount, _gameEnemyCount = {}, 0, 0
 -- Class related function
@@ -1610,56 +1635,56 @@ end
 -- TargetSelector Class
 --[[
 TargetSelector Class :
-Methods:
-ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
-Goblal Functions :
-TS_Print(enemyTeam (opt))           -> print Priority (global)
-TS_SetFocus()           -> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(id)         -> set priority to the championID (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(charName, enemyTeam (opt))  -> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
-TS_SetFocus(hero)       -> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
-TS_SetHeroPriority(priority, target, enemyTeam (opt))                   -> set the priority to target
-TS_SetPriority(target1, target2, target3, target4, target5)     -> set priority in order to enemy targets
-TS_SetPriorityA(target1, target2, target3, target4, target5)    -> set priority in order to ally targets
-TS_GetPriority(target, enemyTeam)       -> return the current priority, and the max allowed
-Functions :
-ts:update()                                             -- update the instance target
-ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
-ts:SetPrediction()                          -- prediction off
-ts:SetPrediction(delay)                     -- predict movement for champs (need Prediction__OnTick())
-ts:SetMinionCollision()                     -- minion colission off
-ts:SetMinionCollision(spellWidth)           -- avoid champ if minion between player
-ts:SetConditional()                         -- erase external function use
-ts:SetConditional(func)                     -- set external function that return true/false to allow filter -- function(hero, index (opt))
-ts:SetProjectileSpeed(pSpeed)               -- set projectile speed (need Prediction__OnTick())
-Members:
-ts.mode                     -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
-ts.range                    -> number > 0
-ts.targetSelected       -> true/false
-ts.target                   -> return the target (object or nil)
-ts.index        -> index of target (if hero)
-ts.nextPosition -> nextPosition predicted
-ts.nextHealth       -> nextHealth predicted
-Usage :
-variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
-targetSelected is set to true if not filled
-Damages are set as default to magic 100 if none is set
-enemyTeam is false if ally, nil or true if enemy
-when you want to update, call variable:update()
-Values you can change on instance :
-variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
-variable.range -> number > 0
-variable.targetSelected -> true/false (if you clicked on a champ)
-ex :
-function OnLoad()
-    ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
-end
-function OnTick()
-    if ts.target ~= nil then
-        PrintChat(ts.target.charName)
-        ts:SetDamages((player.ap * 10), 0, 0)
-    end
-end
+    Methods:
+        ts = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
+    Goblal Functions :
+        TS_Print(enemyTeam (opt))           -> print Priority (global)
+        TS_SetFocus()           -> set priority to the selected champion (you need to use PRIORITY modes to use it) (global)
+        TS_SetFocus(id)         -> set priority to the championID (you need to use PRIORITY modes to use it) (global)
+        TS_SetFocus(charName, enemyTeam (opt))  -> set priority to the champion charName (you need to use PRIORITY modes to use it) (global)
+        TS_SetFocus(hero)       -> set priority to the hero object (you need to use PRIORITY modes to use it) (global)
+        TS_SetHeroPriority(priority, target, enemyTeam (opt))                   -> set the priority to target
+        TS_SetPriority(target1, target2, target3, target4, target5)     -> set priority in order to enemy targets
+        TS_SetPriorityA(target1, target2, target3, target4, target5)    -> set priority in order to ally targets
+        TS_GetPriority(target, enemyTeam)       -> return the current priority, and the max allowed
+    Functions :
+        ts:update()                                             -- update the instance target
+        ts:SetDamages(magicDmgBase, physicalDmgBase, trueDmg)
+        ts:SetPrediction()                          -- prediction off
+        ts:SetPrediction(delay)                     -- predict movement for champs (need Prediction__OnTick())
+        ts:SetMinionCollision()                     -- minion colission off
+        ts:SetMinionCollision(spellWidth)           -- avoid champ if minion between player
+        ts:SetConditional()                         -- erase external function use
+        ts:SetConditional(func)                     -- set external function that return true/false to allow filter -- function(hero, index (opt))
+        ts:SetProjectileSpeed(pSpeed)               -- set projectile speed (need Prediction__OnTick())
+    Members:
+        ts.mode                     -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_MOST_AD, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
+        ts.range                    -> number > 0
+        ts.targetSelected       -> true/false
+        ts.target                   -> return the target (object or nil)
+        ts.index        -> index of target (if hero)
+        ts.nextPosition -> nextPosition predicted
+        ts.nextHealth       -> nextHealth predicted
+    Usage :
+        variable = TargetSelector(mode, range, damageType (opt), targetSelected (opt), enemyTeam (opt))
+        targetSelected is set to true if not filled
+        Damages are set as default to magic 100 if none is set
+        enemyTeam is false if ally, nil or true if enemy
+        when you want to update, call variable:update()
+        Values you can change on instance :
+        variable.mode -> TARGET_LOW_HP, TARGET_MOST_AP, TARGET_PRIORITY, TARGET_NEAR_MOUSE, TARGET_LOW_HP_PRIORITY, TARGET_LESS_CAST, TARGET_LESS_CAST_PRIORITY
+        variable.range -> number > 0
+        variable.targetSelected -> true/false (if you clicked on a champ)
+    ex :
+        function OnLoad()
+            ts = TargetSelector(TARGET_LESS_CAST, 600, DAMAGE_MAGIC, true)
+        end
+        function OnTick()
+            if ts.target ~= nil then
+                PrintChat(ts.target.charName)
+                ts:SetDamages((player.ap * 10), 0, 0)
+            end
+        end
 ]]
 -- Class related constants
 TARGET_LOW_HP = 1
@@ -2128,19 +2153,19 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TargetPrediction Class
 --[[
-Methods:
-tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
-Functions :
-tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
-members :
-tp.nextPosition                     -- vector pos
-tp.minions
-tp.nextHealth
-tp.range
-tp.proj_speed
-tp.delay
-tp.width
-tp.smoothness
+    Methods:
+        tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
+    Functions :
+        tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
+    members :
+        tp.nextPosition                     -- vector pos
+        tp.minions
+        tp.nextHealth
+        tp.range
+        tp.proj_speed
+        tp.delay
+        tp.width
+        tp.smoothness
 ]]
 -- use _gameHeroes with TargetSelector
 local _TargetPrediction__tick = 0
@@ -2376,34 +2401,33 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- minionManager
 --[[
-minionManager Class :
-Methods:
-minionArray = minionManager(mode, range, fromPos, sortMode)     --return a minionArray instance
-Functions :
-minionArray:update()                -- update the minionArray instance
-Members:
-minionArray.objects                 -- minionArray objects table
-minionArray.iCount                  -- minionArray objects count
-minionArray.mode                    -- minionArray instance mode (MINION_ALL, etc)
-minionArray.range                   -- minionArray instance range
-minionArray.fromPos                 -- minionArray instance x, z from which the range is based (player by default)
-minionArray.sortMode                -- minionArray instance sort mode (MINION_SORT_HEALTH_ASC, etc... or nil if no sorted)
-Usage :
-ex :
-function OnLoad()
-    enemyMinions = minionManager(MINION_ENEMY, 600, player, MINION_SORT_HEALTH_ASC)
-    allyMinions = minionManager(MINION_ALLY, 300, player, MINION_SORT_HEALTH_DES)
-end
-function OnTick()
-    enemyMinions:update()
-    allyMinions:update()
-    for index, minion in pairs(enemyMinions.objects) do
-        -- what you want
-    end
-    -- ex changing range
-    enemyMinions.range = 250
-    enemyMinions:update() --not needed
-end
+        minionManager Class :
+    Methods:
+        minionArray = minionManager(mode, range, fromPos, sortMode)     --return a minionArray instance
+    Functions :
+        minionArray:update()                -- update the minionArray instance
+    Members:
+        minionArray.objects                 -- minionArray objects table
+        minionArray.iCount                  -- minionArray objects count
+        minionArray.mode                    -- minionArray instance mode (MINION_ALL, etc)
+        minionArray.range                   -- minionArray instance range
+        minionArray.fromPos                 -- minionArray instance x, z from which the range is based (player by default)
+        minionArray.sortMode                -- minionArray instance sort mode (MINION_SORT_HEALTH_ASC, etc... or nil if no sorted)
+    Usage ex:
+        function OnLoad()
+            enemyMinions = minionManager(MINION_ENEMY, 600, player, MINION_SORT_HEALTH_ASC)
+            allyMinions = minionManager(MINION_ALLY, 300, player, MINION_SORT_HEALTH_DES)
+        end
+        function OnTick()
+            enemyMinions:update()
+            allyMinions:update()
+            for index, minion in pairs(enemyMinions.objects) do
+                -- what you want
+            end
+            -- ex changing range
+            enemyMinions.range = 250
+            enemyMinions:update() --not needed
+        end
 ]]
 local _minionTable = { {}, {}, {}, {}, {} }
 local _minionManager = { init = true, tick = 0, ally = "##", enemy = "##" }
@@ -2499,15 +2523,15 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Inventory
 --[[
-Goblal Function :
-CastItem(itemID)                    -- Cast item
-CastItem(itemID, hero)              -- Cast item on hero
-CastItem(itemID, x, z)              -- Cast item on pos x,z
-GetInventorySlotItem(itemID)        -- return the slot or nil
-GetInventoryHaveItem(itemID)        -- return true/false
-GetInventorySlotIsEmpty(slot)       -- return true/false
-GetInventoryItemIsCastable(itemID)  -- return true/false
-InShop()                -- return true/false, x, y, z, range
+    Goblal Function :
+    CastItem(itemID)                    -- Cast item
+    CastItem(itemID, hero)              -- Cast item on hero
+    CastItem(itemID, x, z)              -- Cast item on pos x,z
+    GetInventorySlotItem(itemID)        -- return the slot or nil
+    GetInventoryHaveItem(itemID)        -- return true/false
+    GetInventorySlotIsEmpty(slot)       -- return true/false
+    GetInventoryItemIsCastable(itemID)  -- return true/false
+    InShop()                            -- return true/false, x, y, z, range
 ]]
 function GetInventorySlotItem(itemID, target)
     assert(type(itemID) == "number", "GetInventorySlotItem: wrong argument types (<number> expected)")
@@ -2677,21 +2701,21 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Class : ChampionLane
 --[[
-Method :
-CL = ChampionLane()
-Functions :
-CL:GetMyLane()          -- return lane name
-CL:GetPoint(lane)           -- return the 3D point of the center of the lane
-CL:GetHeroCount(lane)       -- return number of enemy hero in lane
-CL:GetHeroCount(lane, team) -- return number of team hero in lane ("ally", "enemy")
-CL:GetHeroArray(lane)   -- return the array of enemy hero objects in lane
-CL:GetHeroArray(lane, team) -- return the array of team hero objects in lane
-CL:GetCarryAD()         -- return the object of the enemy Carry Ad or nil
-CL:GetCarryAD(team)     -- return the object of the team Carry Ad or nil
-CL:GetSupport()         -- return the object of the enemy support or nil
-CL:GetSupport(team)     -- return the object of the team support or nil
-CL:GetJungler()         -- return the object of the enemy jungler or nil
-CL:GetJungler(team)     -- return the object of the team jungler or nil
+    Method :
+        CL = ChampionLane()
+    Functions :
+        CL:GetMyLane()          -- return lane name
+        CL:GetPoint(lane)           -- return the 3D point of the center of the lane
+        CL:GetHeroCount(lane)       -- return number of enemy hero in lane
+        CL:GetHeroCount(lane, team) -- return number of team hero in lane ("ally", "enemy")
+        CL:GetHeroArray(lane)   -- return the array of enemy hero objects in lane
+        CL:GetHeroArray(lane, team) -- return the array of team hero objects in lane
+        CL:GetCarryAD()         -- return the object of the enemy Carry Ad or nil
+        CL:GetCarryAD(team)     -- return the object of the team Carry Ad or nil
+        CL:GetSupport()         -- return the object of the enemy support or nil
+        CL:GetSupport(team)     -- return the object of the team support or nil
+        CL:GetJungler()         -- return the object of the enemy jungler or nil
+        CL:GetJungler(team)     -- return the object of the team jungler or nil
 ]]
 local _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 250 }
 local function _ChampionLane__Save()
@@ -2867,11 +2891,11 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- minimap
 --[[
-Goblal Function :
-GetMinimapX(x)                  -- Return x minimap value
-GetMinimapY(y)                  -- Return y minimap value
-GetMinimap(v)                   -- Get minimap point {x, y} from object
-GetMinimap(x, y)                -- Get minimap point {x, y}
+    Goblal Function :
+        GetMinimapX(x)                  -- Return x minimap value
+        GetMinimapY(y)                  -- Return y minimap value
+        GetMinimap(v)                   -- Get minimap point {x, y} from object
+        GetMinimap(x, y)                -- Get minimap point {x, y}
 ]]
 local _miniMap = { init = true }
 local function _miniMap__OnLoad()
@@ -2982,33 +3006,33 @@ end
 
 --  scriptConfig
 --[[
-myConfig = scriptConfig("My Script Config Header", "thisScript")
-myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONOFF, defaultValue)
-myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
-myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
-myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
-myConfig:permaShow(pvar)    -- show this var in perma menu
-myConfig:addTS(ts)          -- add a ts instance
-var are myConfig.var
-function OnLoad()
-    myConfig = scriptConfig("My Script Config", "thisScript.cfg")
-    myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
-    myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
-    myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
-    myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
-    myConfig:permaShow("harass")
-    myConfig:permaShow("combo")
-    ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
-    ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
-    myConfig:addTS(ts)
-end
-function OnTick()
-    if myConfig.combo == true then
-        -- bla
-    elseif myConfig.harass then
-        -- bla
+    myConfig = scriptConfig("My Script Config Header", "thisScript")
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONOFF, defaultValue)
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
+    myConfig:permaShow(pvar)    -- show this var in perma menu
+    myConfig:addTS(ts)          -- add a ts instance
+    var are myConfig.var
+    function OnLoad()
+        myConfig = scriptConfig("My Script Config", "thisScript.cfg")
+        myConfig:addParam("combo", "Combo mode", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+        myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
+        myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
+        myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
+        myConfig:permaShow("harass")
+        myConfig:permaShow("combo")
+        ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
+        ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
+        myConfig:addTS(ts)
     end
-end
+    function OnTick()
+        if myConfig.combo == true then
+            -- bla
+        elseif myConfig.harass then
+            -- bla
+        end
+    end
 ]]
 SCRIPT_PARAM_ONOFF = 1
 SCRIPT_PARAM_ONKEYDOWN = 2
