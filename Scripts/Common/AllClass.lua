@@ -1335,10 +1335,11 @@ end
                                              --The first WayPoint is always close to the position of the object itself.
                                              --A Waypoint is a Point with x and y values.
         WayPointManager:GetSimulatedWayPoints(object, [fromT, toT])
-                                             --return waypoints, estimated time when reaching the last wayPoint
+                                             --return waypoints, estimated duration(s) until target arrives at the last wayPoint (0 if already reached it)
                                              --Simulates the WayPoints in a time interval
                                              --Will simulate the target movement after going in FoW
         WayPointManager:GetWayPointChangeRate(object, [time])
+											 --only works for hero's
                                              --return how often the wayPoints changed in the last specific amount of time (default 1s)
                                              --max. Value when you hold MouseRight is 4s^-1, max. is 6s^-1
         WayPointManager:DrawWayPoints(obj, [color, size, fromT, toT])
@@ -1370,15 +1371,14 @@ local function WayPointManager_OnRecvPacket(p)
         local packet = Packet(p)
         for networkID, wayPoints in pairs(packet:get("wayPoints")) do
             if WayPoints[networkID] then
-                local wps = WayPoints[networkID]
-                local lwp = wps[#wps]
-                if GetDistanceSqr(lwp, wayPoints[#wayPoints]) < 100 or (#wayPoints>2 and GetDistanceSqr(lwp, wayPoints[#wayPoints-1]) < 100 ) then
-                    --Old WayPoint
-                else 
-                    --New WayPoint
-                    if not WayPointRate[networkID] then WayPointRate[networkID] = Queue() end
-                    WayPointRate[networkID]:pushleft(os.clock())
-                    if #WayPointRate[networkID]>20 then WayPointRate[networkID]:popright() end --I dont like memory leaks
+                if WayPointRate[networkID] then
+                    local wps = WayPoints[networkID]
+                    local lwp, found = wps[#wps], false
+                    for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
+                        if GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, wayPoints[i], wayPoints[i+1])) < 1000 then found = true break end
+                    end
+					if not found then WayPointRate[networkID]:pushleft(os.clock()) end
+					if #WayPointRate[networkID]>20 then WayPointRate[networkID]:popright() end --Avoid memory leaks				
                 end
             end
             WayPoints[networkID] = wayPoints
@@ -1386,12 +1386,24 @@ local function WayPointManager_OnRecvPacket(p)
     end
 end
 
+local function WayPointManager_OnDeleteObject(obj)
+    local nwID = obj.networkID
+    if nwID and nwID ~= 0 then WayPoints[nwID] = nil end
+end
+
 function WayPointManager:__init()
     if not WayPoints then
         WayPoints = {}
         WayPointRate = {}
+		for i = 1, heroManager.iCount do
+            local hero = heroManager:getHero(i)
+            if hero ~= nil and hero.valid and hero.networkID and hero.networkID ~= 0 then
+				WayPointRate[hero.networkID] = Queue()
+			end
+		end
         WayPointVisibility = {}
         if AddRecvPacketCallback then 
+            AddDeleteObjCallback(WayPointManager_OnDeleteObject)
             AddRecvPacketCallback(WayPointManager_OnRecvPacket) 
             AddTickCallback(WayPointManager_OnTick) --I hope I can replace this in future with a status update callback
         end
@@ -1400,7 +1412,7 @@ end
 
 function WayPointManager:GetWayPoints(object)
     local wayPoints, lineSegment, distanceSqr, fPoint = WayPoints[object.networkID], 0, math.huge, nil
-    if not wayPoints then return { x = object.x, y = object.z } end
+    if not wayPoints then return {{ x = object.x, y = object.z }} end
     for i = 1, #wayPoints - 1 do
         local p1, p2, isOnSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
         local distanceSegmentSqr = GetDistanceSqr(p1, object)
@@ -1430,26 +1442,31 @@ end
 
 function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
-    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID]
-    fromT = fromT + (invisDur or 0)
-    local tTime, result =  0, {}
+    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or 0
+    fromT = fromT + invisDur
+    local tTime, fTime, result =  0, 0, {}
     for i = 1, #wayPoints - 1 do
         local A, B = wayPoints[i], wayPoints[i + 1]
         local dist = GetDistance(A, B)
         local cTime = dist/object.ms
         if tTime + cTime >= fromT then
             if #result == 0 then 
-                result[1] = {x = A.x+object.ms*(fromT-tTime)*((B.x-A.x)/dist), y = A.y+object.ms*(fromT-tTime)*((B.y-A.y)/dist)}
+                fTime = fromT-tTime
+                result[1] = {x = A.x+object.ms*fTime*((B.x-A.x)/dist), y = A.y+object.ms*fTime*((B.y-A.y)/dist)}
             end
             if tTime + cTime >= toT then
                 result[#result+1] = {x = A.x + object.ms * (toT-tTime)*((B.x-A.x)/dist), y = A.y+object.ms*(toT-tTime)*((B.y-A.y)/dist)}
+                fTime = fTime + toT - tTime
                 break
-            else result[#result+1] = B end
+            else 
+                result[#result+1] = B
+                fTime = fTime + cTime
+            end
         end
         tTime = tTime + cTime
     end
     if #result == 0 and (tTime >= toT or invisDur) then result[1] = wayPoints[#wayPoints] end
-    return result, os.clock() + math.min(tTime, toT)
+    return result, fTime
 end
 
 
