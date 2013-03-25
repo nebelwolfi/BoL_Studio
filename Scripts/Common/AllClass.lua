@@ -1903,7 +1903,7 @@ function TargetSelector:__init(mode, range, damageType, targetSelected, enemyTea
     self.range = range
     self._mDmgBase, self._pDmgBase, self._tDmg = 0, 0, 0
     self._dmgType = damageType or DAMAGE_MAGIC
-    if self._dmgType == DAMAGE_MAGIC then self._mDmgBase = 100 else self._tDmg = player.totalDamage end
+    if self._dmgType == DAMAGE_MAGIC then self._mDmgBase = 100 else self._pDmgBase = player.totalDamage end
     self.targetSelected = (targetSelected ~= false)
     self.enemyTeam = (enemyTeam ~= false)
     self.target = nil
