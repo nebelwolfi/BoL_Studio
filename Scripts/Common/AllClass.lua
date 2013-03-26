@@ -3237,7 +3237,7 @@ local __SC__OnDraw, __SC__OnWndMsg
 local function __SC__OnLoad()
     if not __SC__OnDraw then
         function __SC__OnDraw()
-            if __SC__init() or Console__IsOpen then return end
+            if __SC__init() or Console__IsOpen or GetGame().isOver then return end
             if IsKeyDown(_SC.menuKey) or _SC._changeKey then
                 if _SC.draw.move then
                     local cursor = GetCursorPos()
