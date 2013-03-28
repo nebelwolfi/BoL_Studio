@@ -437,41 +437,6 @@ function CursorIsUnder(x, y, sizeX, sizeY)
     return (posX >= x and posX <= x + sizeX and posY >= y and posY <= y + sizeY)
 end
 
---lua_number = float. This is a very, very dirty fix for all colors (by gReY)
-function ARGB(a, r, g, b)
-    assert(a >= 0 and a <= 255 and r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "function ARGB: arguments out of range (0-255)")
-    a, r, g, b = math.floor(a), math.floor(r), math.floor(g), math.floor(b)
-    if a == 0 then return r * 65536 + g * 256 + b end
-    --Dirtiest Workaround ever :D
-    local function add(a, b)
-        local astring, bstring = tostring(a), tostring(b)
-        local index, maxIndex = 0, math.max(#astring, #bstring)
-        local total, carry = "", 0
-        while index < maxIndex or carry > 0 do
-            local value = carry + (#astring - index > 0 and tonumber(astring:sub(#astring - index, #astring - index)) or 0) + (#bstring - index > 0 and tonumber(bstring:sub(#bstring - index, #bstring - index)) or 0)
-            carry = math.floor(value / 10)
-            total = value % 10 .. total
-            index = index + 1
-        end
-        return tonumber(total)
-    end
-
-    local function mul(a, b)
-        local astring, b = tostring(math.max(a, b)), math.min(a, b)
-        local index, maxIndex = 0, #astring
-        local total = 0
-        while index < maxIndex do
-            local value = tostring((tonumber(astring:sub(maxIndex - index, maxIndex - index)) or 0) * b)
-            for i = 1, index do value = value .. "0" end
-            total = add(total, value)
-            index = index + 1
-        end
-        return tonumber(total)
-    end
-
-    return add(mul(a, 16777216), r * 65536 + g * 256 + b)
-end
-
 --[[
    return texted version of a timer(minutes and seconds)
    if you want the full time string, use os.date("%H:%M:%S",seconds+82800)
@@ -575,30 +540,6 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
     end
     DrawArrow(p1, p3, distarrow, size, 1000000000000000000000, color)
     DrawCircle(p2.x, p2.y, p2.z, size, color)
-end
-
-local _get2DFrom3D = {}
-function get2DFrom3D(x, y, z)
-    local obj = Vector({ x = x - cameraPos.x, y = y - cameraPos.y, z = z - cameraPos.z })
-    if _get2DFrom3D.camHeight ~= cameraPos.y then
-        _get2DFrom3D.camHeight = cameraPos.y
-        local beta, gamma = 9 * math.pi / 180, 50 * math.pi / 180
-        local P3_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta) * math.abs(obj.y) })
-        local P1_5 = Vector({ x = 0, y = obj.y, z = math.tan(beta + gamma) * math.abs(obj.y) }); P1_5 = P1_5 * P3_5:len() / P1_5:len()
-        _get2DFrom3D.absHeight = math.sqrt((P1_5.z - P3_5.z) ^ 2 + (P1_5.y - P3_5.y) ^ 2)
-        _get2DFrom3D.absWidth = _get2DFrom3D.absHeight * WINDOW_W / WINDOW_H
-        _get2DFrom3D.P3 = P3_5 - Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
-        _get2DFrom3D.P2 = P1_5 + Vector({ x = _get2DFrom3D.absWidth / 2, y = 0, z = 0 })
-        _get2DFrom3D.n = (_get2DFrom3D.P2 - P3_5):crossP(_get2DFrom3D.P3 - P3_5)
-        _get2DFrom3D.d = _get2DFrom3D.P2:dotP(_get2DFrom3D.n)
-    end
-    obj = obj * math.abs(_get2DFrom3D.d / obj:dotP(_get2DFrom3D.n))
-    local curHeight = math.sqrt((_get2DFrom3D.P2.z - obj.z) ^ 2 + (_get2DFrom3D.P2.y - obj.y) ^ 2) * ((_get2DFrom3D.P2.z - obj.z) / math.abs(_get2DFrom3D.P2.z - obj.z))
-    local curWidth = obj.x - _get2DFrom3D.P3.x
-    local x2d = WINDOW_W * curWidth / _get2DFrom3D.absWidth
-    local y2d = WINDOW_H * curHeight / _get2DFrom3D.absHeight
-    local onScreen = x2d <= WINDOW_W and x2d >= 0 and y2d >= 0 and y2d <= WINDOW_H
-    return x2d, y2d, onScreen
 end
 
 function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
@@ -3763,115 +3704,129 @@ function TCDrawSetHero(hero, level)
     _tcDraws.heroes[hero.networkID].state = level
 end
 
+
+-------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE ------------------------
 -------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
-GetDistance2D = GetDistance
-file_exists = FileExist
-timerText = TimerText
-returnSprite = GetSprite
-GetEnemyHeros = GetEnemyHeroes
-GetAllyHeros = GetAllyHeroes
+local deprecatedErrors = {}
+local function deprecatedError(oldFunc, newFunc)
+	if deprecatedErrors[oldFunc] then return end
+	deprecatedErrors[oldFunc] = true
+	local t = "["..GetCurrentEnv() and GetCurrentEnv().FILE_NAME or "Library" .."] "..oldFunc.."() is deprecated and will be removed in the next major update of BoL."
+	if newFunc then  t = t .. " Use "..newFunc.."() instead." end
+	PrintChat(t)
+end
+
+function GetDistance2D(...)
+    deprecatedError("GetDistance2D","GetDistance")
+    return GetDistance(...)
+end
+
+function file_exists(...)
+    deprecatedError("file_exists","FileExist")
+    return FileExist(...)
+end
+
+function timerText(...)
+    deprecatedError("timerText","TimerText")
+    return TimerText(...)
+end
+
+function returnSprite(...)
+    deprecatedError("returnSprite","GetSprite")
+    return GetSprite(...)
+end
+
+function GetEnemyHeros(...)
+	deprecatedError("GetEnemyHeros","GetEnemyHeroes")
+    return GetEnemyHeroes(...)
+end
+
+function GetAllyHeros(...)
+	deprecatedError("GetAllyHeros","GetAllyHeroes")
+    return GetAllyHeroes(...)
+end
+
 class'GameState'
 function GameState:__init()
+	deprecatedError("GameState","GetGame")
     GetGame()
 end
 
 function GameState:gameIsOver()
+	deprecatedError("GameState:gameIsOver","GetGame().isOver")
     return GetGame().isOver
 end
 
 function GameIsOver()
+	deprecatedError("GameIsOver","GetGame().isOver")
     return GetGame().isOver
 end
 
 function GameWinner()
+	deprecatedError("GameWinner","GetGame().winner")
     return GetGame().winner
 end
 
 function GameWin()
+    deprecatedError("GameWin","GetGame().win")
     return GetGame().win
 end
 
 function GameLoser()
+    deprecatedError("GameLoser","GetGame().loser")
     return GetGame().loser
 end
 
 function GetMap()
+	deprecatedError("GetMap","GetGame().map")
     return GetGame().map
 end
 
-GetStart = GetGame
+function get2DFrom3D(x, y, z)
+	deprecatedError("get2DFrom3D","WorldToScreen")
+    local pos = WorldToScreen(D3DXVECTOR3(x, y, z))
+    return pos.x, pos.y, OnScreen(pos.x, pos.y)
+end
+
+function GetStart(...) 
+    deprecatedError("GetStart","GetGame")
+    return GetGame(...)
+end
 -------------------- END OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -------------
--------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE --------------------------
-local warning_Prediction__OnTick
 function Prediction__OnTick()
-    if not warning_Prediction__OnTick then
-        warning_Prediction__OnTick = true
-        PrintChat("Prediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("Prediction__OnTick")
 end
 
-local warning_SC__OnWndMsg
 function SC__OnWndMsg(msg, key)
-    if not warning_SC__OnWndMsg then
-        warning_SC__OnWndMsg = true
-        PrintChat("SC__OnWndMsg(msg, key) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+	deprecatedError("SC__OnWndMsg")
 end
 
-local warning_SC__OnDraw
 function SC__OnDraw()
-    if not warning_SC__OnDraw then
-        warning_SC__OnDraw = true
-        PrintChat("SC__OnDraw() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("SC__OnDraw")
 end
 
-local warning_autoLevel__OnTick
 function autoLevel__OnTick()
-    if not warning_autoLevel__OnTick then
-        warning_autoLevel__OnTick = true
-        PrintChat("autoLevel__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("autoLevel__OnTick")
 end
 
-local warning_TargetSelector__OnSendChat
 function TargetSelector__OnSendChat(msg)
-    if not warning_TargetSelector__OnSendChat then
-        warning_TargetSelector__OnSendChat = true
-        PrintChat("TargetSelector__OnSendChat(msg) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("TargetSelector__OnSendChat")
 end
 
-local warning_TargetPrediction__OnTick
 function TargetPrediction__OnTick()
-    if not warning_TargetPrediction__OnTick then
-        warning_TargetPrediction__OnTick = true
-        PrintChat("TargetPrediction__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("TargetPrediction__OnTick")
 end
 
-local warning_minionManager__OnCreateObj
 function minionManager__OnCreateObj(object)
-    if not warning_minionManager__OnCreateObj then
-        warning_minionManager__OnCreateObj = true
-        PrintChat("minionManager__OnCreateObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("minionManager__OnCreateObj")
 end
 
-local warning_minionManager__OnDeleteObj
 function minionManager__OnDeleteObj(object)
-    if not warning_minionManager__OnDeleteObj then
-        warning_minionManager__OnDeleteObj = true
-        PrintChat("minionManager__OnDeleteObj(obj) is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("minionManager__OnDeleteObj")
 end
 
-local warning_ChampionLane__OnTick
 function ChampionLane__OnTick()
-    if not warning_ChampionLane__OnTick then
-        warning_ChampionLane__OnTick = true
-        PrintChat("ChampionLane__OnTick() is not needed anymore. Please update your script or ask the scriptauthor to remove this function if necessary.")
-    end
+    deprecatedError("ChampionLane__OnTick")
 end
 
 -------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
