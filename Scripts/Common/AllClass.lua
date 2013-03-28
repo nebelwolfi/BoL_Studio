@@ -34,7 +34,7 @@ function print(...)
         else t = t .. _type
         end
     end
-    if t~="" then PrintChat(t) end
+    if t ~= "" then PrintChat(t) end
 end
 
 function ValidTarget(object, distance, enemyTeam)
@@ -347,7 +347,7 @@ function ReadIni(path)
     local t, section = {}, nil
     for i, s in ipairs(raw:split("\n")) do
         local v = s:trim()
-        if v:sub(1,1) == ";" or v:sub(1,1) == "#" then --Comment
+        if v:sub(1, 1) == ";" or v:sub(1, 1) == "#" then --Comment
         elseif v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
             section = v:sub(2, #v - 1):trim()
             t[section] = {}
@@ -543,10 +543,10 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
 end
 
 function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
-    if type(x)=="number" then return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H end
-    if type(x)=="userdata" or type(x) == "table" then
+    if type(x) == "number" then return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H end
+    if type(x) == "userdata" or type(x) == "table" then
         if not y then return OnScreen(x.x, x.z or x.y) end
-        local P1, P2, P3, P4 = {x = 0, y = 0}, {x = 0, y = WINDOW_H}, {x = WINDOW_W, y = 0}, {x = WINDOW_W, y = WINDOW_H }
+        local P1, P2, P3, P4 = { x = 0, y = 0 }, { x = 0, y = WINDOW_H }, { x = WINDOW_W, y = 0 }, { x = WINDOW_W, y = WINDOW_H }
         return OnScreen(VectorIntersection(x, y, P1, P2)) or OnScreen(VectorIntersection(x, y, P1, P3)) or OnScreen(VectorIntersection(x, y, P4, P2)) or OnScreen(VectorIntersection(x, y, P4, P3))
     end
 end
@@ -569,75 +569,65 @@ end
 function DrawCircle3D(x, y, z, radius, width, color, quality)
     radius = radius or 300
     quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
-    local px, py, pz
+    local p
     for theta = 0, 2 * math.pi + quality, quality do
-        local cx, cy, cz = get2DFrom3D(x + radius * math.cos(theta), y, z - radius * math.sin(theta))
-        if px and (pz or cz) then
-            DrawLine(px, py, cx, cy, width or 1, color or 4294967295)
+        local c = WorldToScreen(D3DXVECTOR3(x + radius * math.cos(theta), y, z - radius * math.sin(theta)))
+        if p and (OnScreen(p.x, p.y) or OnScreen(c.x, c.y)) then
+            DrawLine(p.x, p.y, c.x, c.y, width or 1, color or 4294967295)
         end
-        px, py, pz = cx, cy, cz
+        p = c
     end
 end
 
 function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color)
-    x1, y1, z1 = get2DFrom3D(x1, y1, z1)
-    x2, y2, z2 = get2DFrom3D(x2, y2, z2)
-    if z1 or z2 or OnScreen({x = x1, y = y1}, {x = x2, y = y2}) then
-        DrawLine(x1, y1, x2, y2, width or 1, color or 4294967295)
+    local c, p = WorldToScreen(D3DXVECTOR3(x1, y1, z1)), WorldToScreen(D3DXVECTOR3(x2, y2, z2))
+    if OnScreen(c.x, c.y) or OnScreen(p.x, p.y) or OnScreen({ x = p.x, y = p.y }, { x = p.x, y = p.y }) then
+        DrawLine(c.x, c.y, p.x, p.y, width or 1, color or 4294967295)
     end
 end
 
 function DrawLines3D(points, width, color)
-    local lx, ly, ly
+    local l
     for i, point in ipairs(points) do
-        local p = {x = point.x, y = point.y, z = point.z}
+        local p = { x = point.x, y = point.y, z = point.z }
         if not p.z then p.z = p.y; p.y = nil end
         p.y = p.y or player.y
-        local cx, cy, cz = get2DFrom3D(p.x, p.y, p.z)
-        if lx and (ly or cz or OnScreen({x = lx, y = ly}, {x = cx, y = cy})) then
-            DrawLine(lx, ly, cx, cy, width or 1, color or 4294967295)
+        local c = WorldToScreen(D3DXVECTOR3(p.x, p.y, p.z))
+        if l and (OnScreen(l.x, l.y) or OnScreen(c.x, c.y) or OnScreen({ x = l.x, y = l.y }, { x = c.x, y = c.y })) then
+            DrawLine(l.x, l.y, c.x, c.y, width or 1, color or 4294967295)
         end
-        lx, ly, lz = cx, cy, cz
+        l = c
     end
 end
 
 function DrawText3D(text, x, y, z, size, color, center)
-    x, y, z = get2DFrom3D(x, y, z)
+    local p = WorldToScreen(D3DXVECTOR3(x, y, z))
     local textArea = GetTextArea(text, size or 12)
     if center then
-        if OnScreen(x - textArea.x / 2, y - textArea.y / 2) or OnScreen(x + textArea.x / 2, y + textArea.y / 2) then
-            DrawText(text, size or 12, x - textArea.x / 2, y, color or 4294967295)
+        if OnScreen(p.x - textArea.x / 2, p.y - textArea.y / 2) or OnScreen(p.x + textArea.x / 2, p.y + textArea.y / 2) then
+            DrawText(text, size or 12, p.x - textArea.x / 2, p.y, color or 4294967295)
         end
     else
-        if z or OnScreen(x + textArea.x, y + textArea.y) then
-            DrawText(text, size or 12, x, y, color or 4294967295)
+        if OnScreen(p.x, p.y) or OnScreen(p.x + textArea.x, p.y + textArea.y) or OnScreen({ x = p.x, y = p.y }, { x = p.x + textArea.x, y = p.y + textArea.y }) then
+            DrawText(text, size or 12, p.x, p.y, color or 4294967295)
         end
     end
 end
 
 function DrawHitBox(object, linesize, linecolor)
-    local linesize, linecolor = linesize or 1, linecolor or 4294967295
     if object and object.valid and object.minBBox then
-        local x1, y1, z1 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.minBBox.z)
-        local x2, y2, z2 = get2DFrom3D(object.minBBox.x, object.minBBox.y, object.maxBBox.z)
-        local x3, y3, z3 = get2DFrom3D(object.maxBBox.x, object.minBBox.y, object.maxBBox.z)
-        local x4, y4, z4 = get2DFrom3D(object.maxBBox.x, object.minBBox.y, object.minBBox.z)
-        local x5, y5, z5 = get2DFrom3D(object.minBBox.x, object.maxBBox.y, object.minBBox.z)
-        local x6, y6, z6 = get2DFrom3D(object.minBBox.x, object.maxBBox.y, object.maxBBox.z)
-        local x7, y7, z7 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.maxBBox.z)
-        local x8, y8, z8 = get2DFrom3D(object.maxBBox.x, object.maxBBox.y, object.minBBox.z)
-        if z1 or z2 then DrawLine(x1, y1, x2, y2, linesize, linecolor) end
-        if z2 or z3 then DrawLine(x2, y2, x3, y3, linesize, linecolor) end
-        if z3 or z4 then DrawLine(x3, y3, x4, y4, linesize, linecolor) end
-        if z4 or z1 then DrawLine(x4, y4, x1, y1, linesize, linecolor) end
-        if z1 or z5 then DrawLine(x1, y1, x5, y5, linesize, linecolor) end
-        if z2 or z6 then DrawLine(x2, y2, x6, y6, linesize, linecolor) end
-        if z3 or z7 then DrawLine(x3, y3, x7, y7, linesize, linecolor) end
-        if z4 or z8 then DrawLine(x4, y4, x8, y8, linesize, linecolor) end
-        if z5 or z6 then DrawLine(x5, y5, x6, y6, linesize, linecolor) end
-        if z6 or z7 then DrawLine(x6, y6, x7, y7, linesize, linecolor) end
-        if z7 or z8 then DrawLine(x7, y7, x8, y8, linesize, linecolor) end
-        if z8 or z5 then DrawLine(x8, y8, x5, y5, linesize, linecolor) end
+        DrawLine3D(object.minBBox.x, object.minBBox.y, object.minBBox.z, object.minBBox.x, object.minBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.minBBox.x, object.minBBox.y, object.maxBBox.z, object.maxBBox.x, object.minBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.minBBox.y, object.maxBBox.z, object.maxBBox.x, object.minBBox.y, object.minBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.minBBox.y, object.minBBox.z, object.minBBox.x, object.minBBox.y, object.minBBox.z, linesize, linecolor)
+        DrawLine3D(object.minBBox.x, object.minBBox.y, object.minBBox.z, object.minBBox.x, object.maxBBox.y, object.minBBox.z, linesize, linecolor)
+        DrawLine3D(object.minBBox.x, object.minBBox.y, object.maxBBox.z, object.minBBox.x, object.maxBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.minBBox.y, object.maxBBox.z, object.maxBBox.x, object.maxBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.minBBox.y, object.minBBox.z, object.maxBBox.x, object.maxBBox.y, object.minBBox.z, linesize, linecolor)
+        DrawLine3D(object.minBBox.x, object.maxBBox.y, object.minBBox.z, object.minBBox.x, object.maxBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.minBBox.x, object.maxBBox.y, object.maxBBox.z, object.maxBBox.x, object.maxBBox.y, object.maxBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.maxBBox.y, object.maxBBox.z, object.maxBBox.x, object.maxBBox.y, object.minBBox.z, linesize, linecolor)
+        DrawLine3D(object.maxBBox.x, object.maxBBox.y, object.minBBox.z, object.minBBox.x, object.maxBBox.y, object.minBBox.z, linesize, linecolor)
     end
 end
 
@@ -1298,7 +1288,8 @@ local WayPoints, WayPointRate, WayPointVisibility
 local function WayPointManager_OnTick()
     for i, hero in ipairs(GetEnemyHeroes()) do
         if hero.visible then WayPointVisibility[hero.networkID] = nil
-        elseif not WayPointVisibility[hero.networkID] then WayPointVisibility[hero.networkID] = os.clock() end
+        elseif not WayPointVisibility[hero.networkID] then WayPointVisibility[hero.networkID] = os.clock()
+        end
     end
 end
 
@@ -1316,10 +1307,10 @@ local function WayPointManager_OnRecvPacket(p)
                     local wps = WayPoints[networkID]
                     local lwp, found = wps[#wps], false
                     for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
-                        if GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, wayPoints[i], wayPoints[i+1])) < 1000 then found = true break end
+                        if GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, wayPoints[i], wayPoints[i + 1])) < 1000 then found = true break end
                     end
-					if not found then WayPointRate[networkID]:pushleft(os.clock()) end
-					if #WayPointRate[networkID]>20 then WayPointRate[networkID]:popright() end --Avoid memory leaks				
+                    if not found then WayPointRate[networkID]:pushleft(os.clock()) end
+                    if #WayPointRate[networkID] > 20 then WayPointRate[networkID]:popright() end --Avoid memory leaks
                 end
             end
             WayPoints[networkID] = wayPoints
@@ -1336,16 +1327,16 @@ function WayPointManager:__init()
     if not WayPoints then
         WayPoints = {}
         WayPointRate = {}
-		for i = 1, heroManager.iCount do
+        for i = 1, heroManager.iCount do
             local hero = heroManager:getHero(i)
             if hero ~= nil and hero.valid and hero.networkID and hero.networkID ~= 0 then
-				WayPointRate[hero.networkID] = Queue()
-			end
-		end
+                WayPointRate[hero.networkID] = Queue()
+            end
+        end
         WayPointVisibility = {}
-        if AddRecvPacketCallback then 
+        if AddRecvPacketCallback then
             AddDeleteObjCallback(WayPointManager_OnDeleteObject)
-            AddRecvPacketCallback(WayPointManager_OnRecvPacket) 
+            AddRecvPacketCallback(WayPointManager_OnRecvPacket)
             AddTickCallback(WayPointManager_OnTick) --I hope I can replace this in future with a status update callback
         end
     end
@@ -1353,7 +1344,7 @@ end
 
 function WayPointManager:GetWayPoints(object)
     local wayPoints, lineSegment, distanceSqr, fPoint = WayPoints[object.networkID], 0, math.huge, nil
-    if not wayPoints then return {{ x = object.x, y = object.z }} end
+    if not wayPoints then return { { x = object.x, y = object.z } } end
     for i = 1, #wayPoints - 1 do
         local p1, p2, isOnSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
         local distanceSegmentSqr = GetDistanceSqr(p1, object)
@@ -1361,7 +1352,7 @@ function WayPointManager:GetWayPoints(object)
             fPoint = p1
             lineSegment = i
             distanceSqr = distanceSegmentSqr
-        --else break
+            --else break
         end
     end
     local result = { fPoint or { x = object.x, y = object.z } }
@@ -1375,7 +1366,7 @@ end
 
 function WayPointManager:GetPathLength(wayPointList, startIndex, endIndex)
     local tDist = 0
-    for i = math.max(startIndex or 1, 1) , math.min(#wayPointList, endIndex or math.huge) - 1 do
+    for i = math.max(startIndex or 1, 1), math.min(#wayPointList, endIndex or math.huge) - 1 do
         tDist = tDist + GetDistance(wayPoints[i], wayPoints[i + 1])
     end
     return tDist
@@ -1385,22 +1376,22 @@ function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
     local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or 0
     fromT = fromT + invisDur
-    local tTime, fTime, result =  0, 0, {}
+    local tTime, fTime, result = 0, 0, {}
     for i = 1, #wayPoints - 1 do
         local A, B = wayPoints[i], wayPoints[i + 1]
         local dist = GetDistance(A, B)
-        local cTime = dist/object.ms
+        local cTime = dist / object.ms
         if tTime + cTime >= fromT then
-            if #result == 0 then 
-                fTime = fromT-tTime
-                result[1] = {x = A.x+object.ms*fTime*((B.x-A.x)/dist), y = A.y+object.ms*fTime*((B.y-A.y)/dist)}
+            if #result == 0 then
+                fTime = fromT - tTime
+                result[1] = { x = A.x + object.ms * fTime * ((B.x - A.x) / dist), y = A.y + object.ms * fTime * ((B.y - A.y) / dist) }
             end
             if tTime + cTime >= toT then
-                result[#result+1] = {x = A.x + object.ms * (toT-tTime)*((B.x-A.x)/dist), y = A.y+object.ms*(toT-tTime)*((B.y-A.y)/dist)}
+                result[#result + 1] = { x = A.x + object.ms * (toT - tTime) * ((B.x - A.x) / dist), y = A.y + object.ms * (toT - tTime) * ((B.y - A.y) / dist) }
                 fTime = fTime + toT - tTime
                 break
-            else 
-                result[#result+1] = B
+            else
+                result[#result + 1] = B
                 fTime = fTime + cTime
             end
         end
@@ -1425,14 +1416,14 @@ end
 
 function WayPointManager:DrawWayPoints(obj, color, size, fromT, toT)
     local wayPoints = self:GetSimulatedWayPoints(obj, fromT, toT)
-    local lx, ly
+    local l
     for i = 1, #wayPoints do
         local wayPoint = wayPoints[i]
-        local cx, cy = get2DFrom3D(wayPoint.x, obj.y, wayPoint.y)
-        if lx then
-            DrawLine(cx, cy, lx, ly, size or 1, color or 4294967295)
+        local c = WorldToScreen(D3DXVECTOR3(wayPoint.x, obj.y, wayPoint.y))
+        if l then
+            DrawLine(c.x, c.y, l.x, l.y, size or 1, color or 4294967295)
         end
-        lx, ly = cx, cy
+        l = c
     end
 end
 
@@ -3709,96 +3700,96 @@ end
 -------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
 local deprecatedErrors = {}
 local function deprecatedError(oldFunc, newFunc)
-	if deprecatedErrors[oldFunc] then return end
-	deprecatedErrors[oldFunc] = true
-	local t = "["..GetCurrentEnv() and GetCurrentEnv().FILE_NAME or "Library" .."] "..oldFunc.."() is deprecated and will be removed in the next major update of BoL."
-	if newFunc then  t = t .. " Use "..newFunc.."() instead." end
-	PrintChat(t)
+    if deprecatedErrors[oldFunc] then return end
+    deprecatedErrors[oldFunc] = true
+    local t = "[" .. GetCurrentEnv() and GetCurrentEnv().FILE_NAME or "Unknown" .. "] " .. oldFunc .. "() is deprecated and will be removed in the next major update of BoL."
+    PrintChat(newFunc and t .. " Use " .. newFunc .. "() instead." or t)
 end
 
 function GetDistance2D(...)
-    deprecatedError("GetDistance2D","GetDistance")
+    deprecatedError("GetDistance2D", "GetDistance")
     return GetDistance(...)
 end
 
 function file_exists(...)
-    deprecatedError("file_exists","FileExist")
+    deprecatedError("file_exists", "FileExist")
     return FileExist(...)
 end
 
 function timerText(...)
-    deprecatedError("timerText","TimerText")
+    deprecatedError("timerText", "TimerText")
     return TimerText(...)
 end
 
 function returnSprite(...)
-    deprecatedError("returnSprite","GetSprite")
+    deprecatedError("returnSprite", "GetSprite")
     return GetSprite(...)
 end
 
 function GetEnemyHeros(...)
-	deprecatedError("GetEnemyHeros","GetEnemyHeroes")
+    deprecatedError("GetEnemyHeros", "GetEnemyHeroes")
     return GetEnemyHeroes(...)
 end
 
 function GetAllyHeros(...)
-	deprecatedError("GetAllyHeros","GetAllyHeroes")
+    deprecatedError("GetAllyHeros", "GetAllyHeroes")
     return GetAllyHeroes(...)
 end
 
 class'GameState'
 function GameState:__init()
-	deprecatedError("GameState","GetGame")
+    deprecatedError("GameState", "GetGame")
     GetGame()
 end
 
 function GameState:gameIsOver()
-	deprecatedError("GameState:gameIsOver","GetGame().isOver")
+    deprecatedError("GameState:gameIsOver", "GetGame().isOver")
     return GetGame().isOver
 end
 
 function GameIsOver()
-	deprecatedError("GameIsOver","GetGame().isOver")
+    deprecatedError("GameIsOver", "GetGame().isOver")
     return GetGame().isOver
 end
 
 function GameWinner()
-	deprecatedError("GameWinner","GetGame().winner")
+    deprecatedError("GameWinner", "GetGame().winner")
     return GetGame().winner
 end
 
 function GameWin()
-    deprecatedError("GameWin","GetGame().win")
+    deprecatedError("GameWin", "GetGame().win")
     return GetGame().win
 end
 
 function GameLoser()
-    deprecatedError("GameLoser","GetGame().loser")
+    deprecatedError("GameLoser", "GetGame().loser")
     return GetGame().loser
 end
 
 function GetMap()
-	deprecatedError("GetMap","GetGame().map")
+    deprecatedError("GetMap", "GetGame().map")
     return GetGame().map
 end
 
 function get2DFrom3D(x, y, z)
-	deprecatedError("get2DFrom3D","WorldToScreen")
+    deprecatedError("get2DFrom3D", "WorldToScreen")
     local pos = WorldToScreen(D3DXVECTOR3(x, y, z))
     return pos.x, pos.y, OnScreen(pos.x, pos.y)
 end
 
-function GetStart(...) 
-    deprecatedError("GetStart","GetGame")
+function GetStart(...)
+    deprecatedError("GetStart", "GetGame")
     return GetGame(...)
 end
+
 -------------------- END OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -------------
 function Prediction__OnTick()
     deprecatedError("Prediction__OnTick")
 end
 
 function SC__OnWndMsg(msg, key)
-	deprecatedError("SC__OnWndMsg")
+    deprecatedError("SC__OnWndMsg")
 end
 
 function SC__OnDraw()
