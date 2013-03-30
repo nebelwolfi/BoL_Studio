@@ -3700,9 +3700,9 @@ end
 -------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
 local deprecatedErrors = {}
 local function deprecatedError(oldFunc, newFunc)
-    if deprecatedErrors[oldFunc] then return end
+    if deprecatedErrors[oldFunc] or not GetCurrentEnv() then return end
     deprecatedErrors[oldFunc] = true
-    local t = "[" .. GetCurrentEnv() and GetCurrentEnv().FILE_NAME or "Unknown" .. "] " .. oldFunc .. "() is deprecated and will be removed in the next major update of BoL."
+    local t = "[" .. (GetCurrentEnv().FILE_NAME or "Unknown") .. "] " .. oldFunc .. "() is deprecated and will be removed in the next major update of BoL."
     PrintChat(newFunc and t .. " Use " .. newFunc .. "() instead." or t)
 end
 
