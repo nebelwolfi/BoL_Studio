@@ -82,6 +82,17 @@ function GetAllyHeroes()
     return allyHeroes
 end
 
+--[[
+    Returns a number that is needed for Animation Drawing Functions.
+    @param number A time in seconds in which the output goes from 0 to 1
+    @param number An offset in seconds which will be added to the time to calculate the output
+    @returns number A number that goes from 0 to 1 in a time interval you've set (0 .. 0,1 ... 0,9 .. 1,0 .. 0 .. 0,1 ...)
+]]
+function GetDrawClock(time, offset)
+    time, offset = time or 1, offset or 0
+    return (os.clock()+offset)%time/time
+end
+
 function table.copy(from)
     if type(from) == "table" then
         local to = {}
@@ -385,7 +396,7 @@ end
 --[[
     Delays a function call
     example: DelayAction(myFunc, 5)
-	Note: Due to limitations to BoL
+    Note: Due to limitations to BoL
 ]]
 local delayedActions, delayedActionsExecuter = {}, nil
 function DelayAction(func, delay, args) --delay in seconds
@@ -557,32 +568,32 @@ function DrawRectangle(x, y, width, height, color)
 end
 
 function DrawCircle2D(x, y, radius, width, color, quality)
-    local px, py
     quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
+    local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
-        local cx, cy = x + radius * math.cos(theta), y - radius * math.sin(theta)
-        if px then DrawLine(px, py, cx, cy, width or 1, color or 4294967295) end
-        px, py = cx, cy
+        points[#points+1] = D3DXVECTOR2(x + radius * math.cos(theta), y - radius * math.sin(theta))
     end
+    DrawLines2(points, width or 1, color or 4294967295)
 end
 
 function DrawCircle3D(x, y, z, radius, width, color, quality)
     radius = radius or 300
     quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
-    local p
+    local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
         local c = WorldToScreen(D3DXVECTOR3(x + radius * math.cos(theta), y, z - radius * math.sin(theta)))
-        if p and (OnScreen(p.x, p.y) or OnScreen(c.x, c.y)) then
-            DrawLine(p.x, p.y, c.x, c.y, width or 1, color or 4294967295)
-        end
-        p = c
+        points[#points+1] = D3DXVECTOR2(c.x, c.y)
     end
+    DrawLines2(points, width or 1, color or 4294967295)
 end
 
 function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color)
-    local c, p = WorldToScreen(D3DXVECTOR3(x1, y1, z1)), WorldToScreen(D3DXVECTOR3(x2, y2, z2))
-    if OnScreen(c.x, c.y) or OnScreen(p.x, p.y) or OnScreen({ x = p.x, y = p.y }, { x = p.x, y = p.y }) then
-        DrawLine(c.x, c.y, p.x, p.y, width or 1, color or 4294967295)
+    local p = WorldToScreen(D3DXVECTOR3(x1, y1, z1))
+    local px, py = p.x, p.y
+    local c = WorldToScreen(D3DXVECTOR3(x2, y2, z2))
+    local cx, cy = c.x, c.y
+    if OnScreen(cx, cy) or OnScreen(px, py) or OnScreen({ x = px, y = py }, { x = px, y = py }) then
+        DrawLine(cx, cy, px, py, width or 1, color or 4294967295)
     end
 end
 
@@ -694,13 +705,13 @@ function VectorPointProjectionOnLine(v1, v2, v)
 end
 
 --[[
-	VectorPointProjectionOnLineSegment: Extended VectorPointProjectionOnLine in 2D Space
+    VectorPointProjectionOnLineSegment: Extended VectorPointProjectionOnLine in 2D Space
     v1 and v2 are the start and end point of the linesegment
     v is the point next to the line
     return:
-		pointSegment = the point closest to the line segment (table with x and y member)
-		pointLine = the point closest to the line (assuming infinite extent in both directions) (table with x and y member), same as VectorPointProjectionOnLine
-		isOnSegment = if the point closest to the line is on the segment
+        pointSegment = the point closest to the line segment (table with x and y member)
+        pointLine = the point closest to the line (assuming infinite extent in both directions) (table with x and y member), same as VectorPointProjectionOnLine
+        isOnSegment = if the point closest to the line is on the segment
 ]]
 function VectorPointProjectionOnLineSegment(v1, v2, v)
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
@@ -1270,7 +1281,7 @@ end
                                              --Simulates the WayPoints in a time interval
                                              --Will simulate the target movement after going in FoW
         WayPointManager:GetWayPointChangeRate(object, [time])
-											 --only works for hero's
+                                             --only works for hero's
                                              --return how often the wayPoints changed in the last specific amount of time (default 1s)
                                              --max. Value when you hold MouseRight is 4s^-1, max. is 6s^-1
         WayPointManager:DrawWayPoints(obj, [color, size, fromT, toT])
@@ -1416,15 +1427,13 @@ end
 
 function WayPointManager:DrawWayPoints(obj, color, size, fromT, toT)
     local wayPoints = self:GetSimulatedWayPoints(obj, fromT, toT)
-    local l
+    local points = {}
     for i = 1, #wayPoints do
         local wayPoint = wayPoints[i]
         local c = WorldToScreen(D3DXVECTOR3(wayPoint.x, obj.y, wayPoint.y))
-        if l then
-            DrawLine(c.x, c.y, l.x, l.y, size or 1, color or 4294967295)
-        end
-        l = c
+        points[#points+1] = D3DXVECTOR2(c.x, c.y)
     end
+    DrawLines2(points, size or 1, color or 4294967295)
 end
 
 -- Prediction Functions
@@ -2227,8 +2236,8 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Game Values
 --[[
-	_game.map
-	_game.settings
+    _game.map
+    _game.settings
 ]]
 local _game, _gameSave = { init = true, configFile = LIB_PATH .. "lastGame.cfg", lastCmd = GAME_PATH .. "lastCmd.log", params = "", isOver = false, loser = 0, winner = 0, win = false }, nil
 local _onGameOver, __game__OnCreateObj, __game__GameOver = {}, nil, nil
@@ -3471,10 +3480,10 @@ end
 
 --  Muramana toggler
 --[[
-	MuramanaIsActive()						Return true / false
-	MuramanaOn()							Set Muramana On if possible
-	MuramanaOff()							Set Muramana Off if possible
-	MuramanaToggle(range, extCondition)		Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
+    MuramanaIsActive()                      Return true / false
+    MuramanaOn()                            Set Muramana On if possible
+    MuramanaOff()                           Set Muramana Off if possible
+    MuramanaToggle(range, extCondition)     Toggle Muramana based on enemy in range (number) and external condition (nil or boolean)
 ]]
 local _muramana = { init = true, id = 3042, nextTick = 0, tick = 2500, particle = "ItemMuramanaToggle.troy", object = nil }
 local __muramana__OnCreateObj
@@ -3525,9 +3534,9 @@ end
 
 --  Ward finder
 --[[
-	Know limitation :
-	- as we can't get the real state of used stone, reload the script will disable them till base.
-	- as we can't get the real state of WriggleLantern, reload the script will disable it for 3 min
+    Know limitation :
+    - as we can't get the real state of used stone, reload the script will disable them till base.
+    - as we can't get the real state of WriggleLantern, reload the script will disable it for 3 min
 ]]
 local _wards = {
     WriggleLantern = { id = 3154, nextUse = GetTickCount() + 180000 },
@@ -3700,124 +3709,124 @@ end
 -------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
 local deprecatedErrors = {}
 local function deprecatedError(oldFunc, newFunc)
-    if deprecatedErrors[oldFunc] or not GetCurrentEnv() then return end
+    if deprecatedErrors[oldFunc] or not GetCurrentEnv() or not GetCurrentEnv().FILE_NAME then return end
     deprecatedErrors[oldFunc] = true
-    local t = "[" .. (GetCurrentEnv().FILE_NAME or "Unknown") .. "] " .. oldFunc .. "() is deprecated and will be removed in the next major update of BoL."
-    PrintChat(newFunc and t .. " Use " .. newFunc .. "() instead." or t)
+    local t = "[" .. GetCurrentEnv().FILE_NAME .. "] " .. oldFunc .. " is deprecated and will be removed in the next major update of BoL."
+    PrintChat(newFunc and t .. " Use " .. newFunc .. " instead." or t)
 end
 
 function GetDistance2D(...)
-    deprecatedError("GetDistance2D", "GetDistance")
+    deprecatedError("GetDistance2D()", "GetDistance()")
     return GetDistance(...)
 end
 
 function file_exists(...)
-    deprecatedError("file_exists", "FileExist")
+    deprecatedError("file_exists()", "FileExist()")
     return FileExist(...)
 end
 
 function timerText(...)
-    deprecatedError("timerText", "TimerText")
+    deprecatedError("timerText()", "TimerText()")
     return TimerText(...)
 end
 
 function returnSprite(...)
-    deprecatedError("returnSprite", "GetSprite")
+    deprecatedError("returnSprite()", "GetSprite()")
     return GetSprite(...)
 end
 
 function GetEnemyHeros(...)
-    deprecatedError("GetEnemyHeros", "GetEnemyHeroes")
+    deprecatedError("GetEnemyHeros()", "GetEnemyHeroes()")
     return GetEnemyHeroes(...)
 end
 
 function GetAllyHeros(...)
-    deprecatedError("GetAllyHeros", "GetAllyHeroes")
+    deprecatedError("GetAllyHeros()", "GetAllyHeroes()")
     return GetAllyHeroes(...)
 end
 
 class'GameState'
 function GameState:__init()
-    deprecatedError("GameState", "GetGame")
+    deprecatedError("GameState()", "GetGame()")
     GetGame()
 end
 
 function GameState:gameIsOver()
-    deprecatedError("GameState:gameIsOver", "GetGame().isOver")
+    deprecatedError("GameState:gameIsOver()", "GetGame().isOver()")
     return GetGame().isOver
 end
 
 function GameIsOver()
-    deprecatedError("GameIsOver", "GetGame().isOver")
+    deprecatedError("GameIsOver()", "GetGame().isOver()")
     return GetGame().isOver
 end
 
 function GameWinner()
-    deprecatedError("GameWinner", "GetGame().winner")
+    deprecatedError("GameWinner()", "GetGame().winner")
     return GetGame().winner
 end
 
 function GameWin()
-    deprecatedError("GameWin", "GetGame().win")
+    deprecatedError("GameWin()", "GetGame().win")
     return GetGame().win
 end
 
 function GameLoser()
-    deprecatedError("GameLoser", "GetGame().loser")
+    deprecatedError("GameLoser()", "GetGame().loser")
     return GetGame().loser
 end
 
 function GetMap()
-    deprecatedError("GetMap", "GetGame().map")
+    deprecatedError("GetMap()", "GetGame().map")
     return GetGame().map
 end
 
 function get2DFrom3D(x, y, z)
-    deprecatedError("get2DFrom3D", "WorldToScreen")
+    deprecatedError("get2DFrom3D()", "WorldToScreen()")
     local pos = WorldToScreen(D3DXVECTOR3(x, y, z))
     return pos.x, pos.y, OnScreen(pos.x, pos.y)
 end
 
 function GetStart(...)
-    deprecatedError("GetStart", "GetGame")
+    deprecatedError("GetStart()", "GetGame()")
     return GetGame(...)
 end
 
 -------------------- END OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -------------
 function Prediction__OnTick()
-    deprecatedError("Prediction__OnTick")
+    deprecatedError("Prediction__OnTick()")
 end
 
 function SC__OnWndMsg(msg, key)
-    deprecatedError("SC__OnWndMsg")
+    deprecatedError("SC__OnWndMsg()")
 end
 
 function SC__OnDraw()
-    deprecatedError("SC__OnDraw")
+    deprecatedError("SC__OnDraw()")
 end
 
 function autoLevel__OnTick()
-    deprecatedError("autoLevel__OnTick")
+    deprecatedError("autoLevel__OnTick()")
 end
 
 function TargetSelector__OnSendChat(msg)
-    deprecatedError("TargetSelector__OnSendChat")
+    deprecatedError("TargetSelector__OnSendChat()")
 end
 
 function TargetPrediction__OnTick()
-    deprecatedError("TargetPrediction__OnTick")
+    deprecatedError("TargetPrediction__OnTick()")
 end
 
 function minionManager__OnCreateObj(object)
-    deprecatedError("minionManager__OnCreateObj")
+    deprecatedError("minionManager__OnCreateObj()")
 end
 
 function minionManager__OnDeleteObj(object)
-    deprecatedError("minionManager__OnDeleteObj")
+    deprecatedError("minionManager__OnDeleteObj()")
 end
 
 function ChampionLane__OnTick()
-    deprecatedError("ChampionLane__OnTick")
+    deprecatedError("ChampionLane__OnTick()")
 end
 
 -------------------- END WARNING FOR FUNCTIONS NOT USED ANYMORE ----------------------
