@@ -2857,20 +2857,24 @@ end
 ]]
 local _miniMap = { init = true }
 local function _miniMap__OnLoad()
-    if _miniMap.init then
-        local map = GetGame().map
-        if not WINDOW_W or not WINDOW_H then
-            WINDOW_H = GetGame().WINDOW_H
-            WINDOW_W = GetGame().WINDOW_W
-        end
-        if WINDOW_H < 500 or WINDOW_W < 500 then return true end
-        local percent = math.max(WINDOW_W / 1920, WINDOW_H / 1080)
-        _miniMap.step = { x = 265 * percent / map.x, y = -264 * percent / map.y }
-        _miniMap.x = WINDOW_W - 270 * percent - _miniMap.step.x * map.min.x
-        _miniMap.y = WINDOW_H - 8 * percent - _miniMap.step.y * map.min.y
-        _miniMap.init = nil
-    end
+    if _miniMap.init then _miniMap__Reset() end
+	_miniMap.init = nil
     return _miniMap.init
+end
+
+function _miniMap__Reset()
+	local gameSettings = GetGameSettings()
+	local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
+	local hudSettings = ReadIni(path)
+	local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
+	local map = GetGame().map
+	_miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
+	if gameSettings.HUD.FlipMiniMap == 1 then
+		_miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
+	else
+		_miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
+	end
+	_miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
 end
 
 function GetMinimapX(x)
@@ -2897,6 +2901,11 @@ function GetMinimap(a, b)
         x, y = a, b
     end
     return { x = GetMinimapX(x), y = GetMinimapY(y) }
+end
+
+-- need to be added as AddOnResetCallback(_miniMap__Reset) when available
+function OnReset()
+	_miniMap__Reset()
 end
 
 --  autoLevel
