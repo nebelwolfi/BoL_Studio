@@ -1,5 +1,5 @@
 --[[
-        Script: minimapTimers v0.1
+        Script: minimapTimers v0.2
 		Author: SurfaceS
 		
 		In replacement of my Jungle Display v0.2
@@ -346,8 +346,7 @@ do
 			if object.name == "Order_Inhibit_Gem.troy" or object.name == "Chaos_Inhibit_Gem.troy" then
 				table.insert(inhibitors, { object = object, destroyed = false, lefttime = 0, x = object.x, y = object.y, z = object.z, minimap = GetMinimap(object), textTick = 0 })
 				return
-			elseif object.name == "Order_Inhibit_Crystal_Shatter.troy" then
-				lastF = Vector(object)
+			elseif object.name == "Order_Inhibit_Crystal_Shatter.troy" or object.name == "Chaos_Inhibit_Crystal_Shatter.troy" then
 				for i,inhibitor in pairs(inhibitors) do
 					if GetDistance(inhibitor, object) < 200 then
 						local tick = GetTickCount()
@@ -447,7 +446,7 @@ do
 	end
 
 	function OnLoad()
-		mapName = GetMap().shortName
+		mapName = GetGame().map.shortName
 		if monsters[mapName] == nil then
 			mapName = nil
 			monsters = nil
@@ -456,8 +455,7 @@ do
 			addAltarObject = nil
 			return
 		else
-			startTick = GetStart().tick
-			gameState = GameState()
+			startTick = GetGame().tick
 			-- CONFIG
 			MMTConfig = scriptConfig("Timers 0.2", "minimapTimers")
 			MMTConfig:addParam("pingOnRespawn", "Ping on respawn", SCRIPT_PARAM_ONOFF, true) -- ping location on respawn
@@ -487,7 +485,7 @@ do
 			AddDeleteObjCallback(removeCreep)
 			
 			function OnTick()
-				if gameState:gameIsOver() then return end
+				if GetGame().isOver then return end
 				local GameTime = (GetTickCount()-startTick) / 1000
 				local monsterCount = 0
 				for i,monster in pairs(monsters[mapName]) do
@@ -720,7 +718,7 @@ do
 			end
 
 			function OnDraw()
-				if gameState:gameIsOver() then return end
+				if GetGame().isOver then return end
 				for i,monster in pairs(monsters[mapName]) do
 					if monster.isSeen == true then
 						for j,camp in pairs(monster.camps) do

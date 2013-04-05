@@ -13,7 +13,6 @@
 	v0.1d				fix the perma show
 	v0.2				BoL Studio Version
 	v0.3				Reworked
-	-- todo : maybe add zira ?
 	
 	USAGE :
 	Hold shift key to see the hidden object's range.
@@ -129,7 +128,7 @@ do
 	end
 
 	function OnDraw()
-		if gameState:gameIsOver() then return end
+		if GetGame().isOver then return end
 		local shiftKeyPressed = IsKeyDown(16)
 		for i,obj in pairs(objects) do
 			if obj.visible == true then
@@ -155,7 +154,7 @@ do
 	end
 
 	function OnTick()
-		if gameState:gameIsOver() then return end
+		if GetGame().isOver then return end
 		local tick = GetTickCount()
 		for i,obj in pairs(tmpObjects) do
 			if tick > obj.tick + 1000 or obj.object == nil or not obj.object.valid or obj.object.team == player.team then
@@ -198,7 +197,6 @@ do
 	end
 
 	function OnLoad()
-		gameState = GameState()
 		if showOnMiniMap and useSprites then
 			for i,sprite in pairs(sprites) do sprites[i].sprite = GetSprite("hiddenObjects/"..sprite.spriteFile..".dds") end
 		end

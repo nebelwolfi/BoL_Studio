@@ -66,43 +66,6 @@ do
 		},
 	}
 	
-----------------------------------------------------------------------------
-	--[[         should be in AllClass          ]]
-	if InFountain == nil then
-		function GetFountain()
-			inshop, x, y, z, range = InShop()
-			map = GetMap()
-			if map.index == 1 then
-				_radius = 1050
-			else
-				_radius = 750
-			end
-			if inshop ~= nil then
-				shopPoint = Vector(x, y, z)
-				for i = 1, objManager.maxObjects, 1 do
-					local object = objManager:getObject(i)
-					if object ~= nil and object.type == "obj_SpawnPoint" and GetDistance(shopPoint, object) < 1000 then
-						return object
-					end
-				end
-			end
-		end
-		function InFountain()
-			return NearFountain()
-		end
-		function NearFountain(distance)
-			assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
-			if not _fountain then
-				local fountain = GetFountain()
-				assert(fountain ~= nil, "InFontain: Could not get Fontain Coordinates")
-				_fountain = { x = fountain.x, y = fountain.y, z = fountain.z }
-			end
-			if distance == nil then distance = _radius end
-			return (GetDistance(_fountain) <= distance), _fountain.x, _fountain.y, _fountain.z, distance
-		end
-	end
-----------------------------------------------------------------------------
-
 	--[[         Code          ]]
 	function castPotion(potion)
 		if potion.slot ~= nil and potion.compareValue() < potion.minValue then
@@ -120,8 +83,7 @@ do
 	end
 	
 	function OnLoad()
-		map = GetMap()
-		checkFountain = (map.index ~= 7) -- no heal in Proving Ground
+		checkFountain = (GetGame().map.index ~= 7) -- no heal in Proving Ground
 	end
 	
 	function OnTick()
