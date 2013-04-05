@@ -2857,24 +2857,26 @@ end
 ]]
 local _miniMap = { init = true }
 local function _miniMap__OnLoad()
-    if _miniMap.init then _miniMap__Reset() end
-	_miniMap.init = nil
-    return _miniMap.init
-end
-
-function _miniMap__Reset()
-	local gameSettings = GetGameSettings()
-	local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
-	local hudSettings = ReadIni(path)
-	local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
-	local map = GetGame().map
-	_miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
-	if gameSettings.HUD.FlipMiniMap == 1 then
-		_miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
-	else
-		_miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
+    if _miniMap.init then
+		function _miniMap__Reset()
+			local gameSettings = GetGameSettings()
+			local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
+			local hudSettings = ReadIni(path)
+			local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
+			local map = GetGame().map
+			_miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
+			if gameSettings.HUD.FlipMiniMap == 1 then
+				_miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
+			else
+				_miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
+			end
+			_miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
+		end
+		_miniMap__Reset()
+		AddResetCallback(_miniMap__Reset)
+		_miniMap.init = nil
 	end
-	_miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
+    return _miniMap.init
 end
 
 function GetMinimapX(x)
@@ -2901,11 +2903,6 @@ function GetMinimap(a, b)
         x, y = a, b
     end
     return { x = GetMinimapX(x), y = GetMinimapY(y) }
-end
-
--- need to be added as AddOnResetCallback(_miniMap__Reset) when available
-function OnReset()
-	_miniMap__Reset()
 end
 
 --  autoLevel
