@@ -200,7 +200,6 @@ local function startFPSCounter()
             avgFps = math.floor(frameCount / (os.clock() - fFrame))
             fFrame, frameCount = os.clock(), 0
         end
-
         AddDrawCallback(updateFPS)
     end
 end
@@ -562,15 +561,15 @@ function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
     end
 end
 
-function DrawRectangleBorder(Xa, Ya, Xb, Yb, color, borderWidth)
-	local x1 = math.min(Xa,Xb)
-	local x2 = math.max(Xa,Xb)
-	local y1 = math.min(Ya,Yb)
-	local y2 = math.max(Ya,Yb)
-	DrawRectangle(x1, y1, x2, y1 + borderWidth)
-	DrawRectangle(x2, y1, x2 - borderWidth, y2)
-	DrawRectangle(x1, y2, x2, y2 - borderWidth)
-	DrawRectangle(x1, y1, x1 + borderWidth, y2)
+function DrawRectangleOutline(x, y, width, height, color, borderWidth)
+	local x = math.min(x, x + width)
+	local y = math.min(y, y + width)
+	local width = math.abs(width)
+	local height = math.abs(height)
+	DrawRectangle(x, y, width, borderWidth, color)
+	DrawRectangle(x, y, borderWidth, height, color)
+	DrawRectangle(x, y + height - borderWidth, width, borderWidth, color)
+	DrawRectangle(x + height - borderWidth, y, borderWidth, height, color)
 end
 
 function DrawCircle2D(x, y, radius, width, color, quality)
