@@ -569,7 +569,7 @@ function DrawRectangleOutline(x, y, width, height, color, borderWidth)
 	DrawRectangle(x, y, width, borderWidth, color)
 	DrawRectangle(x, y, borderWidth, height, color)
 	DrawRectangle(x, y + height - borderWidth, width, borderWidth, color)
-	DrawRectangle(x + height - borderWidth, y, borderWidth, height, color)
+	DrawRectangle(x + width - borderWidth, y, borderWidth, height, color)
 end
 
 function DrawCircle2D(x, y, radius, width, color, quality)
@@ -3763,12 +3763,12 @@ function GameState:__init()
 end
 
 function GameState:gameIsOver()
-    deprecatedError("GameState:gameIsOver()", "GetGame().isOver()")
+    deprecatedError("GameState:gameIsOver()", "GetGame().isOver")
     return GetGame().isOver
 end
 
 function GameIsOver()
-    deprecatedError("GameIsOver()", "GetGame().isOver()")
+    deprecatedError("GameIsOver()", "GetGame().isOver")
     return GetGame().isOver
 end
 
