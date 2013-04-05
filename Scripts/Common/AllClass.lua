@@ -562,11 +562,6 @@ function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
     end
 end
 
---ToDo: Add Different Overloads
-function DrawRectangleFromLine(x, y, width, height, color)
-    DrawLine(x, y + (height / 2), x + width, y + (height / 2), height, color)
-end
-
 function DrawRectangleBorder(Xa, Ya, Xb, Yb, color, borderWidth)
 	local x1 = math.min(Xa,Xb)
 	local x2 = math.max(Xa,Xb)
