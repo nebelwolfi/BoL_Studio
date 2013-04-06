@@ -10,7 +10,6 @@
 	v0.2		BoL Studio Version
 ]]
 
-require "AllClass"
 require "spellList"
 
 --COLOR_BLUE
@@ -47,19 +46,13 @@ do
 		end
 		-- unload spellList Lib as it's not needed anymore
 		spellList = nil
-		-- unload spellAvoider if no spell founded
-		if spellArrayCount == 0 then
-			
-			--spellAvoider = nil
-			
-		else
+		if spellArrayCount > 0 then
 			myConfig = scriptConfig("Spell Avoider Config", "spellAvoider")
 			myConfig:addParam("drawSkillShot", "Draw Skills", SCRIPT_PARAM_ONOFF, true)
 			myConfig:addParam("dodgeSkillShot", "Dodge Skills", SCRIPT_PARAM_ONKEYTOGGLE, false, 74)
-			
-			
 			myConfig:addParam("dodgeSpace", "Dodge Spacing", SCRIPT_PARAM_SLICE, 150, 50, 500)
-		
+			
+			detectedSkillshots = {}
 			-- skill that have constant length
 			function calculateLinepass(pos1, pos2, maxDist)
 				local spellVector = Vector(pos2) - pos1
@@ -88,7 +81,7 @@ do
 			end
 
 			function dodgeAOE(pos1, pos2, radius)
-				local distancePos2 = GetDistance2D(player, pos2) 
+				local distancePos2 = GetDistance(player, pos2) 
 				if distancePos2 < radius then
 					moveTo.x = pos2.x + ((radius+50)/distancePos2)*(player.x-pos2.x)
 					moveTo.z = pos2.z + ((radius+50)/distancePos2)*(player.z-pos2.z)
@@ -97,16 +90,16 @@ do
 			end
 
 			function dodgeLinePoint(pos1, pos2, radius)
-				local distancePos1 = GetDistance2D(player, pos1)
-				local distancePos2 = GetDistance2D(player, pos2)
-				local distancePos1Pos2 = GetDistance2D(pos1, pos2)
+				local distancePos1 = GetDistance(player, pos1)
+				local distancePos2 = GetDistance(player, pos2)
+				local distancePos1Pos2 = GetDistance(pos1, pos2)
 				local perpendicular = (math.floor((math.abs((pos2.x-pos1.x)*(pos1.z-player.z)-(pos1.x-player.x)*(pos2.z-pos1.z)))/distancePos1Pos2))
 				if perpendicular < radius and distancePos2 < distancePos1Pos2 and distancePos1 < distancePos1Pos2 then
 					local k = ((pos2.z-pos1.z)*(player.x-pos1.x) - (pos2.x-pos1.x)*(player.z-pos1.z)) / distancePos1Pos2
 					local pos3 = {}
 					pos3.x = player.x - k * (pos2.z-pos1.z)
 					pos3.z = player.z + k * (pos2.x-pos1.x)
-					local distancePos3 = GetDistance2D(player, pos3)
+					local distancePos3 = GetDistance(player, pos3)
 					moveTo.x = pos3.x + ((radius+50)/distancePos3)*(player.x-pos3.x)
 					moveTo.z = pos3.z + ((radius+50)/distancePos3)*(player.z-pos3.z)
 					player:MoveTo(moveTo.x,moveTo.z)
@@ -114,20 +107,20 @@ do
 			end
 
 			function dodgeLinePass(pos1, pos2, radius, maxDist)
-				local distancePos1 = GetDistance2D(player, pos1)
-				local distancePos1Pos2 = GetDistance2D(pos1, pos2)
+				local distancePos1 = GetDistance(player, pos1)
+				local distancePos1Pos2 = GetDistance(pos1, pos2)
 				local pos3 = {}
 				pos3.x = pos1.x + (maxDist)/distancePos1Pos2*(pos2.x-pos1.x)
 				pos3.z = pos1.z + (maxDist)/distancePos1Pos2*(pos2.z-pos1.z)
-				local distancePos3 = GetDistance2D(player, pos3)
-				local distancePos1Pos3 = GetDistance2D(pos1, pos3)
+				local distancePos3 = GetDistance(player, pos3)
+				local distancePos1Pos3 = GetDistance(pos1, pos3)
 				local perpendicular = (math.floor((math.abs((pos3.x-pos1.x)*(pos1.z-player.z)-(pos1.x-player.x)*(pos3.z-pos1.z)))/distancePos1Pos3))
 				if perpendicular < radius and distancePos3 < distancePos1Pos3 and distancePos1 < distancePos1Pos3 then
 					local k = ((pos3.z-pos1.z)*(player.x-pos1.x) - (pos3.x-pos1.x)*(player.z-pos1.z)) / ((pos3.z-pos1.z)^2 + (pos3.x-pos1.x)^2)
 					local pos4 = {}
 					pos4.x = player.x - k * (pos3.z-pos1.z)
 					pos4.z = player.z + k * (pos3.x-pos1.x)
-					local distancePos4 = GetDistance2D(player, pos4)
+					local distancePos4 = GetDistance(player, pos4)
 					moveTo.x = pos4.x + ((radius+50)/distancePos4)*(player.x-pos4.x)
 					moveTo.z = pos4.z + ((radius+50)/distancePos4)*(player.z-pos4.z)
 					player:MoveTo(moveTo.x,moveTo.z)
@@ -136,7 +129,17 @@ do
 			
 			function OnProcessSpell(object,spell)
 				if player.dead == true then return end
-				if object~=nil and object.team~=player.team and spellArray[spell.name] ~= nil and GetDistance2D(player, object) < spellArray[spell.name].range + spellArray[spell.name].size + 500 then
+				if object~=nil and object.team~=player.team and spellArray[spell.name] ~= nil and GetDistance(player, object) < spellArray[spell.name].range + spellArray[spell.name].size + 500 then
+					local startPosition = Vector(object)
+					local endPosition = Vector(spell.endPos)
+					local delay = spellArray[spell.name].spellDelay or 0
+					local range = spellArray[spell.name].range or 0
+					local projectileSpeed = spellArray[spell.name].projectileSpeed or 1
+					local duration = range/projectileSpeed*1000
+					local directionVector = (endPosition - startPosition):normalized()
+					endPosition = startPosition + directionVector * range
+					table.insert(detectedSkillshots, {startPosition = startPosition, endPosition = endPosition, directionVector = directionVector, startTick = GetTickCount() + delay, endTick = GetTickCount() + delay + duration, skillshot = skillshot})
+					
 					spellArray[spell.name].shot = true
 					spellArray[spell.name].lastshot = GetTickCount()
 					if spellArray[spell.name].spellType == 1 then
@@ -169,10 +172,9 @@ do
 			end
 			
 			function OnDraw()
-				SC__OnDraw()
 				if myConfig.drawSkillShot then
 					for i, spell in pairs(spellArray) do
-						if spell.shot then
+						if spell.shot and #spell.skillshotpoint > 0 then
 							if #spell.skillshotpoint == 1 then
 								DrawCircle(spell.skillshotpoint[1].x, spell.skillshotpoint[1].y, spell.skillshotpoint[1].z, spell.size, spell.color)
 							else
@@ -188,6 +190,13 @@ do
 			
 			function OnTick()
 				local tick = GetTickCount()
+				--clean detectedSkillshots
+				for i, detectedSkillshot in ipairs(detectedSkillshots) do
+					if detectedSkillshot.endTick <= tick then
+						table.remove(detectedSkillshots, i)
+						i = i-1
+					end
+				end
 				for i, spell in pairs(spellArray) do
 					if spell.shot and spell.lastshot < tick - spell.duration then
 						spell.shot = false
@@ -195,10 +204,6 @@ do
 						moveTo = {}
 					end
 				end
-			end
-			
-			function OnWndMsg(msg,key)
-				SC__OnWndMsg(msg,key)
 			end
 	
 		end
