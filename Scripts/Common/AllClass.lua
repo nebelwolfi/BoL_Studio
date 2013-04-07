@@ -56,30 +56,30 @@ function GetDistanceFromMouse(object)
     return math.huge
 end
 
-local enemyHeroes
+local _enemyHeroes
 function GetEnemyHeroes()
-    if enemyHeroes then return enemyHeroes end
-    enemyHeroes = {}
+    if _enemyHeroes then return _enemyHeroes end
+    _enemyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team ~= player.team then
-            table.insert(enemyHeroes, hero)
+            table.insert(_enemyHeroes, hero)
         end
     end
-    return enemyHeroes
+    return _enemyHeroes
 end
 
-local allyHeroes
+local _allyHeroes
 function GetAllyHeroes()
-    if allyHeroes then return allyHeroes end
-    allyHeroes = {}
+    if _allyHeroes then return _allyHeroes end
+    _allyHeroes = {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
         if hero.team == player.team and hero.networkID ~= player.networkID then
-            table.insert(allyHeroes, hero)
+            table.insert(_allyHeroes, hero)
         end
     end
-    return allyHeroes
+    return _allyHeroes
 end
 
 --[[
