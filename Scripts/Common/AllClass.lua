@@ -25,7 +25,7 @@ end
 
 function print(...)
     local t = ""
-    for i, v in ipairs(table.pack(...)) do
+    for _, v in ipairs(table.pack(...)) do
         local _type = type(v)
         if _type == "string" then t = t .. v
         elseif _type == "number" then t = t .. tostring(v)
@@ -142,7 +142,6 @@ function string.split(str, delim, maxNb)
     local pat = "(.-)" .. delim .. "()"
     local nb = 0
     local lastPos
-    local last
     for part, pos in string.gmatch(str, pat) do
         nb = nb + 1
         if nb == maxNb then
@@ -355,7 +354,7 @@ function ReadIni(path)
     local raw = ReadFile(path)
     if not raw then return {} end
     local t, section = {}, nil
-    for i, s in ipairs(raw:split("\n")) do
+    for _, s in ipairs(raw:split("\n")) do
         local v = s:trim()
         if v:sub(1, 1) == ";" or v:sub(1, 1) == "#" then --Comment
         elseif v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
@@ -403,7 +402,7 @@ function DelayAction(func, delay, args) --delay in seconds
         function delayedActionsExecuter()
             for t, funcs in pairs(delayedActions) do
                 if t <= os.clock() then
-                    for i, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
+                    for _, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
                     delayedActions[t] = nil
                 end
             end
@@ -509,7 +508,7 @@ function TargetHaveBuff(buffName, target)
             if type(buffName) == "string" then
                 if tBuff.name:lower() == buffName:lower() then return true end
             else
-                for j, sBuff in ipairs(buffName) do
+                for _, sBuff in ipairs(buffName) do
                     if tBuff.name:lower() == sBuff:lower() then return true end
                 end
             end
@@ -604,7 +603,7 @@ end
 
 function DrawLines3D(points, width, color)
     local l
-    for i, point in ipairs(points) do
+    for _, point in ipairs(points) do
         local p = { x = point.x, y = point.y, z = point.z }
         if not p.z then p.z = p.y; p.y = nil end
         p.y = p.y or player.y
@@ -1095,7 +1094,7 @@ end
 function MEC:SetPoints(points)
     -- Set the points
     self.points = {}
-    for i, p in ipairs(points) do
+    for _, p in ipairs(points) do
         table.insert(self.points, Vector(p))
     end
 end
@@ -1106,7 +1105,7 @@ function MEC:HalfHull(left, right, pointTable, factor)
     table.insert(input, right)
     local half = {}
     table.insert(half, left)
-    for i, p in ipairs(input) do
+    for _, p in ipairs(input) do
         table.insert(half, p)
         while #half >= 3 do
             local dir = factor * VectorDirection(half[(#half + 1) - 3], half[(#half + 1) - 1], half[(#half + 1) - 2])
@@ -1132,13 +1131,13 @@ function MEC:ConvexHull()
     local upperHull = self:HalfHull(left, right, upper, -1)
     local lowerHull = self:HalfHull(left, right, lower, 1)
     local unique = {}
-    for i, p in ipairs(upperHull) do
+    for _, p in ipairs(upperHull) do
         unique["x" .. p.x .. "z" .. p.z] = p
     end
-    for i, p in ipairs(lowerHull) do
+    for _, p in ipairs(lowerHull) do
         unique["x" .. p.x .. "z" .. p.z] = p
     end
-    for i, p in pairs(unique) do
+    for _, p in pairs(unique) do
         table.insert(ret, p)
     end
     return ret
@@ -1174,7 +1173,7 @@ function MEC:Compute()
             point_b = nil
             local best_theta = 180.0
             -- Search for the point "b" which subtends the smallest angle a-b-c.
-            for i, point in ipairs(self.points) do
+            for _, point in ipairs(self.points) do
                 if (not point == point_a) and (not point == point_c) then
                     local theta_abc = point:angleBetween(point_a, point_c)
                     if theta_abc < best_theta then
@@ -1238,7 +1237,7 @@ function _CalcSpellPosForGroup(radius, range, points)
         local spellPos
         combos[j] = {}
         _CalcCombos(j, points, combos[j])
-        for i, v in ipairs(combos[j]) do
+        for _, v in ipairs(combos[j]) do
             mec:SetPoints(v)
             local c = mec:Compute()
             if c ~= nil and c.radius <= radius and c.center:dist(player) <= range and (spellPos == nil or c.radius < spellPos.radius) then
@@ -1302,7 +1301,7 @@ class'WayPointManager'
 local WayPoints, WayPointRate, WayPointVisibility
 
 local function WayPointManager_OnTick()
-    for i, hero in ipairs(GetEnemyHeroes()) do
+    for _, hero in ipairs(GetEnemyHeroes()) do
         if hero.visible then WayPointVisibility[hero.networkID] = nil
         elseif not WayPointVisibility[hero.networkID] then WayPointVisibility[hero.networkID] = os.clock()
         end
@@ -1362,7 +1361,7 @@ function WayPointManager:GetWayPoints(object)
     local wayPoints, lineSegment, distanceSqr, fPoint = WayPoints[object.networkID], 0, math.huge, nil
     if not wayPoints then return { { x = object.x, y = object.z } } end
     for i = 1, #wayPoints - 1 do
-        local p1, p2, isOnSegment = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
+        local p1, _, _ = VectorPointProjectionOnLineSegment(wayPoints[i], wayPoints[i + 1], object)
         local distanceSegmentSqr = GetDistanceSqr(p1, object)
         if distanceSegmentSqr < distanceSqr then
             fPoint = p1
@@ -1487,7 +1486,7 @@ local function _gameHeroes__extended(target, assertText)
         return _gameHeroes[target]
     elseif target ~= nil and target.valid then
         assert(type(target.networkID) == "number", assertText .. ": wrong argument types (<charName> or <heroIndex> or <hero> expected)")
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for _, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.networkID == target.networkID then
                 return _gameHero
             end
@@ -1499,7 +1498,7 @@ local function _gameHeroes__hero(target, assertText, enemyTeam)
     local assertText = assertText or ""
     enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for _, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.hero
             end
@@ -1518,7 +1517,7 @@ local function _gameHeroes__index(target, assertText, enemyTeam)
     local assertText = assertText or ""
     local enemyTeam = (enemyTeam ~= false)
     if type(target) == "string" then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for _, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.charName == target and (_gameHero.hero.team ~= player.team) == enemyTeam then
                 return _gameHero.index
             end
@@ -1539,7 +1538,7 @@ local function _Prediction__OnLoad()
             local tick = GetTickCount()
             _Prediction.delta = 1 / (tick - _Prediction.tick)
             _Prediction.tick = tick
-            for i, _gameHero in ipairs(_gameHeroes) do
+            for _, _gameHero in ipairs(_gameHeroes) do
                 if _gameHero.hero ~= nil and _gameHero.hero.valid and _gameHero.hero.dead == false and _gameHero.hero.visible then
                     _gameHero.pVector = (Vector(_gameHero.hero) - _gameHero.lastPos)
                     _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1553,7 +1552,7 @@ local function _Prediction__OnLoad()
     end
     _gameHeroes__init()
     _Prediction.tick = GetTickCount()
-    for i, _gameHero in ipairs(_gameHeroes) do
+    for _, _gameHero in ipairs(_gameHeroes) do
         if _gameHero.hero ~= nil and _gameHero.hero.valid then
             _gameHero.pVector = Vector()
             _gameHero.lastPos = Vector(_gameHero.hero)
@@ -1666,7 +1665,7 @@ local _TS_Draw
 local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority", "Dead" }
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
-    for i, target in ipairs(_gameHeroes) do
+    for _, target in ipairs(_gameHeroes) do
         if target.hero ~= nil and target.hero.valid and target.enemy == enemyTeam then
             PrintChat("[TS] " .. (enemyTeam and "Enemy " or "Ally ") .. target.tIndex .. " (" .. target.index .. ") : " .. target.hero.charName .. " Mode=" .. (target.ignore and "ignore" or "target") .. " Priority=" .. target.priority)
         end
@@ -1677,7 +1676,7 @@ function TS_SetFocus(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local selected = _gameHeroes__hero(target, "TS_SetFocus")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for _, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.enemy == enemyTeam then
                 if _gameHero.hero.networkID == selected.networkID then
                     _gameHero.priority = 1
@@ -1737,7 +1736,7 @@ function TS_Ignore(target, enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     local selected = _gameHeroes__hero(target, "TS_Ignore")
     if selected ~= nil and selected.valid and selected.type == "obj_AI_Hero" and (selected.team ~= player.team) == enemyTeam then
-        for index, _gameHero in ipairs(_gameHeroes) do
+        for _, _gameHero in ipairs(_gameHeroes) do
             if _gameHero.hero.networkID == selected.networkID and _gameHero.enemy == enemyTeam then
                 _gameHero.ignore = not _gameHero.ignore
                 --PrintChat("[TS] "..(_gameHero.ignore and "Ignoring " or "Re-targetting ").._gameHero.hero.charName)
@@ -1760,7 +1759,7 @@ local function TS__DrawMenu(x, y, enemyTeam)
     _TS_Draw_Init()
     local enemyTeam = (enemyTeam ~= false)
     local y1 = y
-    for index, _gameHero in ipairs(_gameHeroes) do
+    for _, _gameHero in ipairs(_gameHeroes) do
         if _gameHero.enemy == enemyTeam then
             DrawLine(x - _TS_Draw.border, y1 + _TS_Draw.midSize, x + _TS_Draw.row1 - _TS_Draw.border, y1 + _TS_Draw.midSize, _TS_Draw.cellSize, (_gameHero.ignore and _TS_Draw.redColor or _TS_Draw.background))
             DrawText(_gameHero.hero.charName, _TS_Draw.fontSize, x, y1, _TS_Draw.textColor)
@@ -2088,7 +2087,7 @@ end
 ]]
 local function _minionInCollision(minion, posStart, posEnd, spellSqr, sqrDist)
     if GetDistanceSqr(minion, posStart) < sqrDist and GetDistanceSqr(minion, posEnd) < sqrDist then
-        local p1, p2, isOnLineSegment = VectorPointProjectionOnLineSegment(posStart, posEnd, minion)
+        local _, p2, isOnLineSegment = VectorPointProjectionOnLineSegment(posStart, posEnd, minion)
         if isOnLineSegment and GetDistanceSqr(minion, p2) <= spellSqr then return true end
     end
     return false
@@ -2099,7 +2098,7 @@ function GetMinionCollision(posStart, posEnd, spellWidth, minionTable)
     local sqrDist = GetDistanceSqr(posStart, posEnd)
     local spellSqr = spellWidth * spellWidth / 4
     if minionTable then
-        for i, minion in pairs(minionTable) do
+        for _, minion in pairs(minionTable) do
             if _minionInCollision(minion, posStart, posEnd, spellSqr, sqrDist) then return true end
         end
     else
@@ -2139,7 +2138,7 @@ local function TargetPrediction__Onload()
             local osTime = os.clock()
             if osTime - _TargetPrediction__tick > 0.35 then
                 _TargetPrediction__tick = osTime
-                for i, _enemyHero in ipairs(_gameHeroes) do
+                for _, _enemyHero in ipairs(_gameHeroes) do
                     local hero = _enemyHero.hero
                     if hero.dead then
                         _enemyHero.prediction = nil
@@ -2277,7 +2276,7 @@ function GetGame()
             end
         end
         _game.tick = tonumber(GetTickCount())
-        _game.osTime = os.time(t)
+        _game.osTime = os.time()
         if FileExist(_game.configFile) then _gameSave = loadfile(_game.configFile)() end
         if _gameSave and _gameSave.params and _gameSave.params == _game.params then
             _game.WINDOW_W = _gameSave.WINDOW_W
@@ -2330,7 +2329,7 @@ function GetGame()
             _game.loser = team
             _game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
             _game.win = (player.team == _game.winner)
-            for i, func in ipairs(_onGameOver) do
+            for _, func in ipairs(_onGameOver) do
                 if func then func(_game.winner) end
             end
         end
@@ -2421,7 +2420,6 @@ local function minionManager__OnLoad()
             function __minionManager__OnCreateObj(object)
                 if object and object.type == "obj_AI_Minion" and object.name and not object.dead then
                     local name = object.name
-                    local id = object.networkID
                     table.insert(_minionTable[MINION_ALL], object)
                     if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
                     elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
@@ -2472,9 +2470,8 @@ function minionManager:__init(mode, range, fromPos, sortMode)
 end
 
 function minionManager:update()
-    local i = 1
     self.objects = {}
-    for i, object in pairs(_minionTable[self.mode]) do
+    for _, object in pairs(_minionTable[self.mode]) do
         if object and object.valid and not object.dead and object.visible and GetDistanceSqr(self.fromPos, object) <= (self.range) ^ 2 then
             table.insert(self.objects, object)
         end
@@ -2499,7 +2496,7 @@ end
 function GetInventorySlotItem(itemID, target)
     assert(type(itemID) == "number", "GetInventorySlotItem: wrong argument types (<number> expected)")
     local target = target or player
-    for i, j in pairs({ ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6 }) do
+    for _, j in pairs({ ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6 }) do
         if target:getInventorySlot(j) == itemID then return j end
     end
     return nil
@@ -2653,8 +2650,8 @@ end
 function UnderTurret(pos, enemyTurret)
     __Turrets__init()
     local enemyTurret = (enemyTurret ~= false)
-    for name, turret in pairs(_turrets) do
-        if turret ~= nil and (turret.team ~= player.team) == enemyTeam and GetDistanceSqr(turret, pos) <= (turret.range) ^ 2 then
+    for _, turret in pairs(_turrets) do
+        if turret ~= nil and (turret.team ~= player.team) == enemyTurret and GetDistanceSqr(turret, pos) <= (turret.range) ^ 2 then
             return true
         end
     end
@@ -2688,9 +2685,9 @@ local function _ChampionLane__Save()
     if file then
         file:write("local _championLane = {save = {}}\n")
         file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
-        for j, team in pairs({ "ally", "enemy" }) do
+        for _, team in pairs({ "ally", "enemy" }) do
             file:write("_championLane.save." .. team .. " = {}\n")
-            for i, champion in pairs(_championLane[team].champions) do
+            for i, _ in pairs(_championLane[team].champions) do
                 file:write("_championLane.save." .. team .. "[" .. i .. "] = {top = " .. _championLane[team].champions[i].top .. ", mid = " .. _championLane[team].champions[i].mid .. ", bot = " .. _championLane[team].champions[i].bot .. ", jungle = " .. _championLane[team].champions[i].jungle .. " }\n")
             end
         end
@@ -2734,7 +2731,7 @@ local function _ChampionLane__OnLoad()
         _championLane.save = {}
         if FileExist(_championLane.savedFile) then _championLane.save = loadfile(_championLane.savedFile)().save end
         if _championLane.save.startTime ~= nil and _championLane.startTime == _championLane.save.startTime then
-            for j, team in pairs({ "ally", "enemy" }) do
+            for _, team in pairs({ "ally", "enemy" }) do
                 for i, champion in pairs(_championLane.save[team]) do
                     _championLane[team].champions[i].top = champion.top
                     _championLane[team].champions[i].mid = champion.mid
@@ -2755,9 +2752,9 @@ local function _ChampionLane__OnLoad()
                 if tick > _championLane.nextSave then _ChampionLane__Save() end
                 _championLane.nextUpdate = tick + _championLane.tickUpdate
                 -- team update
-                for j, team in pairs({ "ally", "enemy" }) do
+                for _, team in pairs({ "ally", "enemy" }) do
                     local update = { top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }
-                    for i, champion in pairs(_championLane[team].champions) do
+                    for _, champion in pairs(_championLane[team].champions) do
                         -- update champ pos
                         if champion.hero.dead == false then
                             if champion.hero.visible then
@@ -2792,7 +2789,7 @@ local function _ChampionLane__OnLoad()
                     if _championLane.mapIndex == 1 then
                         -- update carry / support
                         local carryAD, support
-                        for i, hero in pairs(_championLane[team].bot) do
+                        for _, hero in pairs(_championLane[team].bot) do
                             if carryAD == nil or hero.totalDamage > carryAD.totalDamage then carryAD = hero end
                             if support == nil or hero.totalDamage < support.totalDamage then support = hero end
                         end
@@ -3069,7 +3066,7 @@ end
 local function __SC__saveMaster()
     local config = {}
     local P, PS, I = 0, 0, 0
-    for index, instance in pairs(_SC.instances) do
+    for _, instance in pairs(_SC.instances) do
         I = I + 1
         P = P + #instance._param
         PS = PS + #instance._permaShow
@@ -3225,9 +3222,9 @@ local function __SC__OnLoad()
                 end
             end
             local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
-            for index, instance in ipairs(_SC.instances) do
+            for _, instance in ipairs(_SC.instances) do
                 if #instance._permaShow > 0 then
-                    for i, varIndex in ipairs(instance._permaShow) do
+                    for _, varIndex in ipairs(instance._permaShow) do
                         local pVar = instance._param[varIndex].var
                         DrawLine(_SC.pDraw.x - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.row - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
                         DrawText(instance._param[varIndex].text, _SC.pDraw.fontSize, _SC.pDraw.x, y1, _SC.color.grey)
@@ -3283,7 +3280,7 @@ local function __SC__OnLoad()
                     else
                         if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
                         local y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
-                        for index, instance in ipairs(_SC.instances) do
+                        for index, _ in ipairs(_SC.instances) do
                             if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
                             y1 = y1 + _SC.draw.cellSize
                         end
@@ -3308,8 +3305,8 @@ local function __SC__OnLoad()
                     return
                 end
             else
-                for index, instance in ipairs(_SC.instances) do
-                    for i, param in ipairs(instance._param) do
+                for _, instance in ipairs(_SC.instances) do
+                    for _, param in ipairs(instance._param) do
                         if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and key == param.key and msg == KEY_DOWN then
                             instance[param.var] = not instance[param.var]
                         elseif param.pType == SCRIPT_PARAM_ONKEYDOWN and key == param.key then
@@ -3393,11 +3390,11 @@ function scriptConfig:OnDraw()
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
     if #self._tsInstances > 0 then
         --_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
-        for i, tsInstance in ipairs(self._tsInstances) do
+        for _, tsInstance in ipairs(self._tsInstances) do
             _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         end
     end
-    for index, param in ipairs(self._param) do
+    for index, _ in ipairs(self._param) do
         self:_DrawParam(index)
     end
     _SC._Idraw.height = _SC._Idraw.y - _SC.draw.y
@@ -3461,7 +3458,7 @@ end
 function scriptConfig:OnWndMsg()
     local y1 = _SC.draw.y + _SC.draw.cellSize
     if #self._tsInstances > 0 then
-        for i, tsInstance in ipairs(self._tsInstances) do
+        for _, tsInstance in ipairs(self._tsInstances) do
             y1 = tsInstance:ClickMenu(_SC._Idraw.x, y1)
         end
     end
@@ -3636,10 +3633,9 @@ function __tcDraws__init()
             end
         end
         function _tcDraws__OnDraw()
-            if myHero.dead then return end
+            if player.dead then return end
             if _tcDraws.circle then
-                local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heroes) do
+                for _, target in pairs(_tcDraws.heroes) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
@@ -3658,10 +3654,10 @@ function __tcDraws__init()
 
         AddDrawCallback(_tcDraws__OnDraw)
         function _tcDraws__OnTick()
-            if myHero.dead then return end
+            if player.dead then return end
             if _tcDraws.text then
                 local tick = GetTickCount()
-                for i, target in pairs(_tcDraws.heroes) do
+                for _, target in pairs(_tcDraws.heroes) do
                     if target.state > 0 and target.hero.valid and target.hero.visible and not target.hero.dead then
                         if _tcDraws.modes[target.state] then
                             local mode = _tcDraws.modes[target.state]
