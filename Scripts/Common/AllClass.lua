@@ -1663,7 +1663,7 @@ DAMAGE_MAGIC = 1
 DAMAGE_PHYSICAL = 2
 -- Class related global
 local _TS_Draw
-local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority", "Dead" }
+local _TargetSelector__texted = { "LowHP", "MostAP", "MostAD", "LessCast", "NearMouse", "Priority", "LowHPPriority", "LessCastPriority", "Dead", "Closest" }
 function TS_Print(enemyTeam)
     local enemyTeam = (enemyTeam ~= false)
     for _, target in ipairs(_gameHeroes) do
