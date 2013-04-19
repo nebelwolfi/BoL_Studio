@@ -1657,6 +1657,7 @@ TARGET_NEAR_MOUSE = 5
 TARGET_PRIORITY = 6
 TARGET_LOW_HP_PRIORITY = 7
 TARGET_LESS_CAST_PRIORITY = 8
+TARGET_CLOSEST = 9
 TARGET_DEAD = 9
 DAMAGE_MAGIC = 1
 DAMAGE_PHYSICAL = 2
@@ -2012,6 +2013,10 @@ function TargetSelector:update()
                 elseif self.mode == TARGET_PRIORITY then
                     -- Returns target with highest priority # that is in range
                     if not selected or _gameHero.priority < value then selected, index, value = hero, i, _gameHero.priority end
+                elseif self.mode == TARGET_CLOSEST then
+                    -- Returns target that is the closest to your champion.
+                    local distance = GetDistanceSqr(hero)
+                    if not selected or distance < value then selected, index, value = hero, i, distance end
                 elseif self.mode == TARGET_NEAR_MOUSE then
                     -- Returns target that is the closest to the mouse cursor.
                     local distance = GetDistanceSqr(mousePos, hero)
