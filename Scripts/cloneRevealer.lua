@@ -28,9 +28,8 @@ do
 			end
 		end
 		if #cloneRevealer.heros > 0 then
-			gameState = GameState()
 			function OnDraw()
-				if gameState:gameIsOver() then return end
+				if GetGame().isOver then return end
 				for index,hero in pairs(cloneRevealer.heros) do
 					if hero.dead == false and hero.visible then DrawCircle(hero.x, hero.y, hero.z, 100, 0xFFFFFF) end
 				end
