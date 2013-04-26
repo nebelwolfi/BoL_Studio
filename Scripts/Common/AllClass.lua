@@ -571,6 +571,35 @@ function DrawRectangleOutline(x, y, width, height, color, borderWidth)
 	DrawRectangle(x + width - borderWidth, y, borderWidth, height, color)
 end
 
+function DrawLineBorder3D(x1, y1, z1, x2, y2, z2, size, color, width)
+    local o = { x = -(z2 - z1), z = x2 - x1 }
+    local len = math.sqrt(o.x ^ 2 + o.z ^ 2)
+    o.x, o.z = o.x / len * size / 2, o.z / len * size / 2
+    local points = {
+        WorldToScreen(D3DXVECTOR3(x1 + o.x, y1, z1 + o.z)),
+        WorldToScreen(D3DXVECTOR3(x1 - o.x, y1, z1 - o.z)),
+        WorldToScreen(D3DXVECTOR3(x2 - o.x, y2, z2 - o.z)),
+        WorldToScreen(D3DXVECTOR3(x2 + o.x, y2, z2 + o.z)),
+        WorldToScreen(D3DXVECTOR3(x1 + o.x, y1, z1 + o.z)),
+    }
+    for i, c in ipairs(points) do points[i] = D3DXVECTOR2(c.x, c.y) end
+    DrawLines2(points, width or 1, color or 4294967295)
+end
+
+function DrawLineBorder(x1, y1, x2, y2, size, color, width)
+    local o = { x = -(y2 - y1), y = x2 - x1 }
+    local len = math.sqrt(o.x ^ 2 + o.y ^ 2)
+    o.x, o.y = o.x / len * size / 2, o.y / len * size / 2
+    local points = {
+        D3DXVECTOR2(x1 + o.x, y1 + o.y),
+        D3DXVECTOR2(x1 - o.x, y1 - o.y),
+        D3DXVECTOR2(x2 - o.x, y2 - o.y),
+        D3DXVECTOR2(x2 + o.x, y2 + o.y),
+        D3DXVECTOR2(x1 + o.x, y1 + o.y),
+    }
+    DrawLines2(points, width or 1, color or 4294967295)
+end
+
 function DrawCircle2D(x, y, radius, width, color, quality)
     quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
     local points = {}
@@ -1875,7 +1904,7 @@ end
 
 function TargetSelector:SetMinionCollision(castWidth, minionType)
     assert(castWidth == nil or type(castWidth) == "number", "SetMinionCollision: wrong argument types (<number> or nil expected)")
-    self._castWidth = ((castWidth ~= nil or castWidth > 0) and castWidth or nil)
+    self._castWidth = (castWidth and castWidth > 0) and castWidth
     if self._castWidth then
         local minionType = minionType or MINION_ENEMY
         self._minionTable = minionManager(minionType, self.range + 300)
