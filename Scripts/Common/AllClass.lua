@@ -561,14 +561,14 @@ function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
 end
 
 function DrawRectangleOutline(x, y, width, height, color, borderWidth)
-	local x = math.min(x, x + width)
-	local y = math.min(y, y + width)
-	local width = math.abs(width)
-	local height = math.abs(height)
-	DrawRectangle(x, y, width, borderWidth, color)
-	DrawRectangle(x, y, borderWidth, height, color)
-	DrawRectangle(x, y + height - borderWidth, width, borderWidth, color)
-	DrawRectangle(x + width - borderWidth, y, borderWidth, height, color)
+    local x = math.min(x, x + width)
+    local y = math.min(y, y + width)
+    local width = math.abs(width)
+    local height = math.abs(height)
+    DrawRectangle(x, y, width, borderWidth, color)
+    DrawRectangle(x, y, borderWidth, height, color)
+    DrawRectangle(x, y + height - borderWidth, width, borderWidth, color)
+    DrawRectangle(x + width - borderWidth, y, borderWidth, height, color)
 end
 
 function DrawLineBorder3D(x1, y1, z1, x2, y2, z2, size, color, width)
@@ -2196,6 +2196,147 @@ local function TargetPrediction__Onload()
     end
 end
 
+--[[
+    Class: TargetPredictionVIP
+        Note: Only works for VIP user
+            uses the WayPointManager
+    
+    Methods:
+        TargetPredictionVIP(range, [proj_speed, delay, width])     
+                                                    -- initializes the prediction class
+                                                    -- base time format is seconds
+                                                    -- example: proj_speed = 2000 (distance/seconds); delay = 0.25 (seconds);
+        TargetPredictionVIP:GetPrediction(object)     
+                                                    -- returns the predicted position of the target, the arrival/hittime (in seconds) and the position where you shoot the best (only with given spellwidth)
+                                                    -- a position is a table with x and y and z values.
+        TargetPredictionVIP:GetHitChance(object)        
+                                                    -- returns the hitchance (number from 0 to 1, 1 being best), calculations might seem ugly, and they will perhaps change in future
+        TargetPredictionVIP:DrawPrediction(object, [color, size])
+                                                    -- draws a line from you to the prediction
+        TargetPredictionVIP:DrawWayPoints(obj, [color, size, fromT, toT])
+                                                    -- draws the WayPoints of an Object
+        TargetPredictionVIP:DrawPredictionRectangle(obj, [color, size])
+                                                    -- draws a rectangle from you to the Position where you should shoot to (3rd return value of GetPrediction)
+                                                    -- only works when width given
+        TargetPredictionVIP:DrawAnimatedPrediction(obj, [color1, color2, size1, size2, drawspeed])
+                                                    -- draws an animated line of the path of the object and the spell you could shoot.
+                                                    -- drawspeed in seconds. defines in seconds how much time a single animation takes.
+    Example: local tp = TargetPredictionVIP(3000, 2000, 0.25)
+    function OnDraw()
+        for i, target in pairs(GetEnemyHeroes()) do
+            tp:DrawAnimatedPrediction(target, ARGB(255,255,255,255), ARGB(255,255,0,0), 2, 2)
+        end
+    end
+]]
+
+class 'TargetPredictionVIP'
+function TargetPredictionVIP:__init(range, proj_speed, delay, width)
+    if not VIP_USER then self = nil return end
+    self.WayPointManager = WayPointManager()
+    self.Spell = {RangeSqr = range^2, Speed = proj_speed or math.huge, Delay = delay or 0, Width = width}
+    self.Cache = {Time = 0}
+end
+
+function TargetPredictionVIP:GetPrediction(target)
+    if os.clock() - self.Cache.Time >= 1/60 then self.Cache = {Time = os.clock()}
+    else return self.Cache.HitPosition, self.Cache.HitTime, self.Cache.ShootPosition end
+    local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + GetLatency()/2000), nil, nil
+    assert(self.Spell.Speed>0 and self.Spell.Delay>=0, "TargetPredictionVIP:GetPrediction : SpellDelay must be >=0 and SpellSpeed must be >0")
+    local vec
+    if #wayPoints==1 or self.Spell.Speed == math.huge then --Target not moving
+        hitPosition = {x = wayPoints[1].x, y = target.y, z = wayPoints[1].y};
+        hitTime = GetDistance(wayPoints[1])/self.Spell.Speed
+        vec = self.Spell.Width and hitPosition
+    else --Target Moving
+        local travelTimeA = 0
+        for i = 1, #wayPoints - 1 do
+            local A, B = wayPoints[i], wayPoints[i+1]
+            local wayPointDist = GetDistance(wayPoints[i],wayPoints[i+1])
+            local travelTimeB = travelTimeA + wayPointDist/target.ms
+            local v1, v2 = target.ms, self.Spell.Speed
+            local r, S, j, K = player.x-A.x, v1*(B.x-A.x)/wayPointDist, player.z-A.y, v1*(B.y-A.y)/wayPointDist
+            local vv, jK ,rS, SS, KK = v2*v2, j*K, r*S, S*S, K*K
+            local t = (jK+rS-math.sqrt(j*j*(vv-1)+SS+2*jK*rS+r*r*(vv-KK)))/(KK+SS-vv)
+            if travelTimeA <= t and t <= travelTimeB then
+                hitPosition = {x = A.x + t * S, y = target.y, z = A.y + t * K}
+                hitTime = t
+                if self.Spell.Width then
+                    local function rotate2D(vec, vec2, phi)
+                        local vec = { x = vec.x - vec2.x, y = vec.y, z = vec.z - vec2.z}
+                        vec.x, vec.z = math.cos(phi)*vec.x - math.sin(phi)*vec.z + vec2.x, math.sin(phi)*vec.x + math.cos(phi)*vec.z + vec2.z
+                        return vec
+                    end
+                    local alpha = (math.atan2(B.y-A.y, B.x-A.x) - math.atan2(player.z-hitPosition.z, player.x-hitPosition.x))%(2*math.pi) --angle between movement and spell
+                    local total = 1-(math.abs((alpha%math.pi)-math.pi/2)/(math.pi/2)) --0 if the player walks in your direction or away from your direction, 1 if he walks orthogonal to you
+                    local phi = alpha < math.pi and math.atan((self.Spell.Width/2)/(self.Spell.Speed*hitTime)) or -math.atan((self.Spell.Width/2)/(self.Spell.Speed*hitTime))
+                    vec = rotate2D({x = hitPosition.x, y = hitPosition.y, z = hitPosition.z}, player, phi*total)
+                end
+                break
+            end
+            --Logic In Case there is no prediction 'till the last wayPoint
+            if i == #wayPoints - 1 then
+                hitPosition = {x = B.x, y = target.y, z = B.y};
+                hitTime = travelTimeB
+                vec = self.Spell.Width and hitPosition
+            end
+            --no prediction in the current segment, go to next waypoint
+            travelTimeA = travelTimeB
+        end
+    end
+    if hitPosition and self.Spell.RangeSqr >= GetDistanceSqr(hitPosition) then
+        self.Cache.HitPosition, self.Cache.HitTime, self.Cache.ShootPosition = hitPosition, hitTime, vec
+        return hitPosition, hitTime, vec
+    end
+end
+
+function TargetPredictionVIP:GetHitChance(target)
+    local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
+    local hitChance = 0
+    if os.clock() - self.Cache.Time < 1/60 and self.Cache.Chance then return self.Cache.Chance end
+    local hC = {}
+    --Track if the enemy arrived at its last waypoint and is invisible (lower hitchance)
+    local wps, arrival = self.WayPointManager:GetSimulatedWayPoints(target)
+    hC[#hC+1] = target.visible and 1 or (arrival~=0 and 0.5 or 0)
+    if target.visible then
+        --Track how often the enemy moves. If he constantly moves, the hitchance is lower
+        local rate = 1 - math.max(0,(self.WayPointManager:GetWayPointChangeRate(target)-1))/5
+        hC[#hC+1] = rate; hC[#hC+1] = rate; hC[#hC+1] = rate
+        --Track the time the spell needs to hit the target. the higher it is, the lower the hitchance
+        local pos, t = self:GetPrediction(target)
+        if t then hC[#hC+1] = math.min(math.max(0,1-t/1),1) end
+    end
+    --Generate a value between 0 (no chance) and 100 (you'll hit for sure)
+    self.Cache.Chance = math.min(1,math.max(0,sum(hC)/#hC))
+    return self.Cache.Chance
+end
+
+function TargetPredictionVIP:DrawPrediction(target, color, size)
+    local pos, time, shoot = self:GetPrediction(target)
+    if not pos then return end
+    DrawLine3D(pos.x, target.y, pos.z, player.x, player.y, player.z, size, color, true)
+end
+
+function TargetPredictionVIP:DrawPredictionRectangle(target, color, size)
+    local pos, time, shoot = self:GetPrediction(target)
+    if not shoot then return end
+    DrawLineBorder3D(shoot.x, target.y, shoot.z, player.x, player.y, player.z, self.Spell.Width, color, size or 1)
+end
+
+function TargetPredictionVIP:DrawAnimatedPrediction(target, color1, color2, size1, size2, drawspeed)
+    drawspeed = drawspeed or 1
+    local pos, time = self:GetPrediction(target)
+    if pos then
+        local r = GetDrawClock(drawspeed)
+        DrawLine3D(player.x, player.y, player.z, player.x+r*(pos.x-player.x), target.y, player.z+r*(pos.z-player.z), size1, color1)
+        local points = {}
+        for i, v in ipairs(WayPointManager:GetSimulatedWayPoints(target, 0, (self.Spell.Delay + time)*r)) do
+            local c = WorldToScreen(D3DXVECTOR3(v.x, target.y, v.y))
+            points[#points+1] = D3DXVECTOR2(c.x, c.y)
+        end
+        DrawLines2(points, size2 or 1, color2 or 4294967295)
+    end
+end
+
 class'TargetPrediction'
 function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoothness)
     assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
@@ -2894,24 +3035,24 @@ end
 local _miniMap = { init = true }
 local function _miniMap__OnLoad()
     if _miniMap.init then
-		function _miniMap__Reset()
-			local gameSettings = GetGameSettings()
-			local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
-			local hudSettings = ReadIni(path)
-			local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
-			local map = GetGame().map
-			_miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
-			if gameSettings.HUD.FlipMiniMap == 1 then
-				_miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
-			else
-				_miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
-			end
-			_miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
-		end
-		_miniMap__Reset()
-		AddResetCallback(_miniMap__Reset)
-		_miniMap.init = nil
-	end
+        function _miniMap__Reset()
+            local gameSettings = GetGameSettings()
+            local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
+            local hudSettings = ReadIni(path)
+            local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
+            local map = GetGame().map
+            _miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
+            if gameSettings.HUD.FlipMiniMap == 1 then
+                _miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
+            else
+                _miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
+            end
+            _miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
+        end
+        _miniMap__Reset()
+        AddResetCallback(_miniMap__Reset)
+        _miniMap.init = nil
+    end
     return _miniMap.init
 end
 
