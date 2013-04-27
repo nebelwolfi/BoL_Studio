@@ -2147,55 +2147,6 @@ function GetMinionCollision(posStart, posEnd, spellWidth, minionTable)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TargetPrediction Class
---[[
-    Methods:
-        tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
-    Functions :
-        tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
-    members :
-        tp.nextPosition                     -- vector pos
-        tp.minions
-        tp.nextHealth
-        tp.range
-        tp.proj_speed
-        tp.delay
-        tp.width
-        tp.smoothness
-]]
--- use _gameHeroes with TargetSelector
-local _TargetPrediction__tick = 0
-local __TargetPrediction__OnTick
-local function TargetPrediction__Onload()
-    if not __TargetPrediction__OnTick then
-        function __TargetPrediction__OnTick()
-            local osTime = os.clock()
-            if osTime - _TargetPrediction__tick > 0.35 then
-                _TargetPrediction__tick = osTime
-                for _, _enemyHero in ipairs(_gameHeroes) do
-                    local hero = _enemyHero.hero
-                    if hero.dead then
-                        _enemyHero.prediction = nil
-                    elseif hero.visible then
-                        if _enemyHero.prediction then
-                            local deltaTime = osTime - _enemyHero.prediction.lastUpdate
-                            _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
-                            _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
-                            _enemyHero.prediction.health = hero.health
-                            _enemyHero.prediction.position = Vector(hero)
-                            _enemyHero.prediction.lastUpdate = osTime
-                        else
-                            _enemyHero.prediction = { position = Vector(hero), lastUpdate = osTime, minions = false, health = hero.health }
-                        end
-                    end
-                end
-            end
-        end
-
-        AddTickCallback(__TargetPrediction__OnTick)
-    end
-end
-
 --[[
     Class: TargetPredictionVIP
         Note: Only works for VIP user
@@ -2334,6 +2285,55 @@ function TargetPredictionVIP:DrawAnimatedPrediction(target, color1, color2, size
             points[#points+1] = D3DXVECTOR2(c.x, c.y)
         end
         DrawLines2(points, size2 or 1, color2 or 4294967295)
+    end
+end
+
+-- TargetPrediction Class
+--[[
+    Methods:
+        tp = TargetPrediction(range, proj_speed, delay, widthCollision, smoothness)
+    Functions :
+        tp:GetPrediction(target)            -- return nextPosition, minionCollision, nextHealth
+    members :
+        tp.nextPosition                     -- vector pos
+        tp.minions
+        tp.nextHealth
+        tp.range
+        tp.proj_speed
+        tp.delay
+        tp.width
+        tp.smoothness
+]]
+-- use _gameHeroes with TargetSelector
+local _TargetPrediction__tick = 0
+local __TargetPrediction__OnTick
+local function TargetPrediction__Onload()
+    if not __TargetPrediction__OnTick then
+        function __TargetPrediction__OnTick()
+            local osTime = os.clock()
+            if osTime - _TargetPrediction__tick > 0.35 then
+                _TargetPrediction__tick = osTime
+                for _, _enemyHero in ipairs(_gameHeroes) do
+                    local hero = _enemyHero.hero
+                    if hero.dead then
+                        _enemyHero.prediction = nil
+                    elseif hero.visible then
+                        if _enemyHero.prediction then
+                            local deltaTime = osTime - _enemyHero.prediction.lastUpdate
+                            _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
+                            _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
+                            _enemyHero.prediction.health = hero.health
+                            _enemyHero.prediction.position = Vector(hero)
+                            _enemyHero.prediction.lastUpdate = osTime
+                        else
+                            _enemyHero.prediction = { position = Vector(hero), lastUpdate = osTime, minions = false, health = hero.health }
+                        end
+                    end
+                end
+            end
+        end
+
+        AddTickCallback(__TargetPrediction__OnTick)
     end
 end
 
