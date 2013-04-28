@@ -751,6 +751,7 @@ end
         isOnSegment = if the point closest to the line is on the segment
 ]]
 function VectorPointProjectionOnLineSegment(v1, v2, v)
+	assert(v1 and v2 and v, debug.traceback())
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
     local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
     local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
@@ -1353,8 +1354,9 @@ local function WayPointManager_OnRecvPacket(p)
                 if WayPointRate[networkID] then
                     local wps = WayPoints[networkID]
                     local lwp, found = wps[#wps], false
-                    for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
-                        if GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, wayPoints[i], wayPoints[i + 1])) < 1000 then found = true break end
+					for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
+						local A, B = wayPoints[i], wayPoints[i + 1]
+                        if lwp and A and B and GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, A, B)) < 1000 then found = true break end
                     end
                     if not found then WayPointRate[networkID]:pushleft(os.clock()) end
                     if #WayPointRate[networkID] > 20 then WayPointRate[networkID]:popright() end --Avoid memory leaks
@@ -2198,7 +2200,7 @@ function TargetPredictionVIP:GetPrediction(target)
     if os.clock() - (self.Cache[target.networkID] and self.Cache[target.networkID].Time or 0) >= 1 / 60 then self.Cache[target.networkID] = { Time = os.clock() }
     else return self.Cache[target.networkID].HitPosition, self.Cache[target.networkID].HitTime, self.Cache[target.networkID].ShootPosition
     end
-    local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + GetLatency() / 2000), nil, nil
+    local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + ((GetLatency() / 2) /1000)), nil, nil
     assert(self.Spell.Speed > 0 and self.Spell.Delay >= 0, "TargetPredictionVIP:GetPrediction : SpellDelay must be >=0 and SpellSpeed must be >0")
     local vec
     if #wayPoints == 1 or self.Spell.Speed == math.huge then --Target not moving
@@ -2224,7 +2226,6 @@ function TargetPredictionVIP:GetPrediction(target)
                         vec.x, vec.z = math.cos(phi) * vec.x - math.sin(phi) * vec.z + vec2.x, math.sin(phi) * vec.x + math.cos(phi) * vec.z + vec2.z
                         return vec
                     end
-
                     local alpha = (math.atan2(B.y - A.y, B.x - A.x) - math.atan2(self.Spell.Source.z - hitPosition.z, self.Spell.Source.x - hitPosition.x)) % (2 * math.pi) --angle between movement and spell
                     local total = 1 - (math.abs((alpha % math.pi) - math.pi / 2) / (math.pi / 2)) --0 if the player walks in your direction or away from your direction, 1 if he walks orthogonal to you
                     local phi = alpha < math.pi and math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime)) or -math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime))
@@ -2249,8 +2250,9 @@ function TargetPredictionVIP:GetPrediction(target)
 end
 
 function TargetPredictionVIP:GetHitChance(target)
+    local pos, t = self:GetPrediction(target)
 	if self.Cache[target.networkID] and self.Cache[target.networkID].Chance then return self.Cache[target.networkID].Chance end
-    local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
+	local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
     local hitChance = 0
     local hC = {}
     --Track if the enemy arrived at its last waypoint and is invisible (lower hitchance)
@@ -2260,9 +2262,8 @@ function TargetPredictionVIP:GetHitChance(target)
         --Track how often the enemy moves. If he constantly moves, the hitchance is lower
         local rate = 1 - math.max(0, (self.WayPointManager:GetWayPointChangeRate(target) - 1)) / 5
         hC[#hC + 1] = rate; hC[#hC + 1] = rate; hC[#hC + 1] = rate
-        --Track the time the spell needs to hit the target. the higher it is, the lower the hitchance
-        local pos, t = self:GetPrediction(target)
-        if t then hC[#hC + 1] = math.min(math.max(0, 1 - t / 1), 1) end
+		--Track the time the spell needs to hit the target. the higher it is, the lower the hitchance
+		if t then hC[#hC + 1] = math.min(math.max(0, 1 - t / 1), 1) end
     end
     --Generate a value between 0 (no chance) and 100 (you'll hit for sure)
     hitChance = math.min(1, math.max(0, sum(hC) / #hC))
@@ -2303,10 +2304,11 @@ function TargetPredictionVIP:GetCollision(target)
     local prediction, hitTime, enhPrediction = self:GetPrediction(target)
     if self.Cache[target.networkID].Collision then return self.Cache[target.networkID].Collision end
     prediction = enhPrediction or prediction
+	if not prediction then return false end
     local o = { x = -(prediction.z - self.Spell.Source.z), y = prediction.x - self.Spell.Source.x }
     local len = math.sqrt(o.x ^ 2 + o.y ^ 2)
-	local minionHitBoxRadius = 15
-    o.x, o.y = o.x / len * ((self.Spell.Width / 2) + minionHitBoxRadius), o.y / len * ((self.Spell.Width / 2) + minionHitBoxRadius)
+	local minionHitBoxRadius = 100
+    o.x, o.y = ((self.Spell.Width / 2) + minionHitBoxRadius) * o.x / len, ((self.Spell.Width / 2) + minionHitBoxRadius) * o.y / len
     local spellBorder = {
         D3DXVECTOR2(self.Spell.Source.x + o.x, self.Spell.Source.z + o.y),
         D3DXVECTOR2(self.Spell.Source.x - o.x, self.Spell.Source.z - o.y),
