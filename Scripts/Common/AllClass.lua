@@ -2151,12 +2151,12 @@ end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --[[
-    Class: TargetPredictionVIP
+    Class: TargetPredictionVIP by gReY
         Note: Only works for VIP user
             uses the WayPointManager
     
     Methods:
-        TargetPredictionVIP(range, [proj_speed, delay, width])     
+        TargetPredictionVIP(range, [proj_speed, delay, width, fromPos])     
                                                     -- initializes the prediction class
                                                     -- base time format is seconds
                                                     -- example: proj_speed = 2000 (distance/seconds); delay = 0.25 (seconds);
@@ -2166,7 +2166,7 @@ end
         TargetPredictionVIP:GetHitChance(object)        
                                                     -- returns the hitchance (number from 0 to 1, 1 being best), calculations might seem ugly, and they will perhaps change in future
         TargetPredictionVIP:GetCollision(target)    
-    	                                            -- returns true or false depending on if there are minions in the way that would block the spell. This is more performance intense than older MinionCollision functions, but more accurate. 
+		                                            -- returns true or false depending on if there are minions in the way that would block the spell. This is more performance intense than older MinionCollision functions, but more accurate. 
 													-- It uses the Minion Waypoints to get its result. It is necessary that you give the TargetPredictionVIP a SpellWidth, or it won't work
 		TargetPredictionVIP:DrawPrediction(object, [color, size])
                                                     -- draws a line from you to the prediction
@@ -2187,10 +2187,10 @@ end
 ]]
 
 class'TargetPredictionVIP'
-function TargetPredictionVIP:__init(range, proj_speed, delay, width)
+function TargetPredictionVIP:__init(range, proj_speed, delay, width, fromPos)
     if not VIP_USER then self = nil return end
     self.WayPointManager = WayPointManager()
-    self.Spell = { RangeSqr = range ^ 2, Speed = proj_speed or math.huge, Delay = delay or 0, Width = width }
+    self.Spell = { Source = fromPos or myHero, RangeSqr = range and (range ^ 2) or math.huge, Speed = proj_speed or math.huge, Delay = delay or 0, Width = width }
     self.Cache = {}
 end
 
@@ -2203,7 +2203,7 @@ function TargetPredictionVIP:GetPrediction(target)
     local vec
     if #wayPoints == 1 or self.Spell.Speed == math.huge then --Target not moving
         hitPosition = { x = wayPoints[1].x, y = target.y, z = wayPoints[1].y };
-        hitTime = GetDistance(wayPoints[1]) / self.Spell.Speed
+        hitTime = GetDistance(wayPoints[1], self.Spell.Source) / self.Spell.Speed
         vec = self.Spell.Width and hitPosition
     else --Target Moving
         local travelTimeA = 0
@@ -2212,7 +2212,7 @@ function TargetPredictionVIP:GetPrediction(target)
             local wayPointDist = GetDistance(wayPoints[i], wayPoints[i + 1])
             local travelTimeB = travelTimeA + wayPointDist / target.ms
             local v1, v2 = target.ms, self.Spell.Speed
-            local r, S, j, K = player.x - A.x, v1 * (B.x - A.x) / wayPointDist, player.z - A.y, v1 * (B.y - A.y) / wayPointDist
+            local r, S, j, K = self.Spell.Source.x - A.x, v1 * (B.x - A.x) / wayPointDist, self.Spell.Source.z - A.y, v1 * (B.y - A.y) / wayPointDist
             local vv, jK, rS, SS, KK = v2 * v2, j * K, r * S, S * S, K * K
             local t = (jK + rS - math.sqrt(j * j * (vv - 1) + SS + 2 * jK * rS + r * r * (vv - KK))) / (KK + SS - vv)
             if travelTimeA <= t and t <= travelTimeB then
@@ -2225,10 +2225,10 @@ function TargetPredictionVIP:GetPrediction(target)
                         return vec
                     end
 
-                    local alpha = (math.atan2(B.y - A.y, B.x - A.x) - math.atan2(player.z - hitPosition.z, player.x - hitPosition.x)) % (2 * math.pi) --angle between movement and spell
+                    local alpha = (math.atan2(B.y - A.y, B.x - A.x) - math.atan2(self.Spell.Source.z - hitPosition.z, self.Spell.Source.x - hitPosition.x)) % (2 * math.pi) --angle between movement and spell
                     local total = 1 - (math.abs((alpha % math.pi) - math.pi / 2) / (math.pi / 2)) --0 if the player walks in your direction or away from your direction, 1 if he walks orthogonal to you
                     local phi = alpha < math.pi and math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime)) or -math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime))
-                    vec = rotate2D({ x = hitPosition.x, y = hitPosition.y, z = hitPosition.z }, player, phi * total)
+                    vec = rotate2D({ x = hitPosition.x, y = hitPosition.y, z = hitPosition.z }, self.Spell.Source, phi * total)
                 end
                 break
             end
@@ -2242,7 +2242,7 @@ function TargetPredictionVIP:GetPrediction(target)
             travelTimeA = travelTimeB
         end
     end
-    if hitPosition and self.Spell.RangeSqr >= GetDistanceSqr(hitPosition) then
+    if hitPosition and self.Spell.RangeSqr >= GetDistanceSqr(hitPosition, self.Spell.Source) then
         self.Cache[target.networkID].HitPosition, self.Cache[target.networkID].HitTime, self.Cache[target.networkID].ShootPosition = hitPosition, hitTime, vec
         return hitPosition, hitTime, vec
     end
@@ -2273,13 +2273,13 @@ end
 function TargetPredictionVIP:DrawPrediction(target, color, size)
     local pos, time, shoot = self:GetPrediction(target)
     if not pos then return end
-    DrawLine3D(pos.x, target.y, pos.z, player.x, player.y, player.z, size, color, true)
+    DrawLine3D(pos.x, target.y, pos.z, self.Spell.Source.x, self.Spell.Source.y, self.Spell.Source.z, size, color, true)
 end
 
 function TargetPredictionVIP:DrawPredictionRectangle(target, color, size)
     local pos, time, shoot = self:GetPrediction(target)
     if not shoot then return end
-    DrawLineBorder3D(shoot.x, target.y, shoot.z, player.x, player.y, player.z, self.Spell.Width, color, size or 1)
+    DrawLineBorder3D(shoot.x, target.y, shoot.z, self.Spell.Source.x, self.Spell.Source.y, self.Spell.Source.z, self.Spell.Width, color, size or 1)
 end
 
 function TargetPredictionVIP:DrawAnimatedPrediction(target, color1, color2, size1, size2, drawspeed)
@@ -2287,7 +2287,7 @@ function TargetPredictionVIP:DrawAnimatedPrediction(target, color1, color2, size
     local pos, time = self:GetPrediction(target)
     if pos then
         local r = GetDrawClock(drawspeed)
-        DrawLine3D(player.x, player.y, player.z, player.x + r * (pos.x - player.x), target.y, player.z + r * (pos.z - player.z), size1, color1)
+        DrawLine3D(self.Spell.Source.x, self.Spell.Source.y, self.Spell.Source.z, self.Spell.Source.x + r * (pos.x - self.Spell.Source.x), target.y, self.Spell.Source.z + r * (pos.z - self.Spell.Source.z), size1, color1)
         local points = {}
         for i, v in ipairs(WayPointManager:GetSimulatedWayPoints(target, 0, (self.Spell.Delay + time) * r)) do
             local c = WorldToScreen(D3DXVECTOR3(v.x, target.y, v.y))
@@ -2303,15 +2303,16 @@ function TargetPredictionVIP:GetCollision(target)
     local prediction, hitTime, enhPrediction = self:GetPrediction(target)
     if self.Cache[target.networkID].Collision then return self.Cache[target.networkID].Collision end
     prediction = enhPrediction or prediction
-    local o = { x = -(prediction.z - player.z), y = prediction.x - player.x }
+    local o = { x = -(prediction.z - self.Spell.Source.z), y = prediction.x - self.Spell.Source.x }
     local len = math.sqrt(o.x ^ 2 + o.y ^ 2)
-    o.x, o.y = o.x / len * self.Spell.Width / 2, o.y / len * self.Spell.Width / 2
+	local minionHitBoxRadius = 15
+    o.x, o.y = o.x / len * ((self.Spell.Width / 2) + minionHitBoxRadius), o.y / len * ((self.Spell.Width / 2) + minionHitBoxRadius)
     local spellBorder = {
-        D3DXVECTOR2(player.x + o.x, player.z + o.y),
-        D3DXVECTOR2(player.x - o.x, player.z - o.y),
+        D3DXVECTOR2(self.Spell.Source.x + o.x, self.Spell.Source.z + o.y),
+        D3DXVECTOR2(self.Spell.Source.x - o.x, self.Spell.Source.z - o.y),
         D3DXVECTOR2(prediction.x - o.x, prediction.z - o.y),
         D3DXVECTOR2(prediction.x + o.x, prediction.z + o.y),
-        D3DXVECTOR2(player.x + o.x, player.z + o.y),
+        D3DXVECTOR2(self.Spell.Source.x + o.x, self.Spell.Source.z + o.y),
     }
     self.MinionManager:update()
     for index, minion in pairs(self.MinionManager.objects) do
@@ -2322,8 +2323,8 @@ function TargetPredictionVIP:GetCollision(target)
                 return ccw(A, C, D) ~= ccw(B, C, D) and ccw(A, B, C) ~= ccw(A, B, D)
             end
             local function getSpellHitTime(position)
-                local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(player, prediction, position)
-                return isOnSegment and GetDistanceSqr(pointLine, position) < (self.Spell.Width / 2) ^ 2, GetDistance(player, pointLine) / self.Spell.Speed
+                local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(self.Spell.Source, prediction, position)
+                return isOnSegment and GetDistanceSqr(pointLine, position) < (self.Spell.Width / 2) ^ 2, GetDistance(self.Spell.Source, pointLine) / self.Spell.Speed
             end
 
             local absTimeTravelled = 0
@@ -2418,8 +2419,8 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
     assert(type(range) == "number", "TargetPrediction: wrong argument types (<number> expected for range)")
     _gameHeroes__init()
     TargetPrediction__Onload()
-    self.range = range
-    self.proj_speed = proj_speed
+    self.range = range or 0
+    self.proj_speed = proj_speed or math.huge
     self.delay = delay or 0
     self.width = widthCollision
     self.smoothness = smoothness
