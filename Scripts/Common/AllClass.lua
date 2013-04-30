@@ -2,6 +2,7 @@ player = GetMyHero()
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
+BOL_PATH = SCRIPT_PATH:gsub("Scripts\\", "")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 TEAM_ENEMY = player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE
 VIP_USER = CLoLPacket and true or false
@@ -2573,6 +2574,11 @@ function GetGame()
                     elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
                         _game.map = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15398 / 2, height = 15398 / 2 } }
                         break
+                    elseif math.floor(object.x) == 497 and math.floor(object.y) == -40 and math.floor(object.z) == 1932 then
+                        _game.map = { index = 12, name = "Howling Abyss", shortName = "howlingAbyss", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12876 / 2, height = 12877 / 2 } }
+                        break
+                    else
+                        PrintChat("New map : x = " .. math.floor(object.x).." - y = "..math.floor(object.y).." - z = "..math.floor(object.z))
                     end
                 end
             end
