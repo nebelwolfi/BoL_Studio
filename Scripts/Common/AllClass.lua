@@ -3115,18 +3115,27 @@ local _miniMap = { init = true }
 local function _miniMap__OnLoad()
     if _miniMap.init then
         function _miniMap__Reset()
+			local minimapRatio, minimapFlip, windowWidth, windowHeight = 1, 0, WINDOW_W, WINDOW_H
             local gameSettings = GetGameSettings()
-            local path = GAME_PATH.."DATA\\menu\\hud\\hud"..gameSettings.General.Width.."x"..gameSettings.General.Height..".ini"
-            local hudSettings = ReadIni(path)
-            local minimapRatio = (gameSettings.General.Height / 1080) * hudSettings.Globals.MinimapScale
+			if gameSettings and gameSettings.General and gameSettings.General.Width and gameSettings.General.Height then
+				windowWidth, windowHeight = gameSettings.General.Width, gameSettings.General.Height
+				local path = GAME_PATH.."DATA\\menu\\hud\\hud"..windowWidth.."x"..windowHeight..".ini"
+				local hudSettings = ReadIni(path)
+				if hudSettings and hudSettings.Globals and hudSettings.Globals.MinimapScale then
+					minimapRatio = (windowHeight / 1080) * hudSettings.Globals.MinimapScale
+				else
+					minimapRatio = (windowHeight / 1080)
+				end
+				if gameSettings.HUD and gameSettings.HUD.FlipMiniMap then minimapFlip = 1 end
+			end
             local map = GetGame().map
             _miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
-            if gameSettings.HUD.FlipMiniMap == 1 then
+            if minimapFlip then
                 _miniMap.x = 5 * minimapRatio - _miniMap.step.x * map.min.x
             else
-                _miniMap.x = gameSettings.General.Width - 270 * minimapRatio - _miniMap.step.x * map.min.x
+                _miniMap.x = windowWidth - 270 * minimapRatio - _miniMap.step.x * map.min.x
             end
-            _miniMap.y = gameSettings.General.Height - 8 * minimapRatio - _miniMap.step.y * map.min.y
+            _miniMap.y = windowHeight - 8 * minimapRatio - _miniMap.step.y * map.min.y
         end
         _miniMap__Reset()
         AddResetCallback(_miniMap__Reset)
