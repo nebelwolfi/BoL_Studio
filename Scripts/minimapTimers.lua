@@ -266,7 +266,41 @@ do
 					},
 				},
 			},
-		}
+		},
+		howlingAbyss = {
+			{	-- Heal
+				name = "Heal",
+				spawn = 190,
+				respawn = 40,
+				advise = false,
+				camps = {
+					{
+						pos = { x = 8922, y = 60, z = 7868 },
+						name = "monsterCamp_1",
+						creeps = { { { name = "HA_AP_HealthRelic1.1.1" }, }, },
+						team = TEAM_NEUTRAL,
+					},
+					{
+						pos = { x = 7473, y = 60, z = 6617 },
+						name = "monsterCamp_2",
+						creeps = { { { name = "HA_AP_HealthRelic2.1.1" }, }, },
+						team = TEAM_NEUTRAL,
+					},
+					{
+						pos = { x = 5929, y = 60, z = 5190 },
+						name = "monsterCamp_3",
+						creeps = { { { name = "HA_AP_HealthRelic3.1.1" }, }, },
+						team = TEAM_NEUTRAL,
+					},
+					{
+						pos = { x = 4751, y = 60, z = 3901 },
+						name = "monsterCamp_4",
+						creeps = { { { name = "HA_AP_HealthRelic4.1.1" }, }, },
+						team = TEAM_NEUTRAL,
+					},
+				},
+			},
+		},
 	}
 	
 	altars = {
@@ -295,6 +329,7 @@ do
 		},
 		crystalScar = {},
 		provingGrounds = {},
+		howlingAbyss = {},
 	}
 	
 	relics = {
@@ -323,6 +358,7 @@ do
 			},
 		},
 		provingGrounds = {},
+		howlingAbyss = {},
 	}
 
 	heals = {
@@ -337,6 +373,7 @@ do
 				objects = {},
 			},
 		},
+		howlingAbyss = {},
 	}
 	
 	inhibitors = {}
