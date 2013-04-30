@@ -3132,7 +3132,7 @@ local function _miniMap__OnLoad()
 				else
 					minimapRatio = (windowHeight / 1080)
 				end
-				if gameSettings.HUD and gameSettings.HUD.FlipMiniMap then minimapFlip = 1 end
+				if gameSettings.HUD and gameSettings.HUD.FlipMiniMap and gameSettings.HUD.FlipMiniMap == 1 then minimapFlip = 1 end
 			end
             local map = GetGame().map
             _miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
