@@ -83,7 +83,7 @@ do
 	end
 	
 	function OnLoad()
-		checkFountain = (GetGame().map.index ~= 7) -- no heal in Proving Ground
+		checkFountain = (GetGame().map.index ~= 7 && GetGame().map.index ~= 12) -- no heal in Proving Ground / ARAM
 	end
 	
 	function OnTick()
