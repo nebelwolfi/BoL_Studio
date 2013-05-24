@@ -2576,7 +2576,7 @@ function GetGame()
                         _game.map = { index = 8, name = "The Crystal Scar", shortName = "crystalScar", min = { x = -15, y = 0 }, max = { x = 13911, y = 13703 }, x = 13926, y = 13703, grid = { width = 13894 / 2, height = 13218 / 2 } }
                         break
                     elseif math.floor(object.x) == 1313 and math.floor(object.y) == 123 and math.floor(object.z) == 8005 then
-                        _game.map = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15415 / 2, height = 14455 / 2 } }
+                        _game.map = { index = 10, name = "The Twisted Treeline Beta", shortName = "twistedTreeline", min = { x = 0, y = 0 }, max = { x = 15398, y = 15398 }, x = 15398, y = 15398, grid = { width = 15416 / 2, height = 14454 / 2 } }
                         break
                     elseif math.floor(object.x) == 497 and math.floor(object.y) == -40 and math.floor(object.z) == 1932 then
                         _game.map = { index = 12, name = "Howling Abyss", shortName = "howlingAbyss", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 12876 / 2, height = 12877 / 2 } }
