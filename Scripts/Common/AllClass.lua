@@ -1,10 +1,8 @@
-player = GetMyHero()
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
 SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 BOL_PATH = SCRIPT_PATH:gsub("Scripts\\", "")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
-TEAM_ENEMY = player.team == TEAM_BLUE and TEAM_RED or TEAM_BLUE
 VIP_USER = CLoLPacket and true or false
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
