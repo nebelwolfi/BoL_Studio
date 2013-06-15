@@ -2667,7 +2667,7 @@ MINION_SORT_MAXHEALTH_ASC = function(a, b) return a.maxHealth < b.maxHealth end
 MINION_SORT_MAXHEALTH_DEC = function(a, b) return a.maxHealth > b.maxHealth end
 MINION_SORT_AD_ASC = function(a, b) return a.ad < b.ad end
 MINION_SORT_AD_DEC = function(a, b) return a.ad > b.ad end
-local __minionManager__OnCreateObj, __minionManager__SanityCheck
+local __minionManager__OnCreateObj
 local function minionManager__OnLoad()
     if _minionManager.init then
         local mapIndex = GetGame().map.index
@@ -2680,36 +2680,21 @@ local function minionManager__OnLoad()
         end
         if not __minionManager__OnCreateObj then
             function __minionManager__OnCreateObj(object)
-                if object and object.type == "obj_AI_Minion" and object.name and not object.dead then
-                    local name = object.name
-                    table.insert(_minionTable[MINION_ALL], object)
-                    if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
-                    elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
-                    elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
-                    else table.insert(_minionTable[MINION_OTHER], object)
-                    end
-                end
+				if object and object.valid and object.type == "obj_AI_Minion" then
+					DelayAction(function(object)
+						if object and object.valid and object.type == "obj_AI_Minion" and object.name and not object.dead then
+							local name = object.name
+							table.insert(_minionTable[MINION_ALL], object)
+							if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
+							elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
+							elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
+							else table.insert(_minionTable[MINION_OTHER], object)
+							end
+						end
+					end,0,{object})
+				end
             end
-
             AddCreateObjCallback(__minionManager__OnCreateObj)
-        end
-        if not __minionManager__SanityCheck then
-            function __minionManager__SanityCheck()
-                -- sanity check each 10 sec
-                if _minionManager.tick < GetTickCount() then
-                    _minionManager.tick = GetTickCount() + 10000
-                    for i = MINION_ALL, MINION_OTHER do
-                        for j = 1, #_minionTable[i] do
-                            if not _minionTable[i][j] or not _minionTable[i][j].valid or _minionTable[i][j].dead then
-                                table.remove(_minionTable[i], j)
-                                j = j - 1
-                            end
-                        end
-                    end
-                end
-            end
-
-            AddTickCallback(__minionManager__SanityCheck)
         end
         for i = 1, objManager.maxObjects do
             __minionManager__OnCreateObj(objManager:getObject(i))
