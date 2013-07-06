@@ -4,6 +4,7 @@ SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
 BOL_PATH = SCRIPT_PATH:gsub("Scripts\\", "")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 VIP_USER = CLoLPacket and true or false
+
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
     p2 = p2 or player
@@ -415,18 +416,29 @@ function DelayAction(func, delay, args) --delay in seconds
         function delayedActionsExecuter()
             for t, funcs in pairs(delayedActions) do
                 if t <= os.clock() then
-                    for _, f in ipairs(funcs) do f.func(f.args and table.unpack(f.args)) end
+                    for _, f in ipairs(funcs) do f.func(table.unpack(f.args or {})) end
                     delayedActions[t] = nil
                 end
             end
         end
-
         AddTickCallback(delayedActionsExecuter)
     end
     local t = os.clock() + (delay or 0)
     if delayedActions[t] then table.insert(delayedActions[t], { func = func, args = args })
     else delayedActions[t] = { { func = func, args = args } }
     end
+end
+
+local _intervalFunction
+function SetInterval(userFunction, timeout, count, params)
+	if not _intervalFunction then 
+		function _intervalFunction(userFunction, startTime, timeout, count, params)
+			if userFunction(table.unpack(params or {})) ~= false and (not count or count > 1) then
+				DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params})
+			end
+		end
+	end
+    DelayAction(_intervalFunction, timeout, {userFunction, os.clock(), timeout or 0, count, params})
 end
 
 local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle
