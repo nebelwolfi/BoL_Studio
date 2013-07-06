@@ -285,7 +285,7 @@ end
 
 -- Example: foldernames, filenames = ScanDirectory([[C:\]])
 function ScanDirectory(path)
-    path = path or BOL_PATH
+    path = path and path:gsub([[/]], [[\]]) or BOL_PATH:gsub([[/]], [[\]])
     local h = io.popen('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path..'"')
     local c = h:read("*all"):split("/")
     SetForeground()
