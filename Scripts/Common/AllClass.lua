@@ -283,6 +283,19 @@ function DirectoryExist(path)
     return RunCmdCommand("cd " .. string.gsub(path, [[/]], [[\]])) == 0
 end
 
+-- Example: foldernames, filenames = ScanDirectory([[C:\]])
+function ScanDirectory(path)
+    path = path or BOL_PATH
+    local h = io.popen('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path)
+    local c = h:read("*all")
+    SetForeground()
+    assert(h:close()==true,"ScanDirectory: No such File or Directory ("..(path or BOL_PATH)..")")
+    c = c:split([[/]])
+    local dirs, files = c[1]:split("\n"), c[2]:split("\n")
+    dirs[#dirs], files[#files] = nil, nil
+    return dirs, files
+end
+
 --Creates the Common and Sprites Folder if not present, returns true if it created folders
 local folderFixed = false
 local function fixFolders()
