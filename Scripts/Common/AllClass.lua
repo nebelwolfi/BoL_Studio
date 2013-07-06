@@ -286,14 +286,11 @@ end
 -- Example: foldernames, filenames = ScanDirectory([[C:\]])
 function ScanDirectory(path)
     path = path or BOL_PATH
-    local h = io.popen('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path)
-    local c = h:read("*all")
+    local h = io.popen('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path..'"')
+    local c = h:read("*all"):split("/")
     SetForeground()
-    assert(h:close()==true,"ScanDirectory: No such File or Directory ("..(path or BOL_PATH)..")")
-    c = c:split([[/]])
-    local dirs, files = c[1]:split("\n"), c[2]:split("\n")
-    dirs[#dirs], files[#files] = nil, nil
-    return dirs, files
+    assert(h:close(),"ScanDirectory: No such File or Directory ("..path..")")
+    return c[1]:trim():split("\n"), c[2]:trim():split("\n")
 end
 
 --Creates the Common and Sprites Folder if not present, returns true if it created folders
