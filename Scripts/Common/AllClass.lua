@@ -1354,14 +1354,6 @@ end
 class'WayPointManager'
 local WayPoints, WayPointRate, WayPointVisibility
 
-local function WayPointManager_OnTick()
-    for _, hero in ipairs(GetEnemyHeroes()) do
-        if hero.visible then WayPointVisibility[hero.networkID] = nil
-        elseif not WayPointVisibility[hero.networkID] then WayPointVisibility[hero.networkID] = os.clock()
-        end
-    end
-end
-
 local function WayPointManager_OnRecvPacket(p)
     if p.header == Packet.headers.R_WAYPOINT then
         local packet = Packet(p)
@@ -1407,8 +1399,10 @@ function WayPointManager:__init()
         if AddRecvPacketCallback then
             AddDeleteObjCallback(WayPointManager_OnDeleteObject)
             AddRecvPacketCallback(WayPointManager_OnRecvPacket)
-            AddTickCallback(WayPointManager_OnTick) --I hope I can replace this in future with a status update callback
-        end
+			AdvancedCallback:bind('OnLoseVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = os.clock() end end)
+			AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = nil end end)
+			AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team==TEAM_ENEMY and hero.networkID==hero.networkID and hero.networkID~=0 then WayPoints[hero.networkID] = {{x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z}} WayPointVisibility[hero.networkID] = nil end end)
+		end
     end
 end
 
@@ -1448,7 +1442,7 @@ end
 
 function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
-    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or 0
+    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or ((not object.visible and  not WayPointVisibility[object.networkID]) and math.huge or 0)
     fromT = fromT + invisDur
     local tTime, fTime, result = 0, 0, {}
     for i = 1, #wayPoints - 1 do
@@ -2925,6 +2919,35 @@ function UnderTurret(pos, enemyTurret)
         end
     end
     return false
+end
+
+--Spawn
+local _allySpawn
+function GetSpawnPos()
+	if not _allySpawn then
+        for i = 1, objManager.maxObjects, 1 do
+            local object = objManager:getObject(i)
+            if object and object.valid and object.type == "obj_SpawnPoint" and object.team==player.team then
+                _allySpawn = Vector(object.x, object.y, object.z)
+                return _allySpawn
+            end
+        end
+    end
+	return _allySpawn
+end
+
+local _enemySpawn
+function GetEnemySpawnPos()
+	if not _enemySpawn then
+        for i = 1, objManager.maxObjects, 1 do
+            local object = objManager:getObject(i)
+            if object and object.valid and object.type == "obj_SpawnPoint" and object.team==TEAM_ENEMY then
+                _enemySpawn = Vector(object.x, object.y, object.z)
+                return _enemySpawn
+            end
+        end
+    end
+	return _enemySpawn
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
