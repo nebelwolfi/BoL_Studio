@@ -286,12 +286,18 @@ end
 
 -- Example: foldernames, filenames = ScanDirectory([[C:\]])
 function ScanDirectory(path)
+	assert(type(path) == "string" and #path>0, "ScanDirectory: wrong argument types (<string> expected for path)")
     path = path and path:gsub([[/]], [[\]]) or BOL_PATH:gsub([[/]], [[\]])
-    local h = io.popen('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path..'"')
-    local c = h:read("*all"):split("/")
-    SetForeground()
-    assert(h:close(),"ScanDirectory: No such File or Directory ("..path..")")
-    return c[1]:trim():split("\n"), c[2]:trim():split("\n")
+    local c = PopenHidden('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path..'"'):split("/")
+	assert(#c==2,"ScanDirectory: No such File or Directory ("..path..")")
+	return c[1]:trim():split("\n"), c[2]:trim():split("\n")
+end
+
+-- Example: exist = ProcessExist("League of Legends")
+function ProcessExist(name)
+	assert(type(name) == "string" and #name>0, "ProcessExist: wrong argument types (<string> expected for path)")
+	name = name:gsub(".exe","",1):trim()
+    return RunCmdCommand('tasklist /FI "IMAGENAME eq '..name..'.exe" 2>NUL | find /I /N "'..name..'.exe">NUL') == 0
 end
 
 --Creates the Common and Sprites Folder if not present, returns true if it created folders
@@ -441,13 +447,13 @@ function SetInterval(userFunction, timeout, count, params)
     DelayAction(_intervalFunction, timeout, {userFunction, os.clock(), timeout or 0, count, params})
 end
 
-local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle
+local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle, _DrawRectangle, _DrawLines, _DrawLines2 = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle, DrawRectangle, DrawLines, DrawLines2
 function EnableOverlay()
-    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle
+    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle, _G.DrawRectangle, _G.DrawLines, _G.DrawLines2 = _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle, _DrawRectangle, _DrawLines, _DrawLines2
 end
 
 function DisableOverlay()
-    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle = function() end, function() end, function() end, function() end, function() end, function() end
+    _G.DrawText, _G.PrintChat, _G.PrintFloatText, _G.DrawLine, _G.DrawArrow, _G.DrawCircle, _G.DrawRectangle, _G.DrawLines, _G.DrawLines2 = function() end, function() end, function() end, function() end, function() end, function() end, function() end, function() end, function() end
 end
 
 function QuitGame(timeout)
