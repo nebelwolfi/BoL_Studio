@@ -286,17 +286,19 @@ end
 
 -- Example: foldernames, filenames = ScanDirectory([[C:\]])
 function ScanDirectory(path)
-	assert(type(path) == "string" and #path>0, "ScanDirectory: wrong argument types (<string> expected for path)")
+    assert(type(path) == "string" and #path>0, "ScanDirectory: wrong argument types (<string> expected for path)")
     path = path and path:gsub([[/]], [[\]]) or BOL_PATH:gsub([[/]], [[\]])
-    local c = PopenHidden('dir /b /a:d "'..path..'" && echo / && dir /b /a:-d "'..path..'"'):split("/")
-	assert(#c==2,"ScanDirectory: No such File or Directory ("..path..")")
-	return c[1]:trim():split("\n"), c[2]:trim():split("\n")
+    local dirCmd, fileCmd = 'dir /b /a:d-s "'..path..'"', 'dir /b /a:-d-s "'..path..'"'
+    local dirs, files = {}, {}
+    if RunCmdCommand(dirCmd)==0 then dirs = PopenHidden(dirCmd):trim():split("\n") end
+    if RunCmdCommand(fileCmd)==0 then files = PopenHidden(fileCmd):trim():split("\n") end
+    return dirs, files
 end
 
 -- Example: exist = ProcessExist("League of Legends")
 function ProcessExist(name)
-	assert(type(name) == "string" and #name>0, "ProcessExist: wrong argument types (<string> expected for path)")
-	name = name:gsub(".exe","",1):trim()
+    assert(type(name) == "string" and #name>0, "ProcessExist: wrong argument types (<string> expected for path)")
+    name = name:gsub(".exe","",1):trim()
     return RunCmdCommand('tasklist /FI "IMAGENAME eq '..name..'.exe" 2>NUL | find /I /N "'..name..'.exe">NUL') == 0
 end
 
@@ -437,13 +439,13 @@ end
 
 local _intervalFunction
 function SetInterval(userFunction, timeout, count, params)
-	if not _intervalFunction then 
-		function _intervalFunction(userFunction, startTime, timeout, count, params)
-			if userFunction(table.unpack(params or {})) ~= false and (not count or count > 1) then
-				DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params})
-			end
-		end
-	end
+    if not _intervalFunction then 
+        function _intervalFunction(userFunction, startTime, timeout, count, params)
+            if userFunction(table.unpack(params or {})) ~= false and (not count or count > 1) then
+                DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params})
+            end
+        end
+    end
     DelayAction(_intervalFunction, timeout, {userFunction, os.clock(), timeout or 0, count, params})
 end
 
@@ -778,7 +780,7 @@ end
         isOnSegment = if the point closest to the line is on the segment
 ]]
 function VectorPointProjectionOnLineSegment(v1, v2, v)
-	assert(v1 and v2 and v, debug.traceback())
+    assert(v1 and v2 and v, debug.traceback())
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
     local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
     local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
@@ -1373,8 +1375,8 @@ local function WayPointManager_OnRecvPacket(p)
                 if WayPointRate[networkID] then
                     local wps = WayPoints[networkID]
                     local lwp, found = wps[#wps], false
-					for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
-						local A, B = wayPoints[i], wayPoints[i + 1]
+                    for i = #wayPoints - 1, math.max(2, #wayPoints - 3), -1 do
+                        local A, B = wayPoints[i], wayPoints[i + 1]
                         if lwp and A and B and GetDistanceSqr(lwp, VectorPointProjectionOnLineSegment(lwp, A, B)) < 1000 then found = true break end
                     end
                     if not found then WayPointRate[networkID]:pushleft(os.clock()) end
@@ -1405,15 +1407,15 @@ function WayPointManager:__init()
         if AddRecvPacketCallback then
             AddDeleteObjCallback(WayPointManager_OnDeleteObject)
             AddRecvPacketCallback(WayPointManager_OnRecvPacket)
-			AdvancedCallback:bind('OnLoseVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = os.clock() end end)
-			AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = nil end end)
-			AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team==TEAM_ENEMY and hero.networkID==hero.networkID and hero.networkID~=0 then WayPoints[hero.networkID] = {{x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z}} WayPointVisibility[hero.networkID] = nil end end)
-		end
+            AdvancedCallback:bind('OnLoseVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = os.clock() end end)
+            AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = nil end end)
+            AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team==TEAM_ENEMY and hero.networkID==hero.networkID and hero.networkID~=0 then WayPoints[hero.networkID] = {{x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z}} WayPointVisibility[hero.networkID] = nil end end)
+        end
     end
 end
 
 function WayPointManager:GetRawWayPoints(object)
-	return WayPoints[object.networkID]
+    return WayPoints[object.networkID]
 end
 
 function WayPointManager:GetWayPoints(object)
@@ -2193,9 +2195,9 @@ end
         TargetPredictionVIP:GetHitChance(object)        
                                                     -- returns the hitchance (number from 0 to 1, 1 being best), calculations might seem ugly, and they will perhaps change in future
         TargetPredictionVIP:GetCollision(target)    
-		                                            -- returns true or false depending on if there are minions in the way that would block the spell. This is more performance intense than older MinionCollision functions, but more accurate. 
-													-- It uses the Minion Waypoints to get its result. It is necessary that you give the TargetPredictionVIP a SpellWidth, or it won't work
-		TargetPredictionVIP:DrawPrediction(object, [color, size])
+                                                    -- returns true or false depending on if there are minions in the way that would block the spell. This is more performance intense than older MinionCollision functions, but more accurate. 
+                                                    -- It uses the Minion Waypoints to get its result. It is necessary that you give the TargetPredictionVIP a SpellWidth, or it won't work
+        TargetPredictionVIP:DrawPrediction(object, [color, size])
                                                     -- draws a line from you to the prediction
         TargetPredictionVIP:DrawWayPoints(obj, [color, size, fromT, toT])
                                                     -- draws the WayPoints of an Object
@@ -2276,8 +2278,8 @@ end
 
 function TargetPredictionVIP:GetHitChance(target)
     local pos, t = self:GetPrediction(target)
-	if self.Cache[target.networkID] and self.Cache[target.networkID].Chance then return self.Cache[target.networkID].Chance end
-	local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
+    if self.Cache[target.networkID] and self.Cache[target.networkID].Chance then return self.Cache[target.networkID].Chance end
+    local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
     local hitChance = 0
     local hC = {}
     --Track if the enemy arrived at its last waypoint and is invisible (lower hitchance)
@@ -2287,13 +2289,13 @@ function TargetPredictionVIP:GetHitChance(target)
         --Track how often the enemy moves. If he constantly moves, the hitchance is lower
         local rate = 1 - math.max(0, (self.WayPointManager:GetWayPointChangeRate(target) - 1)) / 5
         hC[#hC + 1] = rate; hC[#hC + 1] = rate; hC[#hC + 1] = rate
-		--Track the time the spell needs to hit the target. the higher it is, the lower the hitchance
-		if t then hC[#hC + 1] = math.min(math.max(0, 1 - t / 1), 1) end
+        --Track the time the spell needs to hit the target. the higher it is, the lower the hitchance
+        if t then hC[#hC + 1] = math.min(math.max(0, 1 - t / 1), 1) end
     end
     --Generate a value between 0 (no chance) and 100 (you'll hit for sure)
     hitChance = math.min(1, math.max(0, sum(hC) / #hC))
-	if self.Cache[target.networkID] then self.Cache[target.networkID].Chance = hitChance end
-	return hitChance
+    if self.Cache[target.networkID] then self.Cache[target.networkID].Chance = hitChance end
+    return hitChance
 end
 
 function TargetPredictionVIP:DrawPrediction(target, color, size)
@@ -2329,10 +2331,10 @@ function TargetPredictionVIP:GetCollision(target)
     local prediction, hitTime, enhPrediction = self:GetPrediction(target)
     if self.Cache[target.networkID].Collision then return self.Cache[target.networkID].Collision end
     prediction = enhPrediction or prediction
-	if not prediction then return false end
+    if not prediction then return false end
     local o = { x = -(prediction.z - self.Spell.Source.z), y = prediction.x - self.Spell.Source.x }
     local len = math.sqrt(o.x ^ 2 + o.y ^ 2)
-	local minionHitBoxRadius = 100
+    local minionHitBoxRadius = 100
     o.x, o.y = ((self.Spell.Width / 2) + minionHitBoxRadius) * o.x / len, ((self.Spell.Width / 2) + minionHitBoxRadius) * o.y / len
     local spellBorder = {
         D3DXVECTOR2(self.Spell.Source.x + o.x, self.Spell.Source.z + o.y),
@@ -2366,14 +2368,14 @@ function TargetPredictionVIP:GetCollision(target)
                 for i = 1, #spellBorder - 1 do
                     local C, D = spellBorder[i], spellBorder[i + 1]
                     if intersect(A, B, C, D) then
-						local intersection = VectorIntersection(A, B, C, D)
-						local cTimeTravelled = absTimeTravelled + GetDistance(A, intersection) / minion.ms
-						local isInRect, hitMinionT = getSpellHitTime(intersection)
+                        local intersection = VectorIntersection(A, B, C, D)
+                        local cTimeTravelled = absTimeTravelled + GetDistance(A, intersection) / minion.ms
+                        local isInRect, hitMinionT = getSpellHitTime(intersection)
                         minionIn, minionOut = math.min(minionIn, cTimeTravelled), math.max(minionOut, cTimeTravelled)
                         minSpellT, maxSpellT  = math.min(hitMinionT, minSpellT), math.max(hitMinionT, maxSpellT)
                     end
                 end
-				
+                
                 if not (minionIn > maxSpellT or minSpellT > minionOut) then
                     self.Cache[target.networkID].Collision = true
                     return true
@@ -2702,19 +2704,19 @@ local function minionManager__OnLoad()
         end
         if not __minionManager__OnCreateObj then
             function __minionManager__OnCreateObj(object)
-				if object and object.valid and object.type == "obj_AI_Minion" then
-					DelayAction(function(object)
-						if object and object.valid and object.type == "obj_AI_Minion" and object.name and not object.dead then
-							local name = object.name
-							table.insert(_minionTable[MINION_ALL], object)
-							if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
-							elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
-							elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
-							else table.insert(_minionTable[MINION_OTHER], object)
-							end
-						end
-					end,0,{object})
-				end
+                if object and object.valid and object.type == "obj_AI_Minion" then
+                    DelayAction(function(object)
+                        if object and object.valid and object.type == "obj_AI_Minion" and object.name and not object.dead then
+                            local name = object.name
+                            table.insert(_minionTable[MINION_ALL], object)
+                            if name:sub(1, #_minionManager.ally) == _minionManager.ally then table.insert(_minionTable[MINION_ALLY], object)
+                            elseif name:sub(1, #_minionManager.enemy) == _minionManager.enemy then table.insert(_minionTable[MINION_ENEMY], object)
+                            elseif object.team == TEAM_NEUTRAL then table.insert(_minionTable[MINION_JUNGLE], object)
+                            else table.insert(_minionTable[MINION_OTHER], object)
+                            end
+                        end
+                    end,0,{object})
+                end
             end
             AddCreateObjCallback(__minionManager__OnCreateObj)
         end
@@ -2930,7 +2932,7 @@ end
 --Spawn
 local _allySpawn
 function GetSpawnPos()
-	if not _allySpawn then
+    if not _allySpawn then
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
             if object and object.valid and object.type == "obj_SpawnPoint" and object.team==player.team then
@@ -2939,12 +2941,12 @@ function GetSpawnPos()
             end
         end
     end
-	return _allySpawn
+    return _allySpawn
 end
 
 local _enemySpawn
 function GetEnemySpawnPos()
-	if not _enemySpawn then
+    if not _enemySpawn then
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
             if object and object.valid and object.type == "obj_SpawnPoint" and object.team==TEAM_ENEMY then
@@ -2953,7 +2955,7 @@ function GetEnemySpawnPos()
             end
         end
     end
-	return _enemySpawn
+    return _enemySpawn
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3159,19 +3161,19 @@ local _miniMap = { init = true }
 local function _miniMap__OnLoad()
     if _miniMap.init then
         function _miniMap__Reset()
-			local minimapRatio, minimapFlip, windowWidth, windowHeight = 1, false, WINDOW_W, WINDOW_H
+            local minimapRatio, minimapFlip, windowWidth, windowHeight = 1, false, WINDOW_W, WINDOW_H
             local gameSettings = GetGameSettings()
-			if gameSettings and gameSettings.General and gameSettings.General.Width and gameSettings.General.Height then
-				windowWidth, windowHeight = gameSettings.General.Width, gameSettings.General.Height
-				local path = GAME_PATH.."DATA\\menu\\hud\\hud"..windowWidth.."x"..windowHeight..".ini"
-				local hudSettings = ReadIni(path)
-				if hudSettings and hudSettings.Globals and hudSettings.Globals.MinimapScale then
-					minimapRatio = (windowHeight / 1080) * hudSettings.Globals.MinimapScale
-				else
-					minimapRatio = (windowHeight / 1080)
-				end
-				minimapFlip = (gameSettings.HUD and gameSettings.HUD.FlipMiniMap and gameSettings.HUD.FlipMiniMap == 1)
-			end
+            if gameSettings and gameSettings.General and gameSettings.General.Width and gameSettings.General.Height then
+                windowWidth, windowHeight = gameSettings.General.Width, gameSettings.General.Height
+                local path = GAME_PATH.."DATA\\menu\\hud\\hud"..windowWidth.."x"..windowHeight..".ini"
+                local hudSettings = ReadIni(path)
+                if hudSettings and hudSettings.Globals and hudSettings.Globals.MinimapScale then
+                    minimapRatio = (windowHeight / 1080) * hudSettings.Globals.MinimapScale
+                else
+                    minimapRatio = (windowHeight / 1080)
+                end
+                minimapFlip = (gameSettings.HUD and gameSettings.HUD.FlipMiniMap and gameSettings.HUD.FlipMiniMap == 1)
+            end
             local map = GetGame().map
             _miniMap.step = { x = 265 * minimapRatio / map.x, y = -264 * minimapRatio / map.y }
             if minimapFlip then
