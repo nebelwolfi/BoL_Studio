@@ -94,7 +94,7 @@ function GetDrawClock(time, offset)
 end
 
 function table.clear(t)
-    for i, v in pairs(t) do
+	for i, v in pairs(t) do
 		t[i] = nil
 	end
 end
@@ -276,6 +276,18 @@ end
 
 function PlaySoundPS(path, duration)
 	os.executePowerShellAsync('(new-object Media.SoundPlayer "'..path.. '").play();\nfor ($i=1; $i -le '..(duration or 1000)..'; $i++) {Start-Sleep -seconds 1}')
+end
+
+function PlayMediaPS(path, duration)
+	local script = [[$si = new-object System.Diagnostics.ProcessStartInfo;
+$si.fileName = "]]..path..[[" ;
+$si.windowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden;
+$process = New-Object System.Diagnostics.Process;
+$process.startInfo=$si;
+$process.start();
+]]..(duration and ([[start-sleep -seconds ]]..duration..[[;
+$process.CloseMainWindow();]]) or "")
+	return os.executePowerShellAsync(script)
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
