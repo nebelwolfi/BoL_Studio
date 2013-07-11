@@ -1,6 +1,6 @@
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
-SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites")
+SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites"):gsub("/","\\")
 BOL_PATH = SCRIPT_PATH:gsub("Scripts\\", "")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 VIP_USER = CLoLPacket and true or false
@@ -91,6 +91,12 @@ end
 function GetDrawClock(time, offset)
     time, offset = time or 1, offset or 0
     return (os.clock()+offset)%time/time
+end
+
+function table.clear(t)
+    for i, v in pairs(t) do
+		t[i] = nil
+	end
 end
 
 function table.copy(from)
@@ -238,11 +244,7 @@ local function Base64Unicode(text)
 end
 
 function os.executePowerShell(script, argument)
-    local handle = io.popen("powershell " .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"", "r")
-    if not handle then return false, "" end
-    local output = handle:read("*all")
-    SetForeground()
-    return handle:close() == true, output
+    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"")
 end
 
 function os.executePowerShellAsync(script, argument)
@@ -270,6 +272,10 @@ $h = (ps "League of Legends").MainWindowHandle;
 [User32]::ShowWindowAsync($h,9);
 [User32]::SetForegroundWindow($h);]]
     os.executePowerShellAsync(script)
+end
+
+function PlaySoundPS(path, duration)
+	os.executePowerShellAsync('(new-object Media.SoundPlayer "'..path.. '").play();\nfor ($i=1; $i -le '..(duration or 1000)..'; $i++) {Start-Sleep -seconds 1}')
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
@@ -378,12 +384,14 @@ function ReadIni(path)
     local t, section = {}, nil
     for _, s in ipairs(raw:split("\n")) do
         local v = s:trim()
-        if v:sub(1, 1) == ";" or v:sub(1, 1) == "#" then --Comment
-        elseif v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
+		local commentBegin = v:find(";") or v:find("#")
+		if commentBegin then v = v:sub(1,commentBegin) end
+		if v:sub(1,3) == "tr " then v = v:sub(4,#v) end --ignore
+		if v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
             section = v:sub(2, #v - 1):trim()
             t[section] = {}
         elseif section and v:find("=") then --Key = Value
-            local kv = v:split("=")
+            local kv = v:split("=",2)
             if #kv == 2 then
                 local key, value = kv[1]:trim(), kv[2]:trim()
                 if value:lower() == "true" then value = true
@@ -394,12 +402,215 @@ function ReadIni(path)
                     value = value:sub(2, #value - 1):trim()
                 end
                 if key ~= "" and value ~= "" then
-                    t[section][key] = value
+                    if section then t[section][key] = value else t[key] = value end
+                end
+            end
+		end
+    end
+    return t
+end
+
+--[[
+	Function 
+		GetItem(what)
+			returns an item.
+			You can use the English name, the id (recommended) or the Itemslot to get the Item
+			Example : GetItem(3070), GetItem(ITEM_1), GetItem("Healing Potion")
+		GetItemDB([callback])
+			returns a list with all the Items ingame
+			You can also insert a callback, since it might happen that it has no Items at all, 
+			the first time you start it, since it has to extract all necessary data
+			
+		Items:
+			They have the following Properties (and more) 
+			GetName([localization]),GetDescription([localization]),Buy(),Sell(),GetCount(),GetInventorySlot(),GetSprite(),Cast([x,z])
+			id, icon, gold (total, sell, base), from, into, stats, tags ...
+			For a more detailed content, look in the items.json in the RAF Archives (Data\Items\items.json), which will be also extracted to BoL\Sprites, if you use this function the first time			
+		
+		You can get your current Localization with the function GetLocalization()
+		
+		Example:
+		function OnLoad()
+			for i, item in pairs(GetItemDB) do
+				print(item:GetName(GetLocalization()),"\n")
+				for i, ingredient in pairs(item.from or {}) do
+					print("\t-> ",ingredient:GetName(GetLocalization()),"\n")
+				end
+			end
+		end
+]]
+
+local _items, _itemsLoaded, _onItemsLoaded, _onRafLoaded = {}, false, {}, nil
+function GetItem(i)
+    local item
+    if type(i)=="number" then
+        if i>=1000 then item = GetItemDB()[i]
+        else
+            item = GetItem(player:getItem(i).id)
+        end
+    elseif type(i)=="string" then
+        for i, v in pairs(GetItemDB()) do
+            if v:GetName():trim():lower() == i:trim():lower() then item = v break end
+        end
+    end
+    return item, _itemsLoaded
+end
+
+function GetItemDB(OnLoaded)
+    local function ParseItems(RAF)
+        local itemsJSON = ReadFile(SPRITE_PATH.."Items\\items.json")
+        itemsJSON = JSON:decode(itemsJSON)
+        local basicItem = itemsJSON.basicitem
+        for i, itemJSON in pairs(itemsJSON.items) do
+            if not _items[tonumber(itemJSON.id)] then _items[tonumber(itemJSON.id)] = table.copy(basicItem) end
+            local item = _items[tonumber(itemJSON.id)]
+            for j, p in pairs(itemJSON) do
+                if j == "id" then item[j] = tonumber(p)
+                elseif j == "into" or j=="from" then
+                    item[j] = {}
+                    for k, id in pairs(itemJSON[j]) do
+                        if not _items[tonumber(id)] then _items[tonumber(id)] = table.copy(basicItem) end
+                        item[j][k] = _items[tonumber(id)]
+                    end
+                elseif j == "itemgroup" then
+                    local index, content = table.contains(itemsJSON.itemgroups, p, groupid)
+                    item[j] = { [p] = content }
+                elseif j == "icon" and RAF then
+                    if not FileExist(SPRITE_PATH.."Items\\"..p) then
+                        RAF:find("DATA\\Items\\Icons2D\\"..p):extract(SPRITE_PATH.."Items\\"..p)
+                    end
+                    item[j] = p
+                elseif j=="name" or j== "description" then
+                else
+                    item[j] = p
                 end
             end
         end
+        for i, v in pairs(_items) do
+            function v:GetName(localization)
+                localization = localization or "en_US"
+                if not self["name_"..localization] then self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization) end
+                return self["name_"..localization]
+            end
+            function v:GetDescription(localization)
+                localization = localization or "en_US"
+                if not self["desc_"..localization] then self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization) end
+                return self["desc_"..localization]
+            end
+            function v:Sell()
+                SellItem(self:GetInventorySlot())
+            end
+            function v:Buy()
+                BuyItem(self.id)
+            end
+            function v:GetCount()
+                local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
+                for i = 1, 6, 1 do
+                    local item = player:getItem(ItemSlot[i])
+                    if item and item.id == self.id then
+                        count = count + math.max(item.stacks or 1,1)
+                    end
+                end
+                return count
+            end
+            function v:GetInventorySlot()
+                local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
+                local item = player:getItem(ItemSlot[i])
+                for i = 1, 6, 1 do
+                    if item and item.id == self.id then return ItemSlot[i] end
+                end
+            end
+            function v:GetSprite()
+                if self.icon and FileExist(SPRITE_PATH.."Items\\"..self.icon) then
+                    return createSprite(SPRITE_PATH.."Items\\"..self.icon)
+                end
+            end
+            function v:Cast(x, z)
+                if x and z then CastSpell(self:GetInventorySlot(), x, z)
+                elseif x then CastSpell(self:GetInventorySlot(), x)
+                else CastSpell(self:GetInventorySlot()) end
+            end
+        end
+        _itemsLoaded = true
+        for i, f in pairs(_onItemsLoaded) do
+            f(_items)
+            _onItemsLoaded[i] = nil
+        end
     end
-    return t
+    if not _onRafLoaded then
+        function _onRafLoaded(RAF)
+            RAF:find("DATA\\Items\\items.json"):extract(SPRITE_PATH.."Items\\items.json")
+            ParseItems(RAF)
+        end
+        GetRafFiles(_onRafLoaded)
+    end
+    if OnLoaded then
+        if not _itemsLoaded then table.insert(_onItemsLoaded, OnLoaded)
+        else OnLoaded(_items, _itemsLoaded) return _items, _itemsLoaded end
+    end
+    if not _itemsLoaded and FileExist(SPRITE_PATH.."Items\\items.json") then
+        ParseItems()
+    end
+    return _items, _itemsLoaded
+end
+
+--[[
+	Function GetDictionaryString(t,localization)
+		returns the string of the ingame Dictionary
+	It might happen that the Dictionary isnt already extracted, 
+	in this case, the second return value is false, and you have to try again later 
+	(This means the Raf Archives haven't already loaded)
+	
+	You can get your current Localization with the function GetLocalization()
+	
+	Example: myTranslation = GetDictionaryString("data_dragon_category_rune","de_DE")
+	The Dictionary Files can be found in the RAF Archives in e.g DATA\Menu\fontconfig_en_US.txt
+]]
+
+local _dictionaries = {}
+function GetDictionaryString(key, localization)
+	localization = localization or "en_US"
+	local _result = ""
+	local function UpdateLibrary(localization)
+		function _onRafLoadedDic(RAF)
+			RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH..localization..".dic")
+		end
+		GetRafFiles(_onRafLoadedDic)
+	end
+	if not _dictionaries[localization] then
+		UpdateLibrary(localization)
+		if FileExist(LIB_PATH..localization..".dic") then
+			_dictionaries[localization] = ReadFile(LIB_PATH..localization..".dic")
+		end
+	end
+	s = _dictionaries[localization]
+	if s then
+		local A,B = s:find('\ntr "'..key..'" = "',1,true)
+		local C,D = s:find('"\n',B,true)
+		_result = s:sub(B+1,C-1)
+	end
+	return _result, s and true or false
+end
+
+--[[
+	Returns the Raf-Archive Version
+]]
+
+local _rafVersion
+function GetRafVersion()
+	if _rafVersion then return _rafVersion end
+	local maxVal = 0
+	for i, v in pairs(ScanDirectory(GAME_PATH:sub(1, GAME_PATH:find("\\RADS")).."\\RADS\\projects\\lol_game_client\\filearchives\\")) do
+		local val = 0
+		for i, v in pairs(v:split("[.]")) do
+			val = val + (tonumber(v) or 0) * 1000^i
+		end
+		if val > maxVal then
+			_rafVersion = v:trim()
+			maxVal = val
+		end
+	end
+	return _rafVersion
 end
 
 --[[
@@ -411,6 +622,18 @@ end
 function GetGameSettings()
     local path = GAME_PATH:sub(1, GAME_PATH:find("\\RADS")) .. "Config\\game.cfg"
     return ReadIni(path)
+end
+
+--[[
+	Gets the Localization of your Game. "en_EN", "de_DE" and so on
+]]
+
+local _localization
+function GetLocalization()
+	if not _localization then
+		_localization = FileExist(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg") and ReadIni(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg").General.LanguageLocaleRegion or "en_EN"
+	end
+	return _localization
 end
 
 --[[
