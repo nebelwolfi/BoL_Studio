@@ -500,20 +500,27 @@ function GetItemDB(OnLoaded)
         end
         for i, v in pairs(_items) do
             function v:GetName(localization)
-                localization = localization or "en_US"
-                if not self["name_"..localization] then self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization) end
-                return self["name_"..localization]
+				localization = localization or "en_US"
+                local name = self["name_"..localization]  
+                if not name or name == "" then 
+					self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization)
+					return self["name_"..localization]
+				else return name end
             end
             function v:GetDescription(localization)
-                localization = localization or "en_US"
-                if not self["desc_"..localization] then self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization) end
-                return self["desc_"..localization]
+				localization = localization or "en_US"
+                local desc = self["desc_"..localization] 
+                if not desc or desc == "" then 
+					self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization)
+					return self["desc_"..localization]
+				else return desc end
             end
             function v:Sell()
-                SellItem(self:GetInventorySlot())
+				local slot = self:GetInventorySlot()
+                if slot then return SellItem(slot) end
             end
             function v:Buy()
-                BuyItem(self.id)
+                return BuyItem(self.id)
             end
             function v:GetCount()
                 local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
@@ -538,9 +545,11 @@ function GetItemDB(OnLoaded)
                 end
             end
             function v:Cast(x, z)
-                if x and z then CastSpell(self:GetInventorySlot(), x, z)
-                elseif x then CastSpell(self:GetInventorySlot(), x)
-                else CastSpell(self:GetInventorySlot()) end
+				local slot = self:GetInventorySlot()
+				if not slot then return end
+                if x and z then CastSpell(slot, x, z)
+                elseif x then CastSpell(slot, x)
+                else CastSpell(slot) end
             end
         end
         _itemsLoaded = true
