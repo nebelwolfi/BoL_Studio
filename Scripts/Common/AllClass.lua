@@ -94,9 +94,9 @@ function GetDrawClock(time, offset)
 end
 
 function table.clear(t)
-	for i, v in pairs(t) do
-		t[i] = nil
-	end
+    for i, v in pairs(t) do
+        t[i] = nil
+    end
 end
 
 function table.copy(from)
@@ -275,11 +275,11 @@ $h = (ps "League of Legends").MainWindowHandle;
 end
 
 function PlaySoundPS(path, duration)
-	os.executePowerShellAsync('(new-object Media.SoundPlayer "'..path.. '").play();\nfor ($i=1; $i -le '..(duration or 1000)..'; $i++) {Start-Sleep -seconds 1}')
+    os.executePowerShellAsync('(new-object Media.SoundPlayer "'..path.. '").play();\nfor ($i=1; $i -le '..(duration or 1000)..'; $i++) {Start-Sleep -seconds 1}')
 end
 
 function PlayMediaPS(path, duration)
-	local script = [[$si = new-object System.Diagnostics.ProcessStartInfo;
+    local script = [[$si = new-object System.Diagnostics.ProcessStartInfo;
 $si.fileName = "]]..path..[[" ;
 $si.windowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden;
 $process = New-Object System.Diagnostics.Process;
@@ -287,7 +287,7 @@ $process.startInfo=$si;
 $process.start();
 ]]..(duration and ([[start-sleep -seconds ]]..duration..[[;
 $process.CloseMainWindow();]]) or "")
-	return os.executePowerShellAsync(script)
+    return os.executePowerShellAsync(script)
 end
 
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
@@ -396,10 +396,10 @@ function ReadIni(path)
     local t, section = {}, nil
     for _, s in ipairs(raw:split("\n")) do
         local v = s:trim()
-		local commentBegin = v:find(";") or v:find("#")
-		if commentBegin then v = v:sub(1,commentBegin) end
-		if v:sub(1,3) == "tr " then v = v:sub(4,#v) end --ignore
-		if v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
+        local commentBegin = v:find(";") or v:find("#")
+        if commentBegin then v = v:sub(1,commentBegin) end
+        if v:sub(1,3) == "tr " then v = v:sub(4,#v) end --ignore
+        if v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
             section = v:sub(2, #v - 1):trim()
             t[section] = {}
         elseif section and v:find("=") then --Key = Value
@@ -417,39 +417,39 @@ function ReadIni(path)
                     if section then t[section][key] = value else t[key] = value end
                 end
             end
-		end
+        end
     end
     return t
 end
 
 --[[
-	Function 
-		GetItem(what)
-			returns an item.
-			You can use the English name, the id (recommended) or the Itemslot to get the Item
-			Example : GetItem(3070), GetItem(ITEM_1), GetItem("Healing Potion")
-		GetItemDB([callback])
-			returns a list with all the Items ingame
-			You can also insert a callback, since it might happen that it has no Items at all, 
-			the first time you start it, since it has to extract all necessary data
-			
-		Items:
-			They have the following Properties (and more) 
-			GetName([localization]),GetDescription([localization]),Buy(),Sell(),GetCount(),GetInventorySlot(),GetSprite(),Cast([x,z])
-			id, icon, gold (total, sell, base), from, into, stats, tags ...
-			For a more detailed content, look in the items.json in the RAF Archives (Data\Items\items.json), which will be also extracted to BoL\Sprites, if you use this function the first time			
-		
-		You can get your current Localization with the function GetLocalization()
-		
-		Example:
-		function OnLoad()
-			for i, item in pairs(GetItemDB) do
-				print(item:GetName(GetLocalization()),"\n")
-				for i, ingredient in pairs(item.from or {}) do
-					print("\t-> ",ingredient:GetName(GetLocalization()),"\n")
-				end
-			end
-		end
+    Function 
+        GetItem(what)
+            returns an item.
+            You can use the English name, the id (recommended) or the Itemslot to get the Item
+            Example : GetItem(3070), GetItem(ITEM_1), GetItem("Healing Potion")
+        GetItemDB([callback])
+            returns a list with all the Items ingame
+            You can also insert a callback, since it might happen that it has no Items at all, 
+            the first time you start it, since it has to extract all necessary data
+            
+        Items:
+            They have the following Properties (and more) 
+            GetName([localization]),GetDescription([localization]),Buy(),Sell(),GetCount(),GetInventorySlot(),GetSprite(),Cast([x,z])
+            id, icon, gold (total, sell, base), from, into, stats, tags ...
+            For a more detailed content, look in the items.json in the RAF Archives (Data\Items\items.json), which will be also extracted to BoL\Sprites, if you use this function the first time            
+        
+        You can get your current Localization with the function GetLocalization()
+        
+        Example:
+        function OnLoad()
+            for i, item in pairs(GetItemDB) do
+                print(item:GetName(GetLocalization()),"\n")
+                for i, ingredient in pairs(item.from or {}) do
+                    print("\t-> ",ingredient:GetName(GetLocalization()),"\n")
+                end
+            end
+        end
 ]]
 
 local _items, _itemsLoaded, _onItemsLoaded, _onRafLoaded = {}, false, {}, nil
@@ -500,23 +500,23 @@ function GetItemDB(OnLoaded)
         end
         for i, v in pairs(_items) do
             function v:GetName(localization)
-				localization = localization or "en_US"
+                localization = localization or "en_US"
                 local name = self["name_"..localization]  
                 if not name or name == "" then 
-					self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization)
-					return self["name_"..localization]
-				else return name end
+                    self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization)
+                    return self["name_"..localization]
+                else return name end
             end
             function v:GetDescription(localization)
-				localization = localization or "en_US"
+                localization = localization or "en_US"
                 local desc = self["desc_"..localization] 
                 if not desc or desc == "" then 
-					self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization)
-					return self["desc_"..localization]
-				else return desc end
+                    self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization)
+                    return self["desc_"..localization]
+                else return desc end
             end
             function v:Sell()
-				local slot = self:GetInventorySlot()
+                local slot = self:GetInventorySlot()
                 if slot then return SellItem(slot) end
             end
             function v:Buy()
@@ -545,8 +545,8 @@ function GetItemDB(OnLoaded)
                 end
             end
             function v:Cast(x, z)
-				local slot = self:GetInventorySlot()
-				if not slot then return end
+                local slot = self:GetInventorySlot()
+                if not slot then return end
                 if x and z then CastSpell(slot, x, z)
                 elseif x then CastSpell(slot, x)
                 else CastSpell(slot) end
@@ -576,62 +576,62 @@ function GetItemDB(OnLoaded)
 end
 
 --[[
-	Function GetDictionaryString(t,localization)
-		returns the string of the ingame Dictionary
-	It might happen that the Dictionary isnt already extracted, 
-	in this case, the second return value is false, and you have to try again later 
-	(This means the Raf Archives haven't already loaded)
-	
-	You can get your current Localization with the function GetLocalization()
-	
-	Example: myTranslation = GetDictionaryString("data_dragon_category_rune","de_DE")
-	The Dictionary Files can be found in the RAF Archives in e.g DATA\Menu\fontconfig_en_US.txt
+    Function GetDictionaryString(t,localization)
+        returns the string of the ingame Dictionary
+    It might happen that the Dictionary isnt already extracted, 
+    in this case, the second return value is false, and you have to try again later 
+    (This means the Raf Archives haven't already loaded)
+    
+    You can get your current Localization with the function GetLocalization()
+    
+    Example: myTranslation = GetDictionaryString("data_dragon_category_rune","de_DE")
+    The Dictionary Files can be found in the RAF Archives in e.g DATA\Menu\fontconfig_en_US.txt
 ]]
 
 local _dictionaries = {}
 function GetDictionaryString(key, localization)
-	localization = localization or "en_US"
-	local _result = ""
-	local function UpdateLibrary(localization)
-		function _onRafLoadedDic(RAF)
-			RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH..localization..".dic")
-		end
-		GetRafFiles(_onRafLoadedDic)
-	end
-	if not _dictionaries[localization] then
-		UpdateLibrary(localization)
-		if FileExist(LIB_PATH..localization..".dic") then
-			_dictionaries[localization] = ReadFile(LIB_PATH..localization..".dic")
-		end
-	end
-	s = _dictionaries[localization]
-	if s then
-		local A,B = s:find('\ntr "'..key..'" = "',1,true)
-		local C,D = s:find('"\n',B,true)
-		_result = s:sub(B+1,C-1)
-	end
-	return _result, s and true or false
+    localization = localization or "en_US"
+    local _result = ""
+    local function UpdateLibrary(localization)
+        function _onRafLoadedDic(RAF)
+            RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH..localization..".dic")
+        end
+        GetRafFiles(_onRafLoadedDic)
+    end
+    if not _dictionaries[localization] then
+        UpdateLibrary(localization)
+        if FileExist(LIB_PATH..localization..".dic") then
+            _dictionaries[localization] = ReadFile(LIB_PATH..localization..".dic")
+        end
+    end
+    s = _dictionaries[localization]
+    if s then
+        local A,B = s:find('\ntr "'..key..'" = "',1,true)
+        local C,D = s:find('"\n',B,true)
+        _result = s:sub(B+1,C-1)
+    end
+    return _result, s and true or false
 end
 
 --[[
-	Returns the Raf-Archive Version
+    Returns the Raf-Archive Version
 ]]
 
 local _rafVersion
 function GetRafVersion()
-	if _rafVersion then return _rafVersion end
-	local maxVal = 0
-	for i, v in pairs(ScanDirectory(GAME_PATH:sub(1, GAME_PATH:find("\\RADS")).."\\RADS\\projects\\lol_game_client\\filearchives\\")) do
-		local val = 0
-		for i, v in pairs(v:split("[.]")) do
-			val = val + (tonumber(v) or 0) * 1000^i
-		end
-		if val > maxVal then
-			_rafVersion = v:trim()
-			maxVal = val
-		end
-	end
-	return _rafVersion
+    if _rafVersion then return _rafVersion end
+    local maxVal = 0
+    for i, v in pairs(ScanDirectory(GAME_PATH:sub(1, GAME_PATH:find("\\RADS")).."\\RADS\\projects\\lol_game_client\\filearchives\\")) do
+        local val = 0
+        for i, v in pairs(v:split("[.]")) do
+            val = val + (tonumber(v) or 0) * 1000^i
+        end
+        if val > maxVal then
+            _rafVersion = v:trim()
+            maxVal = val
+        end
+    end
+    return _rafVersion
 end
 
 --[[
@@ -646,15 +646,15 @@ function GetGameSettings()
 end
 
 --[[
-	Gets the Localization of your Game. "en_EN", "de_DE" and so on
+    Gets the Localization of your Game. "en_EN", "de_DE" and so on
 ]]
 
 local _localization
 function GetLocalization()
-	if not _localization then
-		_localization = FileExist(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg") and ReadIni(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg").General.LanguageLocaleRegion or "en_EN"
-	end
-	return _localization
+    if not _localization then
+        _localization = FileExist(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg") and ReadIni(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg").General.LanguageLocaleRegion or "en_EN"
+    end
+    return _localization
 end
 
 --[[
