@@ -99,11 +99,12 @@ function table.clear(t)
     end
 end
 
-function table.copy(from)
+function table.copy(from, deepCopy)
     if type(from) == "table" then
         local to = {}
         for k, v in pairs(from) do
-            to[k] = v
+            if deepCopy and type(v)=="table" then to[k]=table.copy(v)
+            else to[k] = v end
         end
         return to
     end
@@ -116,25 +117,32 @@ function table.contains(t, what, member) --member is optional
     end
 end
 
-function table.serialize(t, tab)
+function table.serialize(t, tab, functions)
     assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
     local s = "{\n"
     for i, v in pairs(t) do
-        local cS = (tab or "") .. "\t"
-        local iType, vType = type(i), type(v)
-        if iType == "number" then cS = cS .. "[" .. i .. "] = "
-        elseif iType == "string" then cS = cS .. i .. " = "
-        else break
-        end
-        if vType == "number" then cS = cS .. v
-        elseif vType == "string" then cS = cS .. [["]] .. v .. [["]]
-        elseif vType == "table" then cS = cS .. table.serialize(v, (tab or "") .. "\t")
-        elseif vType == "boolean" then cS = cS .. tostring(v)
-        else break
-        end
-        s = s .. cS .. ",\n"
+        local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
+        if iType == "number" then strKey = "[" .. i .. "]"
+        elseif iType == "string" then strKey = i end
+        if vType == "number" then strVal = v
+        elseif vType == "string" then strVal = [["]] .. v .. [["]]
+        elseif vType == "table" then strVal = table.serialize(v, (tab or "") .. "\t")
+        elseif vType == "boolean" then strVal = tostring(v)
+        elseif vType == "function" and functions then
+            local dump = string.dump(v)
+            strVal = "load(Base64Decode(\""..Base64Encode(dump,#dump).."\"))" end
+        s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
     end
     return s .. (tab or "") .. "}"
+end
+
+function table.merge(base, t, deepMerge)
+    for i, v in pairs(t) do
+        if deepMerge and type(v)=="table" and type(base[i])=="table" then
+            base[i] = table.merge(base[i],v)
+        else base[i] = v end
+    end
+    return base
 end
 
 --from http://lua-users.org/wiki/SplitJoin
@@ -224,31 +232,105 @@ function GetFPS()
 end
 
 --[[
+    function GetSave
+        used to save data between matches. It can save all data except userdata, even functions!
+        what you save in GetSave(name) in one match, you can access next time with the same function call
+       Example:
+
+       GetSave("mySave").print = print
+       --> nextGame (Or reload)
+       GetSave("mySave").print("Hello")
+]]
+local _saves, _initSave = {}, true
+function GetSave(name)
+    local save
+    if not _saves[name] then
+        if FileExist(LIB_PATH.."Saves\\"..name..".save") then
+            local f = loadfile(LIB_PATH.."Saves\\"..name..".save")
+            _saves[name] = f and f() or {}
+        else
+            _saves[name] = {}
+        end
+    end
+    save = _saves[name]
+    function save:Save()
+        local function ts(t, tab)
+            assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
+            local s = "{\n"
+            for i, v in pairs(t) do
+                local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
+                if iType == "number" then strKey = "[" .. i .. "]"
+                elseif iType == "string" then strKey = i end
+                if vType == "number" then strVal = v
+                elseif vType == "string" then strVal = [["]] .. v .. [["]]
+                elseif vType == "table" then strVal = ts(v, (tab or "") .. "\t")
+                elseif vType == "boolean" then strVal = tostring(v)
+                elseif vType == "function" and (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+                    local dump = string.dump(v)
+                    strVal = "load(Base64Decode(\""..Base64Encode(dump,#dump).."\"))" end
+                s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
+            end
+            return s .. (tab or "") .. "}"
+        end
+        WriteFile("return "..ts(self), LIB_PATH.."Saves\\"..name..".save")
+    end
+    function save:Reload()
+        _saves[name] = loadfile(LIB_PATH.."Saves\\"..name..".save")()
+        save = _saves[name]
+    end
+    function save:Clear()
+        for i, v in pairs(self) do
+            if type(v)~="function" or (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+                self[i] = nil
+            end
+        end
+    end
+    function save:IsEmpty()
+        for i, v in pairs(self) do
+            if type(v) ~= "function" or (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+                return false
+            end
+        end
+        return true
+    end
+    function save:Remove()
+        for i, v in pairs(_saves) do
+            if v == self then
+                _saves[i] = nil
+            end
+            if FileExist(LIB_PATH.."Saves\\"..name..".save") then
+                DeleteFile(LIB_PATH.."Saves\\"..name..".save")
+            end
+        end
+    end
+    if _initSave then
+        _initSave = nil
+        local function saveAll()
+            for i, v in pairs(_saves) do
+                if v and v.Save then
+                    v:Save()
+                end
+            end
+        end
+        AddBugsplatCallback(saveAll)
+        AddUnloadCallback(saveAll)
+        AddExitCallback(saveAll)
+    end
+    return save
+end
+
+--[[
     Executes a Powershell script
     e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
 ]]
-local function Base64Unicode(text)
-    -- modified to use Unicode from http://lua-users.org/wiki/BaseSixtyFour
-    local data, b = "", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    text:gsub(".", function(c) data = data .. c .. "\0" end)
-    return ((data:gsub('.', function(x)
-        local r, b = '', x:byte()
-        for i = 8, 1, -1 do r = r .. (b % 2 ^ i - b % 2 ^ (i - 1) > 0 and '1' or '0') end
-        return r;
-    end) .. '0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
-        if (#x < 6) then return '' end
-        local c = 0
-        for i = 1, 6 do c = c + (x:sub(i, i) == '1' and 2 ^ (6 - i) or 0) end
-        return b:sub(c + 1, c + 1)
-    end) .. ({ '', '==', '=' })[#data % 3 + 1])
-end
-
 function os.executePowerShell(script, argument)
-    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"")
+    text:gsub(".", function(c) script = script .. c .. "\0" end)
+    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Encode(script,#script) .. "\"")
 end
 
 function os.executePowerShellAsync(script, argument)
-    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Unicode(script) .. "\"")
+    text:gsub(".", function(c) script = script .. c .. "\0" end)
+    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Encode(script,#script) .. "\"")
 end
 
 --[[
@@ -299,6 +381,13 @@ end
 --Example: DirectoryExist("C:\\Users")
 function DirectoryExist(path)
     assert(type(path) == "string", "DirectoryExist: wrong argument types (<string> expected for path)")
+    --[[local file, err = io.open(path.."\\*.*","r")
+    if file then
+        io.close(file)
+    elseif string.sub(err,#err-24,#err)=="No such file or directory" then
+        return false
+    end
+    return true ]]
     return RunCmdCommand("cd " .. string.gsub(path, [[/]], [[\]])) == 0
 end
 
@@ -318,23 +407,6 @@ function ProcessExist(name)
     assert(type(name) == "string" and #name>0, "ProcessExist: wrong argument types (<string> expected for path)")
     name = name:gsub(".exe","",1):trim()
     return RunCmdCommand('tasklist /FI "IMAGENAME eq '..name..'.exe" 2>NUL | find /I /N "'..name..'.exe">NUL') == 0
-end
-
---Creates the Common and Sprites Folder if not present, returns true if it created folders
-local folderFixed = false
-local function fixFolders()
-    if folderFixed then return false end
-    local result = true
-    if not DirectoryExist(LIB_PATH) and not CreateDirectory(LIB_PATH) then
-        result = false
-        PrintChat([[Your library directory is missing and can't be created, please create the folder 'Common' in you BoL\Scripts directory. For further Information visit http://botoflegends.com/forum/]])
-    end
-    if not DirectoryExist(SPRITE_PATH) and not CreateDirectory(SPRITE_PATH) then
-        result = false
-        PrintChat([[Your sprite directory is missing and can't be created, please create the folder 'Sprites' in you BoL directory. For further Information visit http://botoflegends.com/forum/]])
-    end
-    folderFixed = true
-    return result
 end
 
 --Return text of a file (you can also insert the filename)
@@ -357,7 +429,13 @@ end
 function WriteFile(text, path, mode)
     assert(type(text) == "string" and type(path) == "string" and (not mode or type(mode) == "string"), "WriteFile: wrong argument types (<string> expected for text, path and mode)")
     local file = io.open(path, mode or "w+")
-    if not file then return false end
+    if not file then
+        if not MakeSurePathExists(path) then return false end
+        file = io.open(path, mode or "w+")
+        if not file then
+            return false
+        end
+    end
     file:write(text)
     file:close()
     return true
@@ -368,6 +446,21 @@ function FileExist(path)
     assert(type(path) == "string", "FileExist: wrong argument types (<string> expected for path)")
     local file = io.open(path, "r")
     if file then file:close() return true else return false end
+end
+
+--takes a path and creates all necessary folders.
+function MakeSurePathExists(path)
+    path = path:gsub("/","\\"):reverse()
+    path = path:sub(path:find("\\"),#path)
+    if not DirectoryExist(path:reverse()) then
+        path = path:sub(2,#path):split("\\",2)
+        if #path == 2 then
+            if not MakeSurePathExists(path[2]:reverse().."\\") or not CreateDirectory(("\\"..path[1].."\\"..path[2]):reverse()) then return false end
+        else
+            return DirectoryExist(path[1]:reverse().."\\")
+        end
+    end
+    return true
 end
 
 function DeleteFile(path)
@@ -456,9 +549,10 @@ local _items, _itemsLoaded, _onItemsLoaded, _onRafLoaded = {}, false, {}, nil
 function GetItem(i)
     local item
     if type(i)=="number" then
-        if i>=1000 then item = GetItemDB()[i]
-        else
+        if i>=ITEM_1 and i<=ITEM_6 then
             item = GetItem(player:getItem(i).id)
+        else
+            item = GetItemDB()[i]
         end
     elseif type(i)=="string" then
         for i, v in pairs(GetItemDB()) do
@@ -501,16 +595,16 @@ function GetItemDB(OnLoaded)
         for i, v in pairs(_items) do
             function v:GetName(localization)
                 localization = localization or "en_US"
-                local name = self["name_"..localization]  
-                if not name or name == "" then 
+                local name = self["name_"..localization]
+                if not name or name == "" then
                     self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization)
                     return self["name_"..localization]
                 else return name end
             end
             function v:GetDescription(localization)
                 localization = localization or "en_US"
-                local desc = self["desc_"..localization] 
-                if not desc or desc == "" then 
+                local desc = self["desc_"..localization]
+                if not desc or desc == "" then
                     self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization)
                     return self["desc_"..localization]
                 else return desc end
@@ -541,7 +635,7 @@ function GetItemDB(OnLoaded)
             end
             function v:GetSprite()
                 if self.icon and FileExist(SPRITE_PATH.."Items\\"..self.icon) then
-                    return createSprite(SPRITE_PATH.."Items\\"..self.icon)
+                    return createSprite("Items\\"..self.icon)
                 end
             end
             function v:Cast(x, z)
@@ -593,18 +687,18 @@ function GetDictionaryString(key, localization)
     localization = localization or "en_US"
     local _result = ""
     local function UpdateLibrary(localization)
-        function _onRafLoadedDic(RAF)
-            RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH..localization..".dic")
+        local function _onRafLoadedDic(RAF)
+            RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
         end
         GetRafFiles(_onRafLoadedDic)
     end
     if not _dictionaries[localization] then
         UpdateLibrary(localization)
         if FileExist(LIB_PATH..localization..".dic") then
-            _dictionaries[localization] = ReadFile(LIB_PATH..localization..".dic")
+            _dictionaries[localization] = ReadFile(LIB_PATH.."Saves\\"..localization..".dic")
         end
     end
-    s = _dictionaries[localization]
+    local s = _dictionaries[localization]
     if s then
         local A,B = s:find('\ntr "'..key..'" = "',1,true)
         local C,D = s:find('"\n',B,true)
@@ -683,7 +777,7 @@ end
 
 local _intervalFunction
 function SetInterval(userFunction, timeout, count, params)
-    if not _intervalFunction then 
+    if not _intervalFunction then
         function _intervalFunction(userFunction, startTime, timeout, count, params)
             if userFunction(table.unpack(params or {})) ~= false and (not count or count > 1) then
                 DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params})
@@ -919,6 +1013,17 @@ function DrawLines3D(points, width, color)
         end
         l = c
     end
+end
+
+function DrawTextA(text, size, x, y, color, align)
+    local textArea = GetTextArea(text or "", size or 12)
+    if not align or align:lower() == "left" then
+        DrawText(text or "", size or 12, x or 0, y or 0, color or 4294967295)
+    elseif align:lower() == "right" then
+        DrawText(text or "", size or 12, (x or 0) - textArea.x, (y or 0), color or 4294967295)
+    elseif align:lower() == "center" then
+        DrawText(text or "", size or 12, (x or 0) - textArea.x / 2, (y or 0), color or 4294967295)
+    else error("DrawTextA: Align "..align.." is not valid") end
 end
 
 function DrawText3D(text, x, y, z, size, color, center)
@@ -2619,7 +2724,7 @@ function TargetPredictionVIP:GetCollision(target)
                         minSpellT, maxSpellT  = math.min(hitMinionT, minSpellT), math.max(hitMinionT, maxSpellT)
                     end
                 end
-                
+
                 if not (minionIn > maxSpellT or minSpellT > minionOut) then
                     self.Cache[target.networkID].Collision = true
                     return true
@@ -2768,13 +2873,16 @@ end
     _game.map
     _game.settings
 ]]
-local _game, _gameSave = { init = true, configFile = LIB_PATH .. "lastGame.cfg", lastCmd = GAME_PATH .. "lastCmd.log", params = "", isOver = false, loser = 0, winner = 0, win = false }, nil
+local _game, _game_init = {lastCmd = GAME_PATH.."lastCmd.log"}, true
+
 local _onGameOver, __game__OnCreateObj, __game__GameOver = {}, nil, nil
 function GetGame()
-    if _game.init then
+    if _game_init then
+        _game_init = nil
         -- init values
-        if FileExist(_game.lastCmd) then
-            local cmdStr = ReadFile(_game.lastCmd)
+        local _gameSave = GetSave("lastGame")
+        local cmdStr = ReadFile(_game.lastCmd)
+        if cmdStr then
             local cmdArray = cmdStr:split("\" \"")
             if #cmdArray == 4 then
                 _game.pid = cmdArray[1]:sub(2)
@@ -2802,28 +2910,19 @@ function GetGame()
         end
         _game.tick = tonumber(GetTickCount())
         _game.osTime = os.time()
-        if FileExist(_game.configFile) then _gameSave = loadfile(_game.configFile)() end
         if _gameSave and _gameSave.params and _gameSave.params == _game.params then
             _game.WINDOW_W = _gameSave.WINDOW_W
             _game.WINDOW_H = _gameSave.WINDOW_H
             _game.tick = _gameSave.tick
             _game.osTime = _gameSave.osTime
         else
-            local file = io.open(_game.configFile, "w")
-            if not file and fixFolders() then file = io.open(_game.configFile, "w") end
-            if file then
-                file:write("local _gameSave = {}\n")
-                file:write("_gameSave.params = \"" .. _game.params .. "\"\n")
-                file:write("_gameSave.osTime = " .. _game.osTime .. "\n")
-                file:write("_gameSave.WINDOW_W = " .. _game.WINDOW_W .. "\n")
-                file:write("_gameSave.WINDOW_H = " .. _game.WINDOW_H .. "\n")
-                file:write("_gameSave.tick = " .. _game.tick .. "\n")
-                file:write("return _gameSave")
-                file:close()
-            end
-            file = nil
+            _gameSave.params = _game.params
+            _gameSave.osTime = _game.osTime
+            _gameSave.WINDOW_W = _game.WINDOW_W
+            _gameSave.WINDOW_H = _game.WINDOW_H
+            _gameSave.tick = _game.tick
+            _gameSave:Save()
         end
-        --get map
         _game.map = { index = 0, name = "unknown", shortName = "unknown", min = { x = 0, y = 0 }, max = { x = 0, y = 0 }, x = 0, y = 0, grid = { width = 0, height = 0 } }
         for i = 1, objManager.maxObjects do
             local object = objManager:getObject(i)
@@ -2876,17 +2975,14 @@ function GetGame()
 
         AddCreateObjCallback(__game__OnCreateObj)
         --clean
-        _gameSave = nil
-        _game.configFile = nil
         _game.lastCmd = nil
-        _game.init = nil
     end
     return _game
 end
 
 function AddGameOverCallback(func)
     assert(type(func) == "function", "AddGameOverCallback: Expected function, got " .. type(func))
-    GetGame()
+    if _game_init then GetGame() end
     table.insert(_onGameOver, func)
 end
 
@@ -3221,80 +3317,52 @@ end
         CL:GetJungler()         -- return the object of the enemy jungler or nil
         CL:GetJungler(team)     -- return the object of the team jungler or nil
 ]]
-local _championLane = { savedFile = LIB_PATH .. "championLane.cfg", init = true, enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 250 }
-local function _ChampionLane__Save()
-    _championLane.nextSave = GetTickCount() + 30000
-    local file = io.open(_championLane.savedFile, "w")
-    if not file and fixFolders() then file = io.open(_championLane.savedFile, "w") end
-    if file then
-        file:write("local _championLane = {save = {}}\n")
-        file:write("_championLane.save.startTime = " .. _championLane.startTime .. "\n")
-        for _, team in pairs({ "ally", "enemy" }) do
-            file:write("_championLane.save." .. team .. " = {}\n")
-            for i, _ in pairs(_championLane[team].champions) do
-                file:write("_championLane.save." .. team .. "[" .. i .. "] = {top = " .. _championLane[team].champions[i].top .. ", mid = " .. _championLane[team].champions[i].mid .. ", bot = " .. _championLane[team].champions[i].bot .. ", jungle = " .. _championLane[team].champions[i].jungle .. " }\n")
-            end
-        end
-        file:write("return _championLane")
-        file:close()
-    end
-    file = nil
-end
 
 -- init values
-local __ChampionLane__OnTick
-local function _ChampionLane__OnLoad()
-    if _championLane.init then
-        _championLane.init = nil
-        local GameValues = GetGame()
-        _championLane.mapIndex = GameValues.map.index
-        for i = 1, heroManager.iCount, 1 do
-            local hero = heroManager:getHero(i)
-            if hero ~= nil and hero.valid then
-                local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name .. hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
-                table.insert(_championLane[(hero.team == player.team and "ally" or "enemy")].champions, { hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler })
-                if isJungler then
-                    _championLane[(hero.team == player.team and "ally" or "enemy")].jungler = hero
+local __ChampionLane__OnTick, __ChampionLane_init = nil, true
+
+class'ChampionLane'
+function ChampionLane:__init()
+    if __ChampionLane_init then
+        __ChampionLane_init = nil
+        local _championLane = GetSave("championLane")
+        if _championLane.params~=GetGame().params then _championLane:Clear() end
+        if _championLane:IsEmpty() then
+            table.merge(_championLane,{ enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 0.250, params = GetGame().params })
+            _championLane.mapIndex = GetGame().map.index
+            for i = 1, heroManager.iCount, 1 do
+                local hero = heroManager:getHero(i)
+                if hero ~= nil and hero.valid then
+                    local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name .. hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
+                    if not _championLane["enemy"] then _championLane["enemy"] = {champions = {}} end
+                    if not _championLane["ally"] then _championLane["ally"] = {champions = {}} end
+                    table.insert(_championLane[(hero.team == player.team and "ally" or "enemy")].champions, { hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler })
+                    if isJungler then
+                        _championLane[(hero.team == player.team and "ally" or "enemy")].jungler = hero
+                    end
+                end
+            end
+            if _championLane.mapIndex == 1 or _championLane.mapIndex == 2 then
+                _championLane.startTime = 120 --2 min from start
+                _championLane.stopTime = 600 --10 min from start
+                if _championLane.mapIndex == 1 then
+                    _championLane.top = { point = { x = 1900, y = 0, z = 12600 } }
+                    _championLane.mid = { point = { x = 7100, y = 0, z = 7100 } }
+                    _championLane.bot = { point = { x = 12100, y = 0, z = 2100 } }
+                elseif _championLane.mapIndex == 2 then
+                    _championLane.top = { point = { x = 6700, y = 0, z = 7100 } }
+                    _championLane.bot = { point = { x = 6700, y = 0, z = 3100 } }
                 end
             end
         end
-        if _championLane.mapIndex == 1 or _championLane.mapIndex == 2 then
-            _championLane.startTime = GameValues.tick + 120000 --2 min from start
-            _championLane.stopTime = GameValues.tick + 600000 --10 min from start
-            _championLane.nextSave = GameValues.tick + 150000 --2 min 30 from start
-            if _championLane.mapIndex == 1 then
-                _championLane.top = { point = { x = 1900, y = 0, z = 12600 } }
-                _championLane.mid = { point = { x = 7100, y = 0, z = 7100 } }
-                _championLane.bot = { point = { x = 12100, y = 0, z = 2100 } }
-            elseif _championLane.mapIndex == 2 then
-                _championLane.top = { point = { x = 6700, y = 0, z = 7100 } }
-                _championLane.bot = { point = { x = 6700, y = 0, z = 3100 } }
-            end
-        end
-        -- reload saved value if exist
-        _championLane.save = {}
-        if FileExist(_championLane.savedFile) then _championLane.save = loadfile(_championLane.savedFile)().save end
-        if _championLane.save.startTime ~= nil and _championLane.startTime == _championLane.save.startTime then
-            for _, team in pairs({ "ally", "enemy" }) do
-                for i, champion in pairs(_championLane.save[team]) do
-                    _championLane[team].champions[i].top = champion.top
-                    _championLane[team].champions[i].mid = champion.mid
-                    _championLane[team].champions[i].bot = champion.bot
-                    _championLane[team].champions[i].jungle = champion.jungle
-                end
-            end
-            _championLane.nextSave = GetTickCount() + 30000
-        end
-        --clean
-        _championLane.save = nil
         if not __ChampionLane__OnTick then
             function __ChampionLane__OnTick()
+                local _championLane = GetSave("championLane")
                 if not _championLane.startTime then return end
-                local tick = GetTickCount()
+                local tick = GetInGameTimer()
                 if tick < _championLane.startTime or tick < _championLane.nextUpdate then return end
                 if tick > _championLane.stopTime then _championLane.startTime = nil return end
-                if tick > _championLane.nextSave then _ChampionLane__Save() end
-                _championLane.nextUpdate = tick + _championLane.tickUpdate
+                _championLane.nextUpdate = GetInGameTimer() + _championLane.tickUpdate
                 -- team update
                 for _, team in pairs({ "ally", "enemy" }) do
                     local update = { top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }
@@ -3342,54 +3410,48 @@ local function _ChampionLane__OnLoad()
                     end
                 end
             end
-
             AddTickCallback(__ChampionLane__OnTick)
         end
     end
 end
 
-class'ChampionLane'
-function ChampionLane:__init()
-    _ChampionLane__OnLoad()
-end
-
 function ChampionLane:GetPoint(lane)
     assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid"), "GetPoint: wrong argument types (<lane> expected)")
-    return _championLane[lane].point
+    return GetSave("championLane")[lane].point
 end
 
 function ChampionLane:GetMyLane()
-    return _championLane.myLane
+    return GetSave("championLane").myLane
 end
 
 function ChampionLane:GetHeroCount(lane, team)
     local team = team or "enemy"
     assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid" or lane == "jungle") and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroCount: wrong argument types (<lane>, <team> expected)")
-    return #_championLane[team][lane]
+    return #(GetSave("championLane")[team][lane])
 end
 
 function ChampionLane:GetHeroArray(lane, team)
     local team = team or "enemy"
     assert(type(lane) == "string" and (lane == "top" or lane == "bot" or lane == "mid" or lane == "jungle") and type(team) == "string" and (team == "enemy" or team == "ally"), "GetHeroArray: wrong argument types (<lane>, <team> expected)")
-    return _championLane[team][lane]
+    return GetSave("championLane")[team][lane]
 end
 
 function ChampionLane:GetCarryAD(team)
     local team = team or "enemy"
     assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetCarryAD: wrong argument types (<team> or nil expected)")
-    return _championLane[team].carryAD
+    return GetSave("championLane")[team].carryAD
 end
 
 function ChampionLane:GetSupport(team)
     local team = team or "enemy"
     assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetSupport: wrong argument types (<team> or nil expected)")
-    return _championLane[team].support
+    return GetSave("championLane")[team].support
 end
 
 function ChampionLane:GetJungler(team)
     local team = team or "enemy"
     assert(type(team) == "string" and (team == "enemy" or team == "ally"), "GetJungler: wrong argument types (<team> or nil expected)")
-    return _championLane[team].jungler
+    return GetSave("championLane")[team].jungler
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3401,7 +3463,7 @@ end
         GetMinimap(v)                   -- Get minimap point {x, y} from object
         GetMinimap(x, y)                -- Get minimap point {x, y}
 ]]
-local _miniMap = { init = true }
+local _miniMap, _miniMap__Reset = { init = true }, nil
 local function _miniMap__OnLoad()
     if _miniMap.init then
         function _miniMap__Reset()
@@ -3558,62 +3620,22 @@ SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
-_SC = { init = true, initDraw = true, menuKey = 16, configFile = LIB_PATH .. "scripts.cfg", useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
+local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 class'scriptConfig'
 local function __SC__remove(name)
-    local file = io.open(_SC.configFile, "a+")
-    if not file and fixFolders() then file = io.open(_SC.configFile, "a+") end
-    if file then
-        local nameFound, keepLine, content = false, true, {}
-        for line in file:lines() do
-            if not keepLine and string.find(line, "%[") then keepLine = true end
-            if keepLine and string.find(line, "%[" .. name .. "%]") then keepLine, nameFound = false, true end
-            if keepLine then table.insert(content, line) end
-        end
-        file:close()
-        if nameFound then
-            file = io.open(_SC.configFile, "w+")
-            if not file then return end
-            for i = 1, #content do
-                file:write(string.format("%s\n", content[i]))
-            end
-            file:close()
-        end
-    end
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
 end
 
 local function __SC__load(name)
-    local keepLine, config = false, {}
-    local file = io.open(_SC.configFile, "a+")
-    if not file and fixFolders() then file = io.open(_SC.configFile, "a+") end
-    if not file then return config end
-    for line in file:lines() do
-        if keepLine and string.find(line, "%[") then keepLine = false end
-        if not keepLine and string.find(line, "%[" .. name .. "%]") then keepLine = true
-        elseif keepLine then
-            local key, value = line:match("(.-)="), line:match("=(.+)")
-            key = key:find('^%s*$') and '' or key:match('^%s*(.*%S)')
-            value = value:find('^%s*$') and '' or value:match('^%s*(.*%S)')
-            if value == "false" or value == "true" then value = (value == "true")
-            elseif string.gsub(value, "%d+", ""):gsub("%-", ""):gsub("%.", "") == "" then
-                value = tonumber(value)
-            end
-            if name ~= "Master" then config[key .. '.'] = value else config[key] = value end
-        end
-    end
-    return config
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    return GetSave("scriptConfig")[name]
 end
 
 local function __SC__save(name, content)
-    __SC__remove(name)
-    local file = io.open(_SC.configFile, "a")
-    if not file and fixFolders() then file = io.open(_SC.configFile, "a") end
-    if not file then return end
-    file:write("[" .. name .. "]\n")
-    for i = 1, #content do
-        file:write(string.format("%s\n", content[i]))
-    end
-    file:close()
+    if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
+    table.clear(GetSave("scriptConfig")[name])
+    table.merge(GetSave("scriptConfig")[name],content, true)
 end
 
 local function __SC__saveMaster()
@@ -3629,7 +3651,7 @@ local function __SC__saveMaster()
     _SC.master["PS" .. _SC.masterIndex] = PS
     if not _SC.master.useTS and _SC.useTS then _SC.master.useTS = true end
     for var, value in pairs(_SC.master) do
-        table.insert(config, tostring(var) .. " = " .. tostring(value))
+        config[var] = value
     end
     __SC__save("Master", config)
 end
@@ -3657,7 +3679,7 @@ local function __SC__updateMaster()
 end
 
 local function __SC__saveMenu()
-    __SC__save("Menu", { "menuKey = " .. tostring(_SC.menuKey), "draw.x = " .. tostring(_SC.draw.x), "draw.y = " .. tostring(_SC.draw.y), "pDraw.x = " .. tostring(_SC.pDraw.x), "pDraw.y = " .. tostring(_SC.pDraw.y) })
+    __SC__save("Menu", { menuKey = _SC.menuKey, draw = {x = _SC.draw.x, y = _SC.draw.y, x = _SC.pDraw.x, y = _SC.pDraw.y}})
     _SC.master.x = _SC.draw.x
     _SC.master.y = _SC.draw.y
     _SC.master.px = _SC.pDraw.x
@@ -3671,14 +3693,7 @@ local function __SC__init_draw()
         _SC.draw = { x = WINDOW_W and math.floor(WINDOW_W / 50) or 20, y = WINDOW_H and math.floor(WINDOW_H / 4) or 190, y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 54) or 14, width = WINDOW_W and math.round(WINDOW_W / 4.8) or 213, border = 2, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
         _SC.pDraw = { x = WINDOW_W and math.floor(WINDOW_W * 0.66) or 675, y = WINDOW_H and math.floor(WINDOW_H * 0.8) or 608, y1 = 0, height = 0, fontSize = WINDOW_H and math.round(WINDOW_H / 72) or 10, width = WINDOW_W and math.round(WINDOW_W / 6.4) or 160, border = 1, background = 1413167931, textColor = 4290427578, trueColor = 1422721024, falseColor = 1409321728, move = false }
         local menuConfig = __SC__load("Menu")
-        for var, value in pairs(menuConfig) do
-            local vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
-            if #vars == 1 then
-                _SC[vars[1]] = value
-            elseif #vars == 2 then
-                _SC[vars[1]][vars[2]] = value
-            end
-        end
+        table.merge(_SC, menuConfig, true)
         _SC.color = { lgrey = 1413167931, grey = 4290427578, red = 1422721024, green = 1409321728, ivory = 4294967280 }
         _SC.draw.cellSize, _SC.draw.midSize, _SC.draw.row4, _SC.draw.row3, _SC.draw.row2, _SC.draw.row1 = _SC.draw.fontSize + _SC.draw.border, _SC.draw.fontSize / 2, _SC.draw.width * 0.9, _SC.draw.width * 0.8, _SC.draw.width * 0.7, _SC.draw.width * 0.6
         _SC.pDraw.cellSize, _SC.pDraw.midSize, _SC.pDraw.row = _SC.pDraw.fontSize + _SC.pDraw.border, _SC.pDraw.fontSize / 2, _SC.pDraw.width * 0.7
@@ -3889,7 +3904,7 @@ end
 function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
     assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
     assert(string.find(pVar, "[^%a%d]") == nil, "addParam: pVar should contain only char and number")
-    assert(self[pVar] == nil, "addParam: pVar should be unique, already existing " .. pVar)
+    --assert(self[pVar] == nil, "addParam: pVar should be unique, already existing " .. pVar)
     local newParam = { var = pVar, text = pText, pType = pType }
     if pType == SCRIPT_PARAM_ONOFF then
         assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
@@ -3978,14 +3993,7 @@ end
 function scriptConfig:load()
     local config = __SC__load(self.name)
     for var, value in pairs(config) do
-        local vars = { var:match((var:gsub("[^%.]*%.", "([^.]*)."))) }
-        if #vars == 1 then
-            if self[vars[1]] ~= nil then self[vars[1]] = value end
-        elseif #vars == 2 then
-            if self[vars[1]] ~= nil and self[vars[1]][vars[2]] ~= nil then self[vars[1]][vars[2]] = value end
-        elseif #vars == 3 then
-            if self[vars[1]] ~= nil and self[vars[1]][vars[2]] ~= nil and self[vars[1]][vars[2]][vars[3]] ~= nil then self[vars[1]][vars[2]][vars[3]] = value end
-        end
+        self[var] = value
     end
 end
 
@@ -3993,14 +4001,14 @@ function scriptConfig:save()
     local content = {}
     for var, param in pairs(self._param) do
         if param.pType ~= SCRIPT_PARAM_INFO then
-            table.insert(content, param.var .. "=" .. tostring(self[param.var]))
+            content[param.var] = self[param.var]
             if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
-                table.insert(content, "_param." .. var .. ".key=" .. tostring(param.key))
+                content[_param.var.key]=param.key
             end
         end
     end
     for i, ts in pairs(self._tsInstances) do
-        table.insert(content, "_tsInstances." .. i .. ".mode=" .. tostring(ts.mode))
+        content[_tsInstances.i.mode]=ts.mode
     end
     -- for i,pShow in pairs(self._permaShow) do
     -- table.insert (content, "_permaShow."..i.."="..tostring(pShow))
@@ -4176,7 +4184,7 @@ end
 --[[
 ]]
 local _tcDraws, _tcDraws__OnDraw, _tcDraws__OnTick = { circle = false, text = false, modes = {} }, nil, nil
-function __tcDraws__init()
+local function __tcDraws__init()
     if not _tcDraws.heroes then
         _tcDraws.heroes = {}
         for i = 1, heroManager.iCount do
