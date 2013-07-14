@@ -250,6 +250,7 @@ function GetSave(name)
             _saves[name] = f and f() or {}
         else
             _saves[name] = {}
+            MakeSurePathExists(LIB_PATH.."Saves\\"..name..".save")
         end
     end
     save = _saves[name]
@@ -324,13 +325,15 @@ end
     e.g: successful, output = os.executePowerShell("Write-Host \"PowerShell Executed\"")
 ]]
 function os.executePowerShell(script, argument)
-    text:gsub(".", function(c) script = script .. c .. "\0" end)
-    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Encode(script,#script) .. "\"")
+    local cmd = ""
+    script:gsub(".", function(c) cmd = cmd .. c .. "\0" end)
+    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd,#cmd) .. "\"")
 end
 
 function os.executePowerShellAsync(script, argument)
-    text:gsub(".", function(c) script = script .. c .. "\0" end)
-    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Encode(script,#script) .. "\"")
+    local cmd = ""
+    script:gsub(".", function(c) cmd = cmd .. c .. "\0" end)
+    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd,#cmd) .. "\"")
 end
 
 --[[
@@ -375,7 +378,9 @@ end
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
 function CreateDirectory(path)
     assert(type(path) == "string", "CreateDirectory: wrong argument types (<string> expected for path)")
-    return RunCmdCommand("mkdir " .. string.gsub(path, [[/]], [[\]])) == 0
+    local worked = RunCmdCommand('mkdir "' .. string.gsub(path, [[/]], [[\]])..'"') == 0
+    if not worked then print("Could not create the Folder "..path) end
+    return worked
 end
 
 --Example: DirectoryExist("C:\\Users")
@@ -455,7 +460,9 @@ function MakeSurePathExists(path)
     if not DirectoryExist(path:reverse()) then
         path = path:sub(2,#path):split("\\",2)
         if #path == 2 then
-            if not MakeSurePathExists(path[2]:reverse().."\\") or not CreateDirectory(("\\"..path[1].."\\"..path[2]):reverse()) then return false end
+            if not MakeSurePathExists(path[2]:reverse().."\\") or not CreateDirectory(("\\"..path[1].."\\"..path[2]):reverse()) then
+                return false
+            end
         else
             return DirectoryExist(path[1]:reverse().."\\")
         end
@@ -688,7 +695,9 @@ function GetDictionaryString(key, localization)
     local _result = ""
     local function UpdateLibrary(localization)
         local function _onRafLoadedDic(RAF)
-            RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt"):extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+            local file = RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt")
+            file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+            --print(#file:getContent())
         end
         GetRafFiles(_onRafLoadedDic)
     end
@@ -4003,12 +4012,12 @@ function scriptConfig:save()
         if param.pType ~= SCRIPT_PARAM_INFO then
             content[param.var] = self[param.var]
             if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
-                content[_param.var.key]=param.key
+                content[self._param[var].key]=param.key
             end
         end
     end
     for i, ts in pairs(self._tsInstances) do
-        content[_tsInstances.i.mode]=ts.mode
+        content[self._tsInstances[i].mode]=ts.mode
     end
     -- for i,pShow in pairs(self._permaShow) do
     -- table.insert (content, "_permaShow."..i.."="..tostring(pShow))
