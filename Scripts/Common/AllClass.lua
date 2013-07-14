@@ -557,7 +557,8 @@ function GetItem(i)
     local item
     if type(i)=="number" then
         if i>=ITEM_1 and i<=ITEM_6 then
-            item = GetItem(player:getItem(i).id)
+            local cItem = player:getItem(i)
+            item = GetItem(cItem and cItem.id)
         else
             item = GetItemDB()[i]
         end
@@ -571,7 +572,7 @@ end
 
 function GetItemDB(OnLoaded)
     local function ParseItems(RAF)
-        local itemsJSON = ReadFile(SPRITE_PATH.."Items\\items.json")
+        local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH.."Items\\items.json")
         itemsJSON = JSON:decode(itemsJSON)
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
@@ -641,6 +642,12 @@ function GetItemDB(OnLoaded)
                 end
             end
             function v:GetSprite()
+                if not self.sprite then
+                    self.sprite = self:CreateSprite()
+                end
+                return self.sprite
+            end
+            function v:CreateSprite()
                 if self.icon and FileExist(SPRITE_PATH.."Items\\"..self.icon) then
                     return createSprite("Items\\"..self.icon)
                 end
@@ -696,14 +703,14 @@ function GetDictionaryString(key, localization)
     local function UpdateLibrary(localization)
         local function _onRafLoadedDic(RAF)
             local file = RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt")
+            _dictionaries[localization] = file.content
             file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
-            --print(#file:getContent())
         end
         GetRafFiles(_onRafLoadedDic)
     end
     if not _dictionaries[localization] then
         UpdateLibrary(localization)
-        if FileExist(LIB_PATH..localization..".dic") then
+        if FileExist(LIB_PATH.."Saves\\"..localization..".dic") then
             _dictionaries[localization] = ReadFile(LIB_PATH.."Saves\\"..localization..".dic")
         end
     end
@@ -713,7 +720,7 @@ function GetDictionaryString(key, localization)
         local C,D = s:find('"\n',B,true)
         _result = s:sub(B+1,C-1)
     end
-    return _result, s and true or false
+    return _result, (s and true or false)
 end
 
 --[[
