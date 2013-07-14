@@ -4047,7 +4047,7 @@ function scriptConfig:OnWndMsg()
             end
         end
         if param.pType == SCRIPT_PARAM_SLICE then
-            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3 + param.cursor - _SC.draw.border, y1, _SC.draw.border * 2, _SC.draw.fontSize) then
+            if CursorIsUnder(_SC._Idraw.x +  _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
                 _SC._slice = i
                 return
             end
