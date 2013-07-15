@@ -3695,7 +3695,7 @@ local function __SC__updateMaster()
 end
 
 local function __SC__saveMenu()
-    __SC__save("Menu", { menuKey = _SC.menuKey, draw = {x = _SC.draw.x, y = _SC.draw.y, x = _SC.pDraw.x, y = _SC.pDraw.y}})
+    __SC__save("Menu", { menuKey = _SC.menuKey, draw = {x = _SC.draw.x, y = _SC.draw.y}, pDraw = { x = _SC.pDraw.x, y = _SC.pDraw.y}})
     _SC.master.x = _SC.draw.x
     _SC.master.y = _SC.draw.y
     _SC.master.px = _SC.pDraw.x
