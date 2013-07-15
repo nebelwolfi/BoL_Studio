@@ -261,7 +261,7 @@ function GetSave(name)
             for i, v in pairs(t) do
                 local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
                 if iType == "number" then strKey = "[" .. i .. "]"
-                elseif iType == "string" then strKey = i end
+                elseif iType == "string" then strKey = '["'.. i ..'"]' end
                 if vType == "number" then strVal = v
                 elseif vType == "string" then strVal = [["]] .. v .. [["]]
                 elseif vType == "table" then strVal = ts(v, (tab or "") .. "\t")
@@ -591,7 +591,10 @@ function GetItemDB(OnLoaded)
                     item[j] = { [p] = content }
                 elseif j == "icon" and RAF then
                     if not FileExist(SPRITE_PATH.."Items\\"..p) then
-                        RAF:find("DATA\\Items\\Icons2D\\"..p):extract(SPRITE_PATH.."Items\\"..p)
+                        local file = RAF:find("DATA\\Items\\Icons2D\\"..p)
+    					if not file or not file.name or file.name == "" then file=RAF:find("DATA\\Items\\Icons2D\\"..p:gsub(" ","_"):gsub(".dds",".DDS")) end
+						if file and file.name and file.name~="" then file:extract(SPRITE_PATH.."Items\\"..p)
+                        else OutputDebugString("Item Icon: "..p.." hasnt been found") end
                     end
                     item[j] = p
                 elseif j=="name" or j== "description" then
@@ -703,8 +706,10 @@ function GetDictionaryString(key, localization)
     local function UpdateLibrary(localization)
         local function _onRafLoadedDic(RAF)
             local file = RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt")
-            _dictionaries[localization] = file.content
-            file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+			if file and file.name and file.name~="" then
+				_dictionaries[localization] = file.content
+				file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+			end
         end
         GetRafFiles(_onRafLoadedDic)
     end
@@ -3636,7 +3641,7 @@ SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
-local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
+_SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 class'scriptConfig'
 local function __SC__remove(name)
     if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
@@ -3973,7 +3978,7 @@ function scriptConfig:OnDraw()
     DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
     if #self._tsInstances > 0 then
-        --_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
+        _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         for _, tsInstance in ipairs(self._tsInstances) do
             _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         end
@@ -4006,25 +4011,39 @@ function scriptConfig:_DrawParam(varIndex)
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
 end
 
+
+
 function scriptConfig:load()
+    local function sensitiveMerge(base, t)
+        for i, v in pairs(t) do
+            if type(base[i])==type(v) then
+                if type(v) == "table" then sensitiveMerge(base[i],v)
+                else base[i] = v end
+            end
+        end
+    end
     local config = __SC__load(self.name)
     for var, value in pairs(config) do
-        self[var] = value
+        if type(value) == "table" then
+            if self[var] then sensitiveMerge(self[var],value) end
+        else self[var] = value end
     end
 end
 
 function scriptConfig:save()
     local content = {}
+    content._param = content._param or {}
     for var, param in pairs(self._param) do
         if param.pType ~= SCRIPT_PARAM_INFO then
             content[param.var] = self[param.var]
             if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
-                content[self._param[var].key]=param.key
+                content._param[var] = { key = param.key }
             end
         end
     end
+    content._tsInstances = content._tsInstances or {}
     for i, ts in pairs(self._tsInstances) do
-        content[self._tsInstances[i].mode]=ts.mode
+        content._tsInstances[i] =  { mode = ts.mode}
     end
     -- for i,pShow in pairs(self._permaShow) do
     -- table.insert (content, "_permaShow."..i.."="..tostring(pShow))
