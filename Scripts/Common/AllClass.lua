@@ -247,7 +247,12 @@ function GetSave(name)
     if not _saves[name] then
         if FileExist(LIB_PATH.."Saves\\"..name..".save") then
             local f = loadfile(LIB_PATH.."Saves\\"..name..".save")
-            _saves[name] = f and f() or {}
+            if f then
+                _saves[name] = f()
+            else
+                print("SaveFile: "..name.." is broken. Reset.")
+                _saves[name] = {}
+            end
         else
             _saves[name] = {}
             MakeSurePathExists(LIB_PATH.."Saves\\"..name..".save")
@@ -592,8 +597,8 @@ function GetItemDB(OnLoaded)
                 elseif j == "icon" and RAF then
                     if not FileExist(SPRITE_PATH.."Items\\"..p) then
                         local file = RAF:find("DATA\\Items\\Icons2D\\"..p)
-    					if not file or not file.name or file.name == "" then file=RAF:find("DATA\\Items\\Icons2D\\"..p:gsub(" ","_"):gsub(".dds",".DDS")) end
-						if file and file.name and file.name~="" then file:extract(SPRITE_PATH.."Items\\"..p)
+                        if not file or not file.name or file.name == "" then file=RAF:find("DATA\\Items\\Icons2D\\"..p:gsub(" ","_")) end
+                        if file and file.name and file.name~="" then file:extract(SPRITE_PATH.."Items\\"..p)
                         else OutputDebugString("Item Icon: "..p.." hasnt been found") end
                     end
                     item[j] = p
@@ -706,10 +711,10 @@ function GetDictionaryString(key, localization)
     local function UpdateLibrary(localization)
         local function _onRafLoadedDic(RAF)
             local file = RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt")
-			if file and file.name and file.name~="" then
-				_dictionaries[localization] = file.content
-				file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
-			end
+            if file and file.name and file.name~="" then
+                _dictionaries[localization] = file.content
+                file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+            end
         end
         GetRafFiles(_onRafLoadedDic)
     end
@@ -3641,7 +3646,7 @@ SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
-_SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
+local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 class'scriptConfig'
 local function __SC__remove(name)
     if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
@@ -3734,29 +3739,30 @@ local function __SC__init(name)
         __SC__init_draw()
         local gameStart = GetGame()
         _SC.master = __SC__load("Master")
-        if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
-            for i = 1, _SC.master.iCount do
-                if _SC.master["name" .. i] == name then _SC.masterIndex = i end
-            end
-            if _SC.masterIndex == nil then
-                _SC.masterIndex = _SC.master.iCount + 1
-                _SC.master["name" .. _SC.masterIndex] = name
-                _SC.master.iCount = _SC.masterIndex
-                __SC__saveMaster()
-            end
-        else
-            __SC__remove("Master")
-            _SC.masterIndex = 1
-            _SC.master.useTS = false
-            _SC.master.x = _SC.draw.x
-            _SC.master.y = _SC.draw.y
-            _SC.master.px = _SC.pDraw.x
-            _SC.master.py = _SC.pDraw.y
-            _SC.master.osTime = gameStart.osTime
-            _SC.master.name1 = name
-            _SC.master.iCount = 1
-            __SC__saveMaster()
-        end
+        --[[ SurfaceS: Look into it! When loading the master, it screws up the Menu, when you change at the same time the running scripts.
+           if _SC.master.osTime ~= nil and _SC.master.osTime == gameStart.osTime then
+              for i = 1, _SC.master.iCount do
+                  if _SC.master["name" .. i] == name then _SC.masterIndex = i end
+              end
+              if _SC.masterIndex == nil then
+                  _SC.masterIndex = _SC.master.iCount + 1
+                  _SC.master["name" .. _SC.masterIndex] = name
+                  _SC.master.iCount = _SC.masterIndex
+                  __SC__saveMaster()
+             end
+        else]]
+        __SC__remove("Master")
+        _SC.masterIndex = 1
+        _SC.master.useTS = false
+        _SC.master.x = _SC.draw.x
+        _SC.master.y = _SC.draw.y
+        _SC.master.px = _SC.pDraw.x
+        _SC.master.py = _SC.pDraw.y
+        _SC.master.osTime = gameStart.osTime
+        _SC.master.name1 = name
+        _SC.master.iCount = 1
+        __SC__saveMaster()
+        --end
     end
     __SC__updateMaster()
 end
@@ -3970,7 +3976,7 @@ end
 function scriptConfig:OnDraw()
     if _SC._slice then
         local cursorX = math.min(math.max(0, GetCursorPos().x - _SC._Idraw.x - _SC.draw.row3), _SC.draw.width - _SC.draw.row3)
-        self[self._param[_SC._slice].var] = math.round(cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[_SC._slice].max - self._param[_SC._slice].min), self._param[_SC._slice].idc)
+        self[self._param[_SC._slice].var] = math.round(self._param[_SC._slice].min + cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[_SC._slice].max - self._param[_SC._slice].min), self._param[_SC._slice].idc)
     end
     _SC._Idraw.y = _SC.draw.y
     DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y + _SC._Idraw.height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
@@ -3997,7 +4003,7 @@ function scriptConfig:_DrawParam(varIndex)
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
         DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
         -- cursor
-        self._param[varIndex].cursor = self[pVar] / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
+        self._param[varIndex].cursor = (self[pVar] -self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
         DrawLine(_SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
