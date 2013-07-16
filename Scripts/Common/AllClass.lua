@@ -868,6 +868,37 @@ function GetSprite(file, altFile)
     end
 end
 
+--[[
+    GetWebSprite(url, [callback])
+	returns a sprite from a given website
+	if no callback is given, it returns it result immediatly, if a callback is given, it downloads the sprite asyncronly and returns the sprite in the callback (recommended).
+]]
+function GetWebSprite(url, callback)
+    local urlr, sprite = url:reverse(), nil
+    local filename, env = urlr:sub(1,urlr:find("/")-1):reverse(), GetCurrentEnv() and GetCurrentEnv().FILE_NAME and GetCurrentEnv().FILE_NAME:gsub(".lua","") or "WebSprites"
+    if type(callback)=="function" then
+        MakeSurePathExists(SPRITE_PATH..env.."\\"..filename)
+        DownloadFile(url,SPRITE_PATH..env.."\\"..filename, function()
+            if FileExist(SPRITE_PATH..env.."\\"..filename) then
+                sprite = createSprite(env.."\\"..filename)
+            end
+            callback(sprite)
+        end)
+    else
+        local finished = false
+        GetWebSprite(url, function(data)
+            finished, sprite = true, data
+        end)
+        while not (finished or FileExist(SPRITE_PATH..env.."\\"..filename)) do
+            RunCmdCommand("ping 127.0.0.1 -n 1 -w 1")
+        end
+    end
+    if not sprite and FileExist(SPRITE_PATH..env.."\\"..filename) then
+        sprite = createSprite(env.."\\"..filename)
+    end
+    return sprite
+end
+
 -- return real hero leveled
 function GetHeroLeveled()
     return player:GetSpellData(SPELL_1).level + player:GetSpellData(SPELL_2).level + player:GetSpellData(SPELL_3).level + player:GetSpellData(SPELL_4).level
