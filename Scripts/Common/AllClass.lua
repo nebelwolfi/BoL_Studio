@@ -869,32 +869,36 @@ function GetSprite(file, altFile)
 end
 
 --[[
-    GetWebSprite(url, [callback])
+	GetWebSprite(url, [callback])
 	returns a sprite from a given website
 	if no callback is given, it returns it result immediatly, if a callback is given, it downloads the sprite asyncronly and returns the sprite in the callback (recommended).
 ]]
 function GetWebSprite(url, callback)
     local urlr, sprite = url:reverse(), nil
     local filename, env = urlr:sub(1,urlr:find("/")-1):reverse(), GetCurrentEnv() and GetCurrentEnv().FILE_NAME and GetCurrentEnv().FILE_NAME:gsub(".lua","") or "WebSprites"
-    if type(callback)=="function" then
-        MakeSurePathExists(SPRITE_PATH..env.."\\"..filename)
-        DownloadFile(url,SPRITE_PATH..env.."\\"..filename, function()
-            if FileExist(SPRITE_PATH..env.."\\"..filename) then
-                sprite = createSprite(env.."\\"..filename)
-            end
-            callback(sprite)
-        end)
-    else
-        local finished = false
-        GetWebSprite(url, function(data)
-            finished, sprite = true, data
-        end)
-        while not (finished or FileExist(SPRITE_PATH..env.."\\"..filename)) do
-            RunCmdCommand("ping 127.0.0.1 -n 1 -w 1")
-        end
-    end
-    if not sprite and FileExist(SPRITE_PATH..env.."\\"..filename) then
+    if FileExist(SPRITE_PATH..env.."\\"..filename) then
         sprite = createSprite(env.."\\"..filename)
+        if type(callback)=="function" then callback(sprite) end
+    else
+        if type(callback)=="function" then
+            MakeSurePathExists(SPRITE_PATH..env.."\\"..filename)
+            DownloadFile(url,SPRITE_PATH..env.."\\"..filename, function()
+                if FileExist(SPRITE_PATH..env.."\\"..filename) then
+                    sprite = createSprite(env.."\\"..filename)
+                end
+                callback(sprite)
+            end)
+        else
+            sprite = GetWebSprite(url, function(data)
+                sprite = data
+            end)
+            while not (sprite or FileExist(SPRITE_PATH..env.."\\"..filename)) do
+                RunCmdCommand("ping 127.0.0.1 -n 1 -w 1")
+            end
+        end
+        if not sprite and FileExist(SPRITE_PATH..env.."\\"..filename) then
+            sprite = createSprite(env.."\\"..filename)
+        end
     end
     return sprite
 end
@@ -4014,8 +4018,8 @@ function scriptConfig:OnDraw()
     local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for " .. _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
     DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
-    if #self._tsInstances > 0 then
-        _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
+	if #self._tsInstances > 0 then
+		--_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         for _, tsInstance in ipairs(self._tsInstances) do
             _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         end
