@@ -4020,8 +4020,8 @@ function scriptConfig:OnDraw()
     local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for " .. _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
     DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
-    if #self._tsInstances > 0 then
-        _SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
+	if #self._tsInstances > 0 then
+		--_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         for _, tsInstance in ipairs(self._tsInstances) do
             _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         end
