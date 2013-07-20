@@ -247,11 +247,8 @@ function GetSave(name)
     if not _saves[name] then
         if FileExist(LIB_PATH.."Saves\\"..name..".save") then
             local f = loadfile(LIB_PATH.."Saves\\"..name..".save")
-            if f then
+            if type(f)=="function" then
                 _saves[name] = f()
-            else
-                print("SaveFile: "..name.." is broken. Reset.")
-                _saves[name] = {}
             end
         else
             _saves[name] = {}
@@ -259,7 +256,12 @@ function GetSave(name)
         end
     end
     save = _saves[name]
-    function save:Save()
+    if not save then
+		print("SaveFile: "..name.." is broken. Reset.")
+        _saves[name] = {}
+		save = _saves[name]
+	end
+	function save:Save()
         local function ts(t, tab)
             assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
             local s = "{\n"
