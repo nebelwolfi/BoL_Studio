@@ -1,6 +1,6 @@
 LIB_PATH = package.path:gsub("?.lua", "")
 SCRIPT_PATH = LIB_PATH:gsub("Common\\", "")
-SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites"):gsub("/","\\")
+SPRITE_PATH = SCRIPT_PATH:gsub("Scripts", "Sprites"):gsub("/", "\\")
 BOL_PATH = SCRIPT_PATH:gsub("Scripts\\", "")
 GAME_PATH = package.cpath:sub(1, math.max(package.cpath:find("?.") - 1, 1))
 VIP_USER = CLoLPacket and true or false
@@ -90,7 +90,7 @@ end
 ]]
 function GetDrawClock(time, offset)
     time, offset = time or 1, offset or 0
-    return (os.clock()+offset)%time/time
+    return (os.clock() + offset) % time / time
 end
 
 function table.clear(t)
@@ -103,8 +103,9 @@ function table.copy(from, deepCopy)
     if type(from) == "table" then
         local to = {}
         for k, v in pairs(from) do
-            if deepCopy and type(v)=="table" then to[k]=table.copy(v)
-            else to[k] = v end
+            if deepCopy and type(v) == "table" then to[k] = table.copy(v)
+            else to[k] = v
+            end
         end
         return to
     end
@@ -123,14 +124,16 @@ function table.serialize(t, tab, functions)
     for i, v in pairs(t) do
         local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
         if iType == "number" then strKey = "[" .. i .. "]"
-        elseif iType == "string" then strKey = i end
+        elseif iType == "string" then strKey = i
+        end
         if vType == "number" then strVal = v
         elseif vType == "string" then strVal = [["]] .. v .. [["]]
         elseif vType == "table" then strVal = table.serialize(v, (tab or "") .. "\t")
         elseif vType == "boolean" then strVal = tostring(v)
         elseif vType == "function" and functions then
             local dump = string.dump(v)
-            strVal = "load(Base64Decode(\""..Base64Encode(dump,#dump).."\"))" end
+            strVal = "load(Base64Decode(\"" .. Base64Encode(dump, #dump) .. "\"))"
+        end
         s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
     end
     return s .. (tab or "") .. "}"
@@ -138,9 +141,10 @@ end
 
 function table.merge(base, t, deepMerge)
     for i, v in pairs(t) do
-        if deepMerge and type(v)=="table" and type(base[i])=="table" then
-            base[i] = table.merge(base[i],v)
-        else base[i] = v end
+        if deepMerge and type(v) == "table" and type(base[i]) == "table" then
+            base[i] = table.merge(base[i], v)
+        else base[i] = v
+        end
     end
     return base
 end
@@ -188,7 +192,7 @@ function string.trim(s)
 end
 
 function math.isNaN(num)
-    return num~=num
+    return num ~= num
 end
 
 -- Round half away from zero
@@ -207,6 +211,11 @@ function math.close(a, b, eps)
     return math.abs(a - b) <= eps
 end
 
+function math.limit(val, min, max)
+    assert(type(val) == "number" and type(min) == "number" and type(max) == "number", "math.limit: wrong argument types (3 <number> expected)")
+    return math.min(max, math.max(min, val))
+end
+
 local fps, avgFps, frameCount, fFrame, lastFrame, updateFPS = 0, 0, 0, -math.huge, -math.huge, nil
 local function startFPSCounter()
     if not updateFPS then
@@ -217,6 +226,7 @@ local function startFPSCounter()
             avgFps = math.floor(frameCount / (os.clock() - fFrame))
             fFrame, frameCount = os.clock(), 0
         end
+
         AddDrawCallback(updateFPS)
     end
 end
@@ -245,72 +255,80 @@ local _saves, _initSave = {}, true
 function GetSave(name)
     local save
     if not _saves[name] then
-        if FileExist(LIB_PATH.."Saves\\"..name..".save") then
-            local f = loadfile(LIB_PATH.."Saves\\"..name..".save")
-            if type(f)=="function" then
+        if FileExist(LIB_PATH .. "Saves\\" .. name .. ".save") then
+            local f = loadfile(LIB_PATH .. "Saves\\" .. name .. ".save")
+            if type(f) == "function" then
                 _saves[name] = f()
             end
         else
             _saves[name] = {}
-            MakeSurePathExists(LIB_PATH.."Saves\\"..name..".save")
+            MakeSurePathExists(LIB_PATH .. "Saves\\" .. name .. ".save")
         end
     end
     save = _saves[name]
     if not save then
-		print("SaveFile: "..name.." is broken. Reset.")
+        print("SaveFile: " .. name .. " is broken. Reset.")
         _saves[name] = {}
-		save = _saves[name]
-	end
-	function save:Save()
+        save = _saves[name]
+    end
+    function save:Save()
         local function ts(t, tab)
             assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
             local s = "{\n"
             for i, v in pairs(t) do
                 local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
                 if iType == "number" then strKey = "[" .. i .. "]"
-                elseif iType == "string" then strKey = '["'.. i ..'"]' end
+                elseif iType == "string" then strKey = '["' .. i .. '"]'
+                end
                 if vType == "number" then strVal = v
                 elseif vType == "string" then strVal = [["]] .. v .. [["]]
                 elseif vType == "table" then strVal = ts(v, (tab or "") .. "\t")
                 elseif vType == "boolean" then strVal = tostring(v)
-                elseif vType == "function" and (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+                elseif vType == "function" and (i ~= "Save" and i ~= "Reload" and i ~= "Clear" and i ~= "IsEmpty" and i ~= "Remove") then
                     local dump = string.dump(v)
-                    strVal = "load(Base64Decode(\""..Base64Encode(dump,#dump).."\"))" end
+                    strVal = "load(Base64Decode(\"" .. Base64Encode(dump, #dump) .. "\"))"
+                end
                 s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
             end
             return s .. (tab or "") .. "}"
         end
-        WriteFile("return "..ts(self), LIB_PATH.."Saves\\"..name..".save")
+
+        WriteFile("return " .. ts(self), LIB_PATH .. "Saves\\" .. name .. ".save")
     end
+
     function save:Reload()
-        _saves[name] = loadfile(LIB_PATH.."Saves\\"..name..".save")()
+        _saves[name] = loadfile(LIB_PATH .. "Saves\\" .. name .. ".save")()
         save = _saves[name]
     end
+
     function save:Clear()
         for i, v in pairs(self) do
-            if type(v)~="function" or (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+            if type(v) ~= "function" or (i ~= "Save" and i ~= "Reload" and i ~= "Clear" and i ~= "IsEmpty" and i ~= "Remove") then
                 self[i] = nil
             end
         end
     end
+
     function save:IsEmpty()
         for i, v in pairs(self) do
-            if type(v) ~= "function" or (i~="Save" and i~="Reload" and i~="Clear" and i~= "IsEmpty" and i~="Remove") then
+            if type(v) ~= "function" or (i ~= "Save" and i ~= "Reload" and i ~= "Clear" and i ~= "IsEmpty" and i ~= "Remove") then
                 return false
             end
         end
         return true
     end
+
     function save:Remove()
         for i, v in pairs(_saves) do
             if v == self then
                 _saves[i] = nil
             end
-            if FileExist(LIB_PATH.."Saves\\"..name..".save") then
-                DeleteFile(LIB_PATH.."Saves\\"..name..".save")
+            if FileExist(LIB_PATH .. "Saves\\" .. name .. ".save") then
+                DeleteFile(LIB_PATH .. "Saves\\" .. name .. ".save")
             end
         end
     end
+
     if _initSave then
         _initSave = nil
         local function saveAll()
@@ -320,6 +338,7 @@ function GetSave(name)
                 end
             end
         end
+
         AddBugsplatCallback(saveAll)
         AddUnloadCallback(saveAll)
         AddExitCallback(saveAll)
@@ -334,13 +353,13 @@ end
 function os.executePowerShell(script, argument)
     local cmd = ""
     script:gsub(".", function(c) cmd = cmd .. c .. "\0" end)
-    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd,#cmd) .. "\"")
+    return PopenHidden("powershell " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd, #cmd) .. "\"")
 end
 
 function os.executePowerShellAsync(script, argument)
     local cmd = ""
     script:gsub(".", function(c) cmd = cmd .. c .. "\0" end)
-    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd,#cmd) .. "\"")
+    RunAsyncCmdCommand("powershell -windowstyle hidden " .. (argument or "") .. " -encoded \"" .. Base64Encode(cmd, #cmd) .. "\"")
 end
 
 --[[
@@ -367,17 +386,17 @@ $h = (ps "League of Legends").MainWindowHandle;
 end
 
 function PlaySoundPS(path, duration)
-    os.executePowerShellAsync('(new-object Media.SoundPlayer "'..path.. '").play();\nfor ($i=1; $i -le '..(duration or 1000)..'; $i++) {Start-Sleep -seconds 1}')
+    os.executePowerShellAsync('(new-object Media.SoundPlayer "' .. path .. '").play();\nfor ($i=1; $i -le ' .. (duration or 1000) .. '; $i++) {Start-Sleep -seconds 1}')
 end
 
 function PlayMediaPS(path, duration)
     local script = [[$si = new-object System.Diagnostics.ProcessStartInfo;
-$si.fileName = "]]..path..[[" ;
+$si.fileName = "]] .. path .. [[" ;
 $si.windowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden;
 $process = New-Object System.Diagnostics.Process;
 $process.startInfo=$si;
 $process.start();
-]]..(duration and ([[start-sleep -seconds ]]..duration..[[;
+]] .. (duration and ([[start-sleep -seconds ]] .. duration .. [[;
 $process.CloseMainWindow();]]) or "")
     return os.executePowerShellAsync(script)
 end
@@ -385,8 +404,8 @@ end
 --Example: CreateDirectory("C:\\TEST") Returns true or false, only works if the folder doesn't already exist
 function CreateDirectory(path)
     assert(type(path) == "string", "CreateDirectory: wrong argument types (<string> expected for path)")
-    local worked = RunCmdCommand('mkdir "' .. string.gsub(path, [[/]], [[\]])..'"') == 0
-    if not worked then print("Could not create the Folder "..path) end
+    local worked = RunCmdCommand('mkdir "' .. string.gsub(path, [[/]], [[\]]) .. '"') == 0
+    if not worked then print("Could not create the Folder " .. path) end
     return worked
 end
 
@@ -405,20 +424,20 @@ end
 
 -- Example: foldernames, filenames = ScanDirectory([[C:\]])
 function ScanDirectory(path)
-    assert(type(path) == "string" and #path>0, "ScanDirectory: wrong argument types (<string> expected for path)")
+    assert(type(path) == "string" and #path > 0, "ScanDirectory: wrong argument types (<string> expected for path)")
     path = path and path:gsub([[/]], [[\]]) or BOL_PATH:gsub([[/]], [[\]])
-    local dirCmd, fileCmd = 'dir /b /a:d-s "'..path..'"', 'dir /b /a:-d-s "'..path..'"'
+    local dirCmd, fileCmd = 'dir /b /a:d-s "' .. path .. '"', 'dir /b /a:-d-s "' .. path .. '"'
     local dirs, files = {}, {}
-    if RunCmdCommand(dirCmd)==0 then dirs = PopenHidden(dirCmd):trim():split("\n") end
-    if RunCmdCommand(fileCmd)==0 then files = PopenHidden(fileCmd):trim():split("\n") end
+    if RunCmdCommand(dirCmd) == 0 then dirs = PopenHidden(dirCmd):trim():split("\n") end
+    if RunCmdCommand(fileCmd) == 0 then files = PopenHidden(fileCmd):trim():split("\n") end
     return dirs, files
 end
 
 -- Example: exist = ProcessExist("League of Legends")
 function ProcessExist(name)
-    assert(type(name) == "string" and #name>0, "ProcessExist: wrong argument types (<string> expected for path)")
-    name = name:gsub(".exe","",1):trim()
-    return RunCmdCommand('tasklist /FI "IMAGENAME eq '..name..'.exe" 2>NUL | find /I /N "'..name..'.exe">NUL') == 0
+    assert(type(name) == "string" and #name > 0, "ProcessExist: wrong argument types (<string> expected for path)")
+    name = name:gsub(".exe", "", 1):trim()
+    return RunCmdCommand('tasklist /FI "IMAGENAME eq ' .. name .. '.exe" 2>NUL | find /I /N "' .. name .. '.exe">NUL') == 0
 end
 
 --Return text of a file (you can also insert the filename)
@@ -462,16 +481,16 @@ end
 
 --takes a path and creates all necessary folders.
 function MakeSurePathExists(path)
-    path = path:gsub("/","\\"):reverse()
-    path = path:sub(path:find("\\"),#path)
+    path = path:gsub("/", "\\"):reverse()
+    path = path:sub(path:find("\\"), #path)
     if not DirectoryExist(path:reverse()) then
-        path = path:sub(2,#path):split("\\",2)
+        path = path:sub(2, #path):split("\\", 2)
         if #path == 2 then
-            if not MakeSurePathExists(path[2]:reverse().."\\") or not CreateDirectory(("\\"..path[1].."\\"..path[2]):reverse()) then
+            if not MakeSurePathExists(path[2]:reverse() .. "\\") or not CreateDirectory(("\\" .. path[1] .. "\\" .. path[2]):reverse()) then
                 return false
             end
         else
-            return DirectoryExist(path[1]:reverse().."\\")
+            return DirectoryExist(path[1]:reverse() .. "\\")
         end
     end
     return true
@@ -504,13 +523,13 @@ function ReadIni(path)
     for _, s in ipairs(raw:split("\n")) do
         local v = s:trim()
         local commentBegin = v:find(";") or v:find("#")
-        if commentBegin then v = v:sub(1,commentBegin) end
-        if v:sub(1,3) == "tr " then v = v:sub(4,#v) end --ignore
+        if commentBegin then v = v:sub(1, commentBegin) end
+        if v:sub(1, 3) == "tr " then v = v:sub(4, #v) end --ignore
         if v:sub(1, 1) == "[" and v:sub(#v, #v) == "]" then --Section
             section = v:sub(2, #v - 1):trim()
             t[section] = {}
         elseif section and v:find("=") then --Key = Value
-            local kv = v:split("=",2)
+            local kv = v:split("=", 2)
             if #kv == 2 then
                 local key, value = kv[1]:trim(), kv[2]:trim()
                 if value:lower() == "true" then value = true
@@ -562,14 +581,14 @@ end
 local _items, _itemsLoaded, _onItemsLoaded, _onRafLoaded = {}, false, {}, nil
 function GetItem(i)
     local item
-    if type(i)=="number" then
-        if i>=ITEM_1 and i<=ITEM_6 then
+    if type(i) == "number" then
+        if i >= ITEM_1 and i <= ITEM_6 then
             local cItem = player:getItem(i)
             item = GetItem(cItem and cItem.id)
         else
             item = GetItemDB()[i]
         end
-    elseif type(i)=="string" then
+    elseif type(i) == "string" then
         for i, v in pairs(GetItemDB()) do
             if v:GetName():trim():lower() == i:trim():lower() then item = v break end
         end
@@ -579,7 +598,7 @@ end
 
 function GetItemDB(OnLoaded)
     local function ParseItems(RAF)
-        local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH.."Items\\items.json")
+        local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH .. "Items\\items.json")
         itemsJSON = JSON:decode(itemsJSON)
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
@@ -587,7 +606,7 @@ function GetItemDB(OnLoaded)
             local item = _items[tonumber(itemJSON.id)]
             for j, p in pairs(itemJSON) do
                 if j == "id" then item[j] = tonumber(p)
-                elseif j == "into" or j=="from" then
+                elseif j == "into" or j == "from" then
                     item[j] = {}
                     for k, id in pairs(itemJSON[j]) do
                         if not _items[tonumber(id)] then _items[tonumber(id)] = table.copy(basicItem) end
@@ -597,14 +616,15 @@ function GetItemDB(OnLoaded)
                     local index, content = table.contains(itemsJSON.itemgroups, p, groupid)
                     item[j] = { [p] = content }
                 elseif j == "icon" and RAF then
-                    if not FileExist(SPRITE_PATH.."Items\\"..p) then
-                        local file = RAF:find("DATA\\Items\\Icons2D\\"..p)
-                        if not file or not file.name or file.name == "" then file=RAF:find("DATA\\Items\\Icons2D\\"..p:gsub(" ","_")) end
-                        if file and file.name and file.name~="" then file:extract(SPRITE_PATH.."Items\\"..p)
-                        else OutputDebugString("Item Icon: "..p.." hasnt been found") end
+                    if not FileExist(SPRITE_PATH .. "Items\\" .. p) then
+                        local file = RAF:find("DATA\\Items\\Icons2D\\" .. p)
+                        if not file or not file.name or file.name == "" then file = RAF:find("DATA\\Items\\Icons2D\\" .. p:gsub(" ", "_")) end
+                        if file and file.name and file.name ~= "" then file:extract(SPRITE_PATH .. "Items\\" .. p)
+                        else OutputDebugString("Item Icon: " .. p .. " hasnt been found")
+                        end
                     end
                     item[j] = p
-                elseif j=="name" or j== "description" then
+                elseif j == "name" or j == "description" then
                 else
                     item[j] = p
                 end
@@ -613,37 +633,44 @@ function GetItemDB(OnLoaded)
         for i, v in pairs(_items) do
             function v:GetName(localization)
                 localization = localization or "en_US"
-                local name = self["name_"..localization]
+                local name = self["name_" .. localization]
                 if not name or name == "" then
-                    self["name_"..localization] = GetDictionaryString("game_item_displayname_"..self.id, localization)
-                    return self["name_"..localization]
-                else return name end
+                    self["name_" .. localization] = GetDictionaryString("game_item_displayname_" .. self.id, localization)
+                    return self["name_" .. localization]
+                else return name
+                end
             end
+
             function v:GetDescription(localization)
                 localization = localization or "en_US"
-                local desc = self["desc_"..localization]
+                local desc = self["desc_" .. localization]
                 if not desc or desc == "" then
-                    self["desc_"..localization] = GetDictionaryString("game_item_description_"..self.id, localization)
-                    return self["desc_"..localization]
-                else return desc end
+                    self["desc_" .. localization] = GetDictionaryString("game_item_description_" .. self.id, localization)
+                    return self["desc_" .. localization]
+                else return desc
+                end
             end
+
             function v:Sell()
                 local slot = self:GetInventorySlot()
                 if slot then return SellItem(slot) end
             end
+
             function v:Buy()
                 return BuyItem(self.id)
             end
+
             function v:GetCount()
                 local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
                 for i = 1, 6, 1 do
                     local item = player:getItem(ItemSlot[i])
                     if item and item.id == self.id then
-                        count = count + math.max(item.stacks or 1,1)
+                        count = count + math.max(item.stacks or 1, 1)
                     end
                 end
                 return count
             end
+
             function v:GetInventorySlot()
                 local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
                 local item = player:getItem(ItemSlot[i])
@@ -651,23 +678,27 @@ function GetItemDB(OnLoaded)
                     if item and item.id == self.id then return ItemSlot[i] end
                 end
             end
+
             function v:GetSprite()
                 if not self.sprite then
                     self.sprite = self:CreateSprite()
                 end
                 return self.sprite
             end
+
             function v:CreateSprite()
-                if self.icon and FileExist(SPRITE_PATH.."Items\\"..self.icon) then
-                    return createSprite("Items\\"..self.icon)
+                if self.icon and FileExist(SPRITE_PATH .. "Items\\" .. self.icon) then
+                    return createSprite("Items\\" .. self.icon)
                 end
             end
+
             function v:Cast(x, z)
                 local slot = self:GetInventorySlot()
                 if not slot then return end
                 if x and z then CastSpell(slot, x, z)
                 elseif x then CastSpell(slot, x)
-                else CastSpell(slot) end
+                else CastSpell(slot)
+                end
             end
         end
         _itemsLoaded = true
@@ -676,18 +707,21 @@ function GetItemDB(OnLoaded)
             _onItemsLoaded[i] = nil
         end
     end
+
     if not _onRafLoaded then
         function _onRafLoaded(RAF)
-            RAF:find("DATA\\Items\\items.json"):extract(SPRITE_PATH.."Items\\items.json")
+            RAF:find("DATA\\Items\\items.json"):extract(SPRITE_PATH .. "Items\\items.json")
             ParseItems(RAF)
         end
+
         GetRafFiles(_onRafLoaded)
     end
     if OnLoaded then
         if not _itemsLoaded then table.insert(_onItemsLoaded, OnLoaded)
-        else OnLoaded(_items, _itemsLoaded) return _items, _itemsLoaded end
+        else OnLoaded(_items, _itemsLoaded) return _items, _itemsLoaded
+        end
     end
-    if not _itemsLoaded and FileExist(SPRITE_PATH.."Items\\items.json") then
+    if not _itemsLoaded and FileExist(SPRITE_PATH .. "Items\\items.json") then
         ParseItems()
     end
     return _items, _itemsLoaded
@@ -712,25 +746,27 @@ function GetDictionaryString(key, localization)
     local _result = ""
     local function UpdateLibrary(localization)
         local function _onRafLoadedDic(RAF)
-            local file = RAF:find("DATA\\Menu\\fontconfig_"..localization..".txt")
-            if file and file.name and file.name~="" then
+            local file = RAF:find("DATA\\Menu\\fontconfig_" .. localization .. ".txt")
+            if file and file.name and file.name ~= "" then
                 _dictionaries[localization] = file.content
-                file:extract(LIB_PATH:gsub("/","\\").."Saves\\"..localization..".dic")
+                file:extract(LIB_PATH:gsub("/", "\\") .. "Saves\\" .. localization .. ".dic")
             end
         end
+
         GetRafFiles(_onRafLoadedDic)
     end
+
     if not _dictionaries[localization] then
         UpdateLibrary(localization)
-        if FileExist(LIB_PATH.."Saves\\"..localization..".dic") then
-            _dictionaries[localization] = ReadFile(LIB_PATH.."Saves\\"..localization..".dic")
+        if FileExist(LIB_PATH .. "Saves\\" .. localization .. ".dic") then
+            _dictionaries[localization] = ReadFile(LIB_PATH .. "Saves\\" .. localization .. ".dic")
         end
     end
     local s = _dictionaries[localization]
     if s then
-        local A,B = s:find('\ntr "'..key..'" = "',1,true)
-        local C,D = s:find('"\n',B,true)
-        _result = s:sub(B+1,C-1)
+        local A, B = s:find('\ntr "' .. key .. '" = "', 1, true)
+        local C, D = s:find('"\n', B, true)
+        _result = s:sub(B + 1, C - 1)
     end
     return _result, (s and true or false)
 end
@@ -743,10 +779,10 @@ local _rafVersion
 function GetRafVersion()
     if _rafVersion then return _rafVersion end
     local maxVal = 0
-    for i, v in pairs(ScanDirectory(GAME_PATH:sub(1, GAME_PATH:find("\\RADS")).."\\RADS\\projects\\lol_game_client\\filearchives\\")) do
+    for i, v in pairs(ScanDirectory(GAME_PATH:sub(1, GAME_PATH:find("\\RADS")) .. "\\RADS\\projects\\lol_game_client\\filearchives\\")) do
         local val = 0
         for i, v in pairs(v:split("[.]")) do
-            val = val + (tonumber(v) or 0) * 1000^i
+            val = val + (tonumber(v) or 0) * 1000 ^ i
         end
         if val > maxVal then
             _rafVersion = v:trim()
@@ -774,7 +810,7 @@ end
 local _localization
 function GetLocalization()
     if not _localization then
-        _localization = FileExist(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg") and ReadIni(GAME_PATH.."DATA\\cfg\\defaults\\locale.cfg").General.LanguageLocaleRegion or "en_EN"
+        _localization = FileExist(GAME_PATH .. "DATA\\cfg\\defaults\\locale.cfg") and ReadIni(GAME_PATH .. "DATA\\cfg\\defaults\\locale.cfg").General.LanguageLocaleRegion or "en_EN"
     end
     return _localization
 end
@@ -795,6 +831,7 @@ function DelayAction(func, delay, args) --delay in seconds
                 end
             end
         end
+
         AddTickCallback(delayedActionsExecuter)
     end
     local t = os.clock() + (delay or 0)
@@ -808,11 +845,11 @@ function SetInterval(userFunction, timeout, count, params)
     if not _intervalFunction then
         function _intervalFunction(userFunction, startTime, timeout, count, params)
             if userFunction(table.unpack(params or {})) ~= false and (not count or count > 1) then
-                DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params})
+                DelayAction(_intervalFunction, (timeout - (os.clock() - startTime - timeout)), { userFunction, startTime + timeout, timeout, count and (count - 1), params })
             end
         end
     end
-    DelayAction(_intervalFunction, timeout, {userFunction, os.clock(), timeout or 0, count, params})
+    DelayAction(_intervalFunction, timeout, { userFunction, os.clock(), timeout or 0, count, params })
 end
 
 local _DrawText, _PrintChat, _PrintFloatText, _DrawLine, _DrawArrow, _DrawCircle, _DrawRectangle, _DrawLines, _DrawLines2 = DrawText, PrintChat, PrintFloatText, DrawLine, DrawArrow, DrawCircle, DrawRectangle, DrawLines, DrawLines2
@@ -871,22 +908,22 @@ function GetSprite(file, altFile)
 end
 
 --[[
-	GetWebSprite(url, [callback])
-	returns a sprite from a given website
-	if no callback is given, it returns it result immediatly, if a callback is given, it downloads the sprite asyncronly and returns the sprite in the callback (recommended).
+    GetWebSprite(url, [callback])
+    returns a sprite from a given website
+    if no callback is given, it returns it result immediatly, if a callback is given, it downloads the sprite asyncronly and returns the sprite in the callback (recommended).
 ]]
 function GetWebSprite(url, callback)
     local urlr, sprite = url:reverse(), nil
-    local filename, env = urlr:sub(1,urlr:find("/")-1):reverse(), GetCurrentEnv() and GetCurrentEnv().FILE_NAME and GetCurrentEnv().FILE_NAME:gsub(".lua","") or "WebSprites"
-    if FileExist(SPRITE_PATH..env.."\\"..filename) then
-        sprite = createSprite(env.."\\"..filename)
-        if type(callback)=="function" then callback(sprite) end
+    local filename, env = urlr:sub(1, urlr:find("/") - 1):reverse(), GetCurrentEnv() and GetCurrentEnv().FILE_NAME and GetCurrentEnv().FILE_NAME:gsub(".lua", "") or "WebSprites"
+    if FileExist(SPRITE_PATH .. env .. "\\" .. filename) then
+        sprite = createSprite(env .. "\\" .. filename)
+        if type(callback) == "function" then callback(sprite) end
     else
-        if type(callback)=="function" then
-            MakeSurePathExists(SPRITE_PATH..env.."\\"..filename)
-            DownloadFile(url,SPRITE_PATH..env.."\\"..filename, function()
-                if FileExist(SPRITE_PATH..env.."\\"..filename) then
-                    sprite = createSprite(env.."\\"..filename)
+        if type(callback) == "function" then
+            MakeSurePathExists(SPRITE_PATH .. env .. "\\" .. filename)
+            DownloadFile(url, SPRITE_PATH .. env .. "\\" .. filename, function()
+                if FileExist(SPRITE_PATH .. env .. "\\" .. filename) then
+                    sprite = createSprite(env .. "\\" .. filename)
                 end
                 callback(sprite)
             end)
@@ -896,12 +933,12 @@ function GetWebSprite(url, callback)
                 finished = true
                 sprite = data
             end)
-            while not (finished or sprite or FileExist(SPRITE_PATH..env.."\\"..filename)) do
+            while not (finished or sprite or FileExist(SPRITE_PATH .. env .. "\\" .. filename)) do
                 RunCmdCommand("ping 127.0.0.1 -n 1 -w 1")
             end
         end
-        if not sprite and FileExist(SPRITE_PATH..env.."\\"..filename) then
-            sprite = createSprite(env.."\\"..filename)
+        if not sprite and FileExist(SPRITE_PATH .. env .. "\\" .. filename) then
+            sprite = createSprite(env .. "\\" .. filename)
         end
     end
     return sprite
@@ -1040,7 +1077,7 @@ function DrawCircle2D(x, y, radius, width, color, quality)
     quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
     local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
-        points[#points+1] = D3DXVECTOR2(x + radius * math.cos(theta), y - radius * math.sin(theta))
+        points[#points + 1] = D3DXVECTOR2(x + radius * math.cos(theta), y - radius * math.sin(theta))
     end
     DrawLines2(points, width or 1, color or 4294967295)
 end
@@ -1051,7 +1088,7 @@ function DrawCircle3D(x, y, z, radius, width, color, quality)
     local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
         local c = WorldToScreen(D3DXVECTOR3(x + radius * math.cos(theta), y, z - radius * math.sin(theta)))
-        points[#points+1] = D3DXVECTOR2(c.x, c.y)
+        points[#points + 1] = D3DXVECTOR2(c.x, c.y)
     end
     DrawLines2(points, width or 1, color or 4294967295)
 end
@@ -1088,7 +1125,8 @@ function DrawTextA(text, size, x, y, color, align)
         DrawText(text or "", size or 12, (x or 0) - textArea.x, (y or 0), color or 4294967295)
     elseif align:lower() == "center" then
         DrawText(text or "", size or 12, (x or 0) - textArea.x / 2, (y or 0), color or 4294967295)
-    else error("DrawTextA: Align "..align.." is not valid") end
+    else error("DrawTextA: Align " .. align .. " is not valid")
+    end
 end
 
 function DrawText3D(text, x, y, z, size, color, center)
@@ -1821,9 +1859,9 @@ function WayPointManager:__init()
         if AddRecvPacketCallback then
             AddDeleteObjCallback(WayPointManager_OnDeleteObject)
             AddRecvPacketCallback(WayPointManager_OnRecvPacket)
-            AdvancedCallback:bind('OnLoseVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = os.clock() end end)
-            AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID==hero.networkID and hero.networkID~=0 then WayPointVisibility[hero.networkID] = nil end end)
-            AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team==TEAM_ENEMY and hero.networkID==hero.networkID and hero.networkID~=0 then WayPoints[hero.networkID] = {{x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z}} WayPointVisibility[hero.networkID] = nil end end)
+            AdvancedCallback:bind('OnLoseVision', function(hero) if hero.valid and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPointVisibility[hero.networkID] = os.clock() end end)
+            AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPointVisibility[hero.networkID] = nil end end)
+            AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team == TEAM_ENEMY and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPoints[hero.networkID] = { { x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z } } WayPointVisibility[hero.networkID] = nil end end)
         end
     end
 end
@@ -1864,7 +1902,7 @@ end
 
 function WayPointManager:GetSimulatedWayPoints(object, fromT, toT)
     local wayPoints, fromT, toT = self:GetWayPoints(object), fromT or 0, toT or math.huge
-    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or ((not object.visible and  not WayPointVisibility[object.networkID]) and math.huge or 0)
+    local invisDur = (not object.visible and WayPointVisibility[object.networkID]) and os.clock() - WayPointVisibility[object.networkID] or ((not object.visible and not WayPointVisibility[object.networkID]) and math.huge or 0)
     fromT = fromT + invisDur
     local tTime, fTime, result = 0, 0, {}
     for i = 1, #wayPoints - 1 do
@@ -1910,7 +1948,7 @@ function WayPointManager:DrawWayPoints(obj, color, size, fromT, toT)
     for i = 1, #wayPoints do
         local wayPoint = wayPoints[i]
         local c = WorldToScreen(D3DXVECTOR3(wayPoint.x, obj.y, wayPoint.y))
-        points[#points+1] = D3DXVECTOR2(c.x, c.y)
+        points[#points + 1] = D3DXVECTOR2(c.x, c.y)
     end
     DrawLines2(points, size or 1, color or 4294967295)
 end
@@ -2641,7 +2679,7 @@ function TargetPredictionVIP:GetPrediction(target)
     if os.clock() - (self.Cache[target.networkID] and self.Cache[target.networkID].Time or 0) >= 1 / 60 then self.Cache[target.networkID] = { Time = os.clock() }
     else return self.Cache[target.networkID].HitPosition, self.Cache[target.networkID].HitTime, self.Cache[target.networkID].ShootPosition
     end
-    local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + ((GetLatency() / 2) /1000)), nil, nil
+    local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + ((GetLatency() / 2) / 1000)), nil, nil
     assert(self.Spell.Speed > 0 and self.Spell.Delay >= 0, "TargetPredictionVIP:GetPrediction : SpellDelay must be >=0 and SpellSpeed must be >0")
     local vec
     if #wayPoints == 1 or self.Spell.Speed == math.huge then --Target not moving
@@ -2667,6 +2705,7 @@ function TargetPredictionVIP:GetPrediction(target)
                         vec.x, vec.z = math.cos(phi) * vec.x - math.sin(phi) * vec.z + vec2.x, math.sin(phi) * vec.x + math.cos(phi) * vec.z + vec2.z
                         return vec
                     end
+
                     local alpha = (math.atan2(B.y - A.y, B.x - A.x) - math.atan2(self.Spell.Source.z - hitPosition.z, self.Spell.Source.x - hitPosition.x)) % (2 * math.pi) --angle between movement and spell
                     local total = 1 - (math.abs((alpha % math.pi) - math.pi / 2) / (math.pi / 2)) --0 if the player walks in your direction or away from your direction, 1 if he walks orthogonal to you
                     local phi = alpha < math.pi and math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime)) or -math.atan((self.Spell.Width / 2) / (self.Spell.Speed * hitTime))
@@ -2694,6 +2733,7 @@ function TargetPredictionVIP:GetHitChance(target)
     local pos, t = self:GetPrediction(target)
     if self.Cache[target.networkID] and self.Cache[target.networkID].Chance then return self.Cache[target.networkID].Chance end
     local function sum(t) local n = 0 for i, v in pairs(t) do n = n + v end return n end
+
     local hitChance = 0
     local hC = {}
     --Track if the enemy arrived at its last waypoint and is invisible (lower hitchance)
@@ -2763,8 +2803,10 @@ function TargetPredictionVIP:GetCollision(target)
         if wayPoints and #wayPoints > 0 then
             local function intersect(A, B, C, D)
                 local function ccw(A, B, C) return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x) end
+
                 return ccw(A, C, D) ~= ccw(B, C, D) and ccw(A, B, C) ~= ccw(A, B, D)
             end
+
             local function getSpellHitTime(position)
                 local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(self.Spell.Source, prediction, position)
                 return isOnSegment and GetDistanceSqr(pointLine, position) < (self.Spell.Width / 2) ^ 2, GetDistance(self.Spell.Source, pointLine) / self.Spell.Speed
@@ -2786,7 +2828,7 @@ function TargetPredictionVIP:GetCollision(target)
                         local cTimeTravelled = absTimeTravelled + GetDistance(A, intersection) / minion.ms
                         local isInRect, hitMinionT = getSpellHitTime(intersection)
                         minionIn, minionOut = math.min(minionIn, cTimeTravelled), math.max(minionOut, cTimeTravelled)
-                        minSpellT, maxSpellT  = math.min(hitMinionT, minSpellT), math.max(hitMinionT, maxSpellT)
+                        minSpellT, maxSpellT = math.min(hitMinionT, minSpellT), math.max(hitMinionT, maxSpellT)
                     end
                 end
 
@@ -2938,7 +2980,7 @@ end
     _game.map
     _game.settings
 ]]
-local _game, _game_init = {lastCmd = GAME_PATH.."lastCmd.log"}, true
+local _game, _game_init = { lastCmd = GAME_PATH .. "lastCmd.log" }, true
 
 local _onGameOver, __game__OnCreateObj, __game__GameOver = {}, nil, nil
 function GetGame()
@@ -3012,7 +3054,7 @@ function GetGame()
                         _game.map = { index = 12, name = "Howling Abyss", shortName = "howlingAbyss", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 13120 / 2, height = 12618 / 2 } }
                         break
                     else
-                        PrintChat("New map : x = " .. math.floor(object.x).." - y = "..math.floor(object.y).." - z = "..math.floor(object.z))
+                        PrintChat("New map : x = " .. math.floor(object.x) .. " - y = " .. math.floor(object.y) .. " - z = " .. math.floor(object.z))
                     end
                 end
             end
@@ -3120,9 +3162,10 @@ local function minionManager__OnLoad()
                             else table.insert(_minionTable[MINION_OTHER], object)
                             end
                         end
-                    end,0,{object})
+                    end, 0, { object })
                 end
             end
+
             AddCreateObjCallback(__minionManager__OnCreateObj)
         end
         for i = 1, objManager.maxObjects do
@@ -3340,7 +3383,7 @@ function GetSpawnPos()
     if not _allySpawn then
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
-            if object and object.valid and object.type == "obj_SpawnPoint" and object.team==player.team then
+            if object and object.valid and object.type == "obj_SpawnPoint" and object.team == player.team then
                 _allySpawn = Vector(object.x, object.y, object.z)
                 return _allySpawn
             end
@@ -3354,7 +3397,7 @@ function GetEnemySpawnPos()
     if not _enemySpawn then
         for i = 1, objManager.maxObjects, 1 do
             local object = objManager:getObject(i)
-            if object and object.valid and object.type == "obj_SpawnPoint" and object.team==TEAM_ENEMY then
+            if object and object.valid and object.type == "obj_SpawnPoint" and object.team == TEAM_ENEMY then
                 _enemySpawn = Vector(object.x, object.y, object.z)
                 return _enemySpawn
             end
@@ -3391,16 +3434,16 @@ function ChampionLane:__init()
     if __ChampionLane_init then
         __ChampionLane_init = nil
         local _championLane = GetSave("championLane")
-        if _championLane.params~=GetGame().params then _championLane:Clear() end
+        if _championLane.params ~= GetGame().params then _championLane:Clear() end
         if _championLane:IsEmpty() then
-            table.merge(_championLane,{ enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 0.250, params = GetGame().params })
+            table.merge(_championLane, { enemy = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, ally = { champions = {}, top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }, myLane = "unknown", nextUpdate = 0, tickUpdate = 0.250, params = GetGame().params })
             _championLane.mapIndex = GetGame().map.index
             for i = 1, heroManager.iCount, 1 do
                 local hero = heroManager:getHero(i)
                 if hero ~= nil and hero.valid then
                     local isJungler = (string.find(hero:GetSpellData(SUMMONER_1).name .. hero:GetSpellData(SUMMONER_2).name, "Smite") and true or false)
-                    if not _championLane["enemy"] then _championLane["enemy"] = {champions = {}} end
-                    if not _championLane["ally"] then _championLane["ally"] = {champions = {}} end
+                    if not _championLane["enemy"] then _championLane["enemy"] = { champions = {} } end
+                    if not _championLane["ally"] then _championLane["ally"] = { champions = {} } end
                     table.insert(_championLane[(hero.team == player.team and "ally" or "enemy")].champions, { hero = hero, top = 0, mid = 0, bot = 0, jungle = 0, isJungler = isJungler })
                     if isJungler then
                         _championLane[(hero.team == player.team and "ally" or "enemy")].jungler = hero
@@ -3475,6 +3518,7 @@ function ChampionLane:__init()
                     end
                 end
             end
+
             AddTickCallback(__ChampionLane__OnTick)
         end
     end
@@ -3536,7 +3580,7 @@ local function _miniMap__OnLoad()
             local gameSettings = GetGameSettings()
             if gameSettings and gameSettings.General and gameSettings.General.Width and gameSettings.General.Height then
                 windowWidth, windowHeight = gameSettings.General.Width, gameSettings.General.Height
-                local path = GAME_PATH.."DATA\\menu\\hud\\hud"..windowWidth.."x"..windowHeight..".ini"
+                local path = GAME_PATH .. "DATA\\menu\\hud\\hud" .. windowWidth .. "x" .. windowHeight .. ".ini"
                 local hudSettings = ReadIni(path)
                 if hudSettings and hudSettings.Globals and hudSettings.Globals.MinimapScale then
                     minimapRatio = (windowHeight / 1080) * hudSettings.Globals.MinimapScale
@@ -3554,6 +3598,7 @@ local function _miniMap__OnLoad()
             end
             _miniMap.y = windowHeight - 8 * minimapRatio - _miniMap.step.y * map.min.y
         end
+
         _miniMap__Reset()
         AddResetCallback(_miniMap__Reset)
         _miniMap.init = nil
@@ -3657,6 +3702,7 @@ end
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_COLOR, defaultValue)
     myConfig:permaShow(pvar)    -- show this var in perma menu
     myConfig:addTS(ts)          -- add a ts instance
     var are myConfig.var
@@ -3666,6 +3712,7 @@ end
         myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
         myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
         myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
+        myConfig:addParam("circleColor", "Circle color", SCRIPT_PARAM_COLOR, {255,0,0,255}) --rgba
         myConfig:permaShow("harass")
         myConfig:permaShow("combo")
         ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
@@ -3685,6 +3732,7 @@ SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
+SCRIPT_PARAM_COLOR = 6
 local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
 class'scriptConfig'
 local function __SC__remove(name)
@@ -3700,7 +3748,7 @@ end
 local function __SC__save(name, content)
     if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
     table.clear(GetSave("scriptConfig")[name])
-    table.merge(GetSave("scriptConfig")[name],content, true)
+    table.merge(GetSave("scriptConfig")[name], content, true)
 end
 
 local function __SC__saveMaster()
@@ -3744,7 +3792,7 @@ local function __SC__updateMaster()
 end
 
 local function __SC__saveMenu()
-    __SC__save("Menu", { menuKey = _SC.menuKey, draw = {x = _SC.draw.x, y = _SC.draw.y}, pDraw = { x = _SC.pDraw.x, y = _SC.pDraw.y}})
+    __SC__save("Menu", { menuKey = _SC.menuKey, draw = { x = _SC.draw.x, y = _SC.draw.y }, pDraw = { x = _SC.pDraw.x, y = _SC.pDraw.y } })
     _SC.master.x = _SC.draw.x
     _SC.master.y = _SC.draw.y
     _SC.master.px = _SC.pDraw.x
@@ -3974,6 +4022,9 @@ function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
     local newParam = { var = pVar, text = pText, pType = pType }
     if pType == SCRIPT_PARAM_ONOFF then
         assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
+    elseif pType == SCRIPT_PARAM_COLOR then
+        assert(type(defaultValue) == "table", "addParam: wrong argument types (<table> expected)")
+        assert(#defaultValue == 4, "addParam: wrong argument ({r,g,b,a} expected)")
     elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
         assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
         newParam.key = a
@@ -4022,8 +4073,8 @@ function scriptConfig:OnDraw()
     local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for " .. _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
     DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
     _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
-	if #self._tsInstances > 0 then
-		--_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
+    if #self._tsInstances > 0 then
+        --_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         for _, tsInstance in ipairs(self._tsInstances) do
             _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         end
@@ -4042,10 +4093,12 @@ function scriptConfig:_DrawParam(varIndex)
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
         DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
         -- cursor
-        self._param[varIndex].cursor = (self[pVar] -self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
+        self._param[varIndex].cursor = (self[pVar] - self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
         DrawLine(_SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
+    elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
+        DrawRectangle(_SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, 80, _SC.draw.cellSize, ARGB(self[pVar][4], self[pVar][1], self[pVar][2], self[pVar][3]))
     else
         if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
             DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
@@ -4061,17 +4114,20 @@ end
 function scriptConfig:load()
     local function sensitiveMerge(base, t)
         for i, v in pairs(t) do
-            if type(base[i])==type(v) then
-                if type(v) == "table" then sensitiveMerge(base[i],v)
-                else base[i] = v end
+            if type(base[i]) == type(v) then
+                if type(v) == "table" then sensitiveMerge(base[i], v)
+                else base[i] = v
+                end
             end
         end
     end
+
     local config = __SC__load(self.name)
     for var, value in pairs(config) do
         if type(value) == "table" then
-            if self[var] then sensitiveMerge(self[var],value) end
-        else self[var] = value end
+            if self[var] then sensitiveMerge(self[var], value) end
+        else self[var] = value
+        end
     end
 end
 
@@ -4088,7 +4144,7 @@ function scriptConfig:save()
     end
     content._tsInstances = content._tsInstances or {}
     for i, ts in pairs(self._tsInstances) do
-        content._tsInstances[i] =  { mode = ts.mode}
+        content._tsInstances[i] = { mode = ts.mode }
     end
     -- for i,pShow in pairs(self._permaShow) do
     -- table.insert (content, "_permaShow."..i.."="..tostring(pShow))
@@ -4117,13 +4173,638 @@ function scriptConfig:OnWndMsg()
                 return
             end
         end
+        if param.pType == SCRIPT_PARAM_COLOR then
+            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3, y1, _SC.draw.width - _SC.draw.row3, _SC.draw.fontSize) then
+                __CP(nil, nil, self[param.var][1], self[param.var][2], self[param.var][3], self[param.var][4], self[param.var])
+                self:save()
+                return
+            end
+        end
         if param.pType == SCRIPT_PARAM_SLICE then
-            if CursorIsUnder(_SC._Idraw.x +  _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
+            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
                 _SC._slice = i
                 return
             end
         end
         y1 = y1 + _SC.draw.cellSize
+    end
+end
+
+-- HSLA ColorPicker
+-- written by Weee, design by Farissi, idea taken from: http://hslpicker.com/
+--[[
+    __CP([x, y], r, g, b, a, sConfigParam)                - Opens an instance of ColorPicker. Only one color picker can be used at the same time.
+                x, y:   Draw position                     - <number>, <number>, nil
+                   r:   Red                               - <number>: 0..255
+                   g:   Green                             - <number>: 0..255
+                   b:   Blue                              - <number>: 0..255
+                   a:   Alpha                             - <number>: 0..255
+        sConfigParam:   Script config parameter to change - <table> : ie self[param.var] from _SC
+]]
+
+local __ColorPickers, __ColorPickers_drag, __CP__OnTick, __CP__OnDraw, DrawUiObjFromSprite = nil, false, nil, nil, nil
+
+class("__CP")
+
+function __CP:__init(x, y, r, g, b, a, sConfigParam)
+    if not __ColorPickers then __ColorPickers = {} end
+    if not DrawUiObjFromSprite then
+        function DrawUiObjFromSprite(sprite, obj, a)
+            assert(type(sprite) == "userdata" and (type(obj) == "table" or type(obj) == "userdata"), "DrawUiObjFromSprite: wrong argument types (<userdata> expected for sprite and <table> or <userdata> expected for 2nd)")
+            local x = obj.x
+            local y = obj.y
+            local W = obj.W
+            local H = obj.H
+            local sX = obj.sX
+            local sY = obj.sY
+            a = a or 255
+            sprite:DrawEx(Rect(sX, sY, sX + W, sY + H), --Rect
+                D3DXVECTOR3(0, 0, 0), --Center
+                D3DXVECTOR3(math.floor(x), math.floor(y), 0), --Pos
+                a --Alpha)
+        end
+    end
+    if not __CP__OnTick then
+        function __CP__OnTick()
+            if IsFocused() then
+                for i, CP in pairs(__ColorPickers) do
+                    if CP:GetSprite() then
+                        CP:OnTick()
+                        for k, picker in pairs(CP.pickers) do picker:OnTick() end
+                    else
+                        CP:NoSpriteTick()
+                    end
+                end
+            end
+        end
+
+        AddTickCallback(__CP__OnTick)
+    end
+    if not __CP__OnDraw then
+        function __CP__OnDraw()
+            for i, CP in pairs(__ColorPickers) do
+                if CP:GetSprite() then
+                    CP.cv:OnDraw()
+                    for k, picker in pairs(CP.pickers) do picker:OnDraw() end
+                    CP:OnDraw()
+                    for k, picker in pairs(CP.pickers) do picker:Cursor_OnDraw() end
+                else
+                    CP:NoSpriteDraw()
+                end
+            end
+        end
+
+        AddDrawCallback(__CP__OnDraw)
+    end
+    UpdateWindow()
+    self:NoMulti()
+
+    self.id = os.clock()
+    local h, s, l = __CP__Color:RGB2HSL({ r, g, b })
+    self.c = __CP__Color(h, s, l, a)
+
+    -- Getting sprite:
+    self.getWebSpriteTry = 1
+    self.getWebSpriteTick = self.id
+    self:GetSprite()
+
+    self.sConfigParam = sConfigParam
+    self.W = 501
+    self.H = 142
+    self.sX = 0
+    self.sY = 0
+    self.x = x or WINDOW_W / 2 - self.W / 2
+    self.y = y or WINDOW_H / 2 - self.H / 2
+    self.drag = false
+    self.pickers = {
+        --__init(cp, type, x, y)
+        h = __CP__Picker(self, "h", 95, 37 + 21 * 0),
+        s = __CP__Picker(self, "s", 95, 37 + 21 * 1),
+        l = __CP__Picker(self, "l", 95, 37 + 21 * 2),
+        a = __CP__Picker(self, "a", 95, 37 + 21 * 3),
+    }
+    self.cv = self:ColorVariants(367, 31)
+    self.buttons = {
+        --__CP:Button(x, y, W, H, sX, sY)
+        confirm = __CP__Button(self, 322, 123, 84, 26, 501, 0, 26,
+            function()
+                self:Return()
+            end),
+        cancel = __CP__Button(self, 405, 123, 78, 26, 585, 0, 26,
+            function()
+                self:__finalize()
+            end),
+        paste = __CP__Button(self, 27, 100, 64, 16, 501, 78, 16,
+            function()
+                self:PasteHEX()
+            end),
+        copy = __CP__Button(self, 36, 83, 46, 12, 501, 126, 12,
+            function()
+                self:CopyHEX()
+            end),
+        randomize = __CP__Button(self, 0, 0, 47, 47, 585, 78, 47,
+            function()
+                self.c:randomize()
+            end),
+        nsPaste = __CP__NoSpriteButton(self, 200, 20, 100, 20, "Paste HEX", 50, 50, 50, 240,
+            function()
+                self:PasteHEX()
+            end),
+        nsConfirm = __CP__NoSpriteButton(self, 200, 45, 100, 20, "Confirm", 50, 50, 50, 240,
+            function()
+                self:Return()
+            end),
+        nsCancel = __CP__NoSpriteButton(self, 200, 70, 100, 20, "Cancel", 50, 50, 50, 240,
+            function()
+                self:__finalize()
+            end),
+    }
+    __ColorPickers[#__ColorPickers + 1] = self
+    return self.c:HSL2HEX()
+end
+
+function __CP:GetSprite()
+    --[[
+            Mirror list:
+                https://dl.dropboxusercontent.com/u/93477088/BoL/Scripts/ColorPicker/bol-cp.png
+                http://www.weee.ru/bol-cp.png
+    ]]
+    if self.sprite then
+        return true
+    elseif os.clock() >= self.getWebSpriteTick then
+        self.getWebSpriteTick = os.clock() + 1
+        local mirrors = {
+            "https://dl.dropboxusercontent.com/u/93477088/BoL/Scripts/ColorPicker/bol-cp.png",
+            "http://www.weee.ru/bol-cp.png",
+        }
+
+        self.sprite = GetWebSprite(mirrors[self.getWebSpriteTry],
+            function(data)
+                self.sprite = data
+                if self.cv then self.cv.sprite = data end
+            end)
+        self.getWebSpriteTry = self.getWebSpriteTry >= #mirrors and 1 or self.getWebSpriteTry + 1
+    end
+    return false
+end
+
+function __CP:NoMulti()
+    for i, CP in pairs(__ColorPickers) do CP:__finalize() end
+end
+
+function __CP:PasteHEX()
+    local hex = GetClipboardText() or "FFFFFF"
+    local c = self.c
+    c.r, c.g, c.b = c:HEX2RGB(hex)
+    c.h, c.s, c.l = c:RGB2HSL({ c.r, c.g, c.b })
+end
+
+function __CP:CopyHEX()
+    SetClipboardText("#" .. self.c:HSL2HEX())
+end
+
+function __CP:ColorVariants(x, y)
+    local cv = {}
+    cv.colors = {
+        { 161, 174, 164 }, { 78, 78, 78 }, { 103, 2, 255 }, { 204, 51, 255 }, { 255, 51, 204 },
+        { 51, 204, 255 }, { 0, 94, 255 }, { 6, 157, 9 }, { 191, 3, 50 }, { 255, 51, 102 },
+        { 255, 201, 40 }, { 247, 107, 4 }, { 204, 255, 51 }, { 102, 255, 51 }, { 51, 255, 204 },
+    }
+    cv.sprite = self.sprite
+    cv.xO, cv.yO = x, y
+    cv.x, cv.y = self.x + x, self.y + y
+    cv.txO = x
+    cv.sxO = x
+    cv.step = 0
+    cv.duration = 1
+    cv.playT = 0
+    cv.easing = function(step, sPos, tPos)
+        step = step - 1
+        return tPos * (step ^ 3 + 1) + sPos
+    end
+    cv.W = 148
+    cv.H = 98
+    cv.sX = 663
+    cv.sY = 0
+    cv.buttons = {
+        open = __CP__Button(cv, 129, 38, 9, 18, 565, 96, 18,
+            function()
+                cv.txO = 496
+                cv.sxO = cv.xO
+                cv.playT = os.clock()
+                cv.buttons.open.disabled = true
+                cv.buttons.close.disabled = false
+            end),
+        close = __CP__Button(cv, 129, 38, 9, 18, 574, 96, 18,
+            function()
+                cv.txO = 367
+                cv.sxO = cv.xO
+                cv.playT = os.clock()
+                cv.buttons.close.disabled = true
+                cv.buttons.open.disabled = false
+            end),
+        more = __CP__Button(cv, 51, 82, 27, 7, 632, 78, 7,
+            function()
+                os.executePowerShellAsync("Start-Process -FilePath 'http://botoflegends.com/forum/topic/6469-bol-hsla-color-picker/'")
+                DelayAction(function() if IsFocused() then SetForeground() end end, 2)
+            end),
+    }
+    cv.buttons.close.disabled = true
+    cv.buttons.more.disabled = true
+
+    cv.colorButtons = {}
+    for i, color in pairs(cv.colors) do
+        local W, H = 23, 22
+        local x = 7 + (i - 1) % 5 * W
+        local y = 11 + math.floor((i - 1) / 5) * H
+        cv.colorButtons[i] = __CP__NoSpriteButton(cv, x, y, W, H, "", color[1], color[2], color[3], 255,
+            function()
+                self.c.h, self.c.s, self.c.l = self.c:RGB2HSL({ color[1], color[2], color[3] })
+            end)
+    end
+
+    cv.OnDraw = function()
+    -- Color variants:
+        local cv = self.cv
+        cv.step = math.min(1, (os.clock() - cv.playT) / cv.duration)
+        cv.xO = cv.duration > 0 and cv.easing(cv.step, cv.sxO, cv.txO - cv.sxO) or cv.txO
+        cv.x = self.x + cv.xO
+        cv.y = self.y + cv.yO
+        if cv.xO > 370 then -- enable buttons
+            cv.buttons.more.disabled = false
+            for i, button in pairs(cv.colorButtons) do button.disabled = false end
+        else
+            cv.buttons.more.disabled = true
+            for i, button in pairs(cv.colorButtons) do button.disabled = true end
+        end
+        for i, button in pairs(cv.colorButtons) do button:OnDraw() end
+        DrawUiObjFromSprite(self.sprite, cv, 255)
+        for i, button in pairs(cv.buttons) do if not button.noSprite then button:OnDraw() end end
+    end
+
+    return cv
+end
+
+function __CP:OnTick()
+    local cPos = GetCursorPos()
+    for i, button in pairs(self.buttons) do if not button.noSprite then button:OnTick(cPos) end end
+    for i, button in pairs(self.cv.buttons) do if not button.noSprite then button:OnTick(cPos) end end
+    for i, button in pairs(self.cv.colorButtons) do button:OnTick(cPos) end
+end
+
+function __CP:OnDraw()
+    local cPos = GetCursorPos()
+    -- Chosen color:
+    self.c:Update()
+    DrawRectangle(self.x + 28, self.y + 35, 61, 61, ARGB(self.c.a, self.c.r, self.c.g, self.c.b))
+    DrawUiObjFromSprite(self.sprite, self, 255)
+    -- HEX Color Code:
+    DrawTextA("" .. self.c:HSL2HEX(), 12, self.x + 59, self.y + 83, ARGB(255, 255, 255, 255), "center")
+    -- Buttons:
+    for i, button in pairs(self.buttons) do
+        if not button.noSprite then button:OnDraw() end
+    end
+    --DrawRectangle(self.x+35, self.y+5, 110, 20, ARGB(150,255,255,255)) -- moving / CP window title area
+    -- Drag:
+    if not __ColorPickers_drag and IsKeyDown(0x01) and cPos.x >= self.x + 35 and cPos.x <= self.x + 35 + 110 and cPos.y >= self.y + 5 and cPos.y <= self.y + 5 + 20 then
+        __ColorPickers_drag = true
+        self.drag = true
+        self.xDrag = cPos.x - self.x
+        self.yDrag = cPos.y - self.y
+    elseif self.drag and not IsKeyDown(0x01) then
+        __ColorPickers_drag = false
+        self.drag = false
+    elseif self.drag and IsKeyDown(0x01) then
+        self.x = cPos.x - self.xDrag
+        self.y = cPos.y - self.yDrag
+    end
+end
+
+function __CP:NoSpriteTick() -- Ticking while sprite is not loaded or when it cannot be loaded
+    local cPos = GetCursorPos()
+    for i, button in pairs(self.buttons) do
+        if button.noSprite then button:OnTick(cPos) end
+    end
+end
+
+function __CP:NoSpriteDraw() -- Drawing UI while sprite is not loaded or when it cannot be loaded
+    local cX, cY = WINDOW_W / 2, WINDOW_H / 2
+    DrawRectangle(cX - 90, cY - 100, 180, 230, ARGB(100, 20, 20, 20))
+    DrawTextA("Loading sprites...", 20, cX, cY - 80, ARGB(255, 255, 255, 255), "center")
+    for i, button in pairs(self.buttons) do
+        if button.noSprite then button:OnDraw() end
+    end
+    DrawTextA("Color Code: " .. self.c:HSL2HEX(), 12, cX, cY + 30, ARGB(255, 255, 255, 255), "center")
+    DrawRectangle(cX - 30, cY + 50, 60, 20, ARGB(self.c.a, self.c.r, self.c.g, self.c.b))
+    DrawTextA("If sprites are not loading", 12, cX, cY + 80, ARGB(200, 255, 255, 255), "center")
+    DrawTextA("copy-paste HEX color code.", 12, cX, cY + 95, ARGB(200, 255, 255, 255), "center")
+end
+
+function __CP:Return()
+    self.c:Update()
+    self.sConfigParam[1] = self.c.r
+    self.sConfigParam[2] = self.c.g
+    self.sConfigParam[3] = self.c.b
+    self.sConfigParam[4] = self.c.a
+    self:__finalize()
+end
+
+function __CP:__finalize()
+    for i, CP in pairs(__ColorPickers) do if CP.id == self.id then table.remove(__ColorPickers, i) end end
+end
+
+class("__CP__Button")
+
+function __CP__Button:__init(parent, x, y, W, H, sX, sY, aO, action)
+    self.parent = parent
+    self.xO, self.yO = x, y
+    self.x, self.y = self.parent.x + x, self.parent.y + y
+    self.W, self.H = W, H
+    self.sX, self.sY = sX, sY
+    self.sXold, self.sYold = sX, sY
+    self.aO = aO
+    self.action = action
+    self.isPressed = false
+    return self
+end
+
+function __CP__Button:OnTick(cPos)
+    if self.disabled then return end
+    if not __ColorPickers_drag and not IsKeyDown(0x01)
+            and cPos.x >= self.x and cPos.x <= self.x + self.W
+            and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouseover
+        self.sY = self.sYold + self.aO * 1
+    elseif not __ColorPickers_drag and IsKeyDown(0x01)
+            and cPos.x >= self.x and cPos.x <= self.x + self.W
+            and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouse down (first click. no action)
+        __ColorPickers_drag = true
+        self.isPressed = true
+    elseif self.isPressed and not IsKeyDown(0x01) then -- mouse up/release
+        self.isPressed = false
+        __ColorPickers_drag = false
+        if cPos.x >= self.x and cPos.x <= self.x + self.W and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouse up on button. DO ACTION
+            self.action()
+        end
+    elseif self.isPressed and IsKeyDown(0x01) then -- mouse down (holding)
+        self.sY = self.sYold + self.aO * 2
+    else -- anything else
+        -- not mouse over, not mouse down, nothing...
+        self.sY = self.sYold + self.aO * 0
+    end
+end
+
+function __CP__Button:OnDraw()
+    self.x = self.parent.x + self.xO
+    self.y = self.parent.y + self.yO
+    if self.disabled then return end
+    DrawUiObjFromSprite(self.parent.sprite, self, 255)
+end
+
+class("__CP__NoSpriteButton")
+
+function __CP__NoSpriteButton:__init(parent, x, y, W, H, text, r, g, b, a, action)
+    self.parent = parent
+    self.W, self.H = W, H
+    self.xO, self.yO = x, y
+    self.x, self.y = parent.x + self.xO, parent.y + self.yO
+    self.r, self.g, self.b, self.a = r, g, b, a
+    self.text = text
+    self.action = action
+    self.noSprite = true
+    self.isPressed = false
+    return self
+end
+
+function __CP__NoSpriteButton:OnTick(cPos)
+    if self.disabled then return end
+    if not __ColorPickers_drag and not IsKeyDown(0x01)
+            and cPos.x >= self.x and cPos.x <= self.x + self.W
+            and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouseover
+        self.a = 150
+    elseif not __ColorPickers_drag and IsKeyDown(0x01)
+            and cPos.x >= self.x and cPos.x <= self.x + self.W
+            and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouse down (first click. no action)
+        __ColorPickers_drag = true
+        self.isPressed = true
+    elseif self.isPressed and not IsKeyDown(0x01) then -- mouse up/release
+        self.isPressed = false
+        __ColorPickers_drag = false
+        if cPos.x >= self.x and cPos.x <= self.x + self.W and cPos.y >= self.y and cPos.y <= self.y + self.H then -- mouse up on button. DO ACTION
+            self.action()
+        end
+    elseif self.isPressed and IsKeyDown(0x01) then -- mouse down (holding)
+        self.a = 100
+    else -- anything else
+        -- not mouse over, not mouse down, nothing...
+        self.a = 255
+    end
+end
+
+function __CP__NoSpriteButton:OnDraw()
+    self.x = self.parent.x + self.xO
+    self.y = self.parent.y + self.yO
+    if self.disabled then return end
+    DrawRectangle(self.x, self.y, self.W, self.H, ARGB(self.a, self.r, self.g, self.b))
+    if self.text and self.text ~= "" then DrawTextA("" .. self.text, 12, self.x + self.W / 2, self.y + self.H / 2 - 5, ARGB(self.a, 255, 255, 255), "center") end
+end
+
+class("__CP__Picker")
+
+function __CP__Picker:__init(cp, type, x, y)
+    self.cp = cp
+    self.type = type
+    self.min = 0
+    self.max = self.type == "h" and 360 or self.type == "a" and 255 or 100
+    self.W = 360
+    self.H = 14
+    self.xO = x
+    self.yO = y + 1
+    self.x = self.cp.x + self.xO
+    self.y = self.cp.y + self.yO
+    self.sX = 0
+    self.sY = 142 + 14 * (self.type == "h" and 0 or self.type == "s" and 1 or self.type == "l" and 2 or self.type == "a" and 4 or 0)
+    self.alphaHack = { W = self.W, H = self.H, xO = self.xO, yO = self.yO, x = self.cp.x + self.xO, y = self.cp.y + self.yO, sX = self.sX, sY = 142 + 14 * 3 }
+    local c = self.cp.c
+    self.current = c[type]
+    self.color = __CP__Color(c.h, c.s, c.l, c.a)
+    self:Cursor()
+end
+
+function __CP__Picker:Cursor()
+    self.cursor = {}
+    self.cursor.W = 18
+    self.cursor.H = 18
+    self.cursor.sX = 565
+    self.cursor.sY = 78
+    self.cursor.x = math.limit(math.ceil(self.x + self.W * (self.current / self.max)), self.x - 2, self.x + self.W - self.cursor.W)
+    self.cursor.y = math.ceil(self.y + self.H / 2 - self.cursor.H / 2 + 1)
+end
+
+function __CP__Picker:OnTick()
+    local cPos = GetCursorPos()
+    local c = self.cursor
+    -- Mouse overlaying picker:
+    if not __ColorPickers_drag and IsKeyDown(0x01) and cPos.x >= self.x and cPos.x <= self.x + self.W and cPos.y >= self.y and cPos.y <= self.y + self.H then
+        self.cursor.drag = true
+        __ColorPickers_drag = true
+    elseif self.cursor.drag and not IsKeyDown(0x01) then
+        self.cursor.drag = false
+        __ColorPickers_drag = false
+    elseif self.cursor.drag and IsKeyDown(0x01) then
+        self.cp.c[self.type] = math.floor(self.max * ((c.x + c.W / 2 - self.x - c.W / 2) / (self.W - c.W)))
+    end
+    self.current = self.cp.c[self.type]
+end
+
+function __CP__Picker:Cursor_OnDraw()
+    -- Cursor:
+    local cPos = GetCursorPos()
+    local c = self.cursor
+    c.y = self.y + self.H / 2 - c.H / 2 + 1
+    if c.drag then
+        c.x = math.limit(math.floor(cPos.x - c.W / 2), self.x, self.x + self.W - c.W)
+    else
+        c.x = math.limit(self.x + (self.W - c.W) * (self.current / self.max), self.x, self.x + self.W - c.W)
+    end
+    DrawUiObjFromSprite(self.cp.sprite, c, 255) -- cursor
+    DrawText(self.type:upper() .. ": " .. self.current, 12, self.x + self.W + 3, self.y + 1, ARGB(255, 255, 255, 255)) -- text ("H: 343" for example)
+end
+
+function __CP__Picker:OnDraw()
+    self.x = self.cp.x + self.xO
+    self.y = self.cp.y + self.yO
+    self.alphaHack.x = self.cp.x + self.xO
+    self.alphaHack.y = self.cp.y + self.yO
+    local cpc = self.cp.c
+    local sc = self.color
+    if self.type == "s" then
+        sc.r, sc.g, sc.b = sc:HSL2RGB({ cpc.h, 100, cpc.l })
+    elseif self.type == "l" then
+        sc.r, sc.g, sc.b = sc:HSL2RGB({ cpc.h, cpc.s, 50 })
+    elseif self.type == "a" then
+        sc.r, sc.g, sc.b = sc:HSL2RGB({ cpc.h, cpc.s, cpc.l })
+    end
+    DrawRectangle(self.x, self.y, self.W, self.H, ARGB(255, sc.r, sc.g, sc.b))
+    DrawUiObjFromSprite(self.cp.sprite, self, 255) -- overlay
+    -- Alpha hack overlay:
+    if self.type ~= "a" then
+        DrawUiObjFromSprite(self.cp.sprite, self.alphaHack, 255 - cpc.a)
+    end
+end
+
+class("__CP__Color")
+
+function __CP__Color:__init(h, s, l, a)
+    self.h, self.s, self.l, self.a = h, s, l, a
+    self.r, self.g, self.b = self:HSL2RGB()
+end
+
+function __CP__Color:Update(cpc)
+    cpc = cpc or self
+    self.h, self.s, self.l, self.a = cpc.h, cpc.s, cpc.l, cpc.a
+    self.r, self.g, self.b = self:HSL2RGB()
+end
+
+function __CP__Color:randomize()
+    self.h, self.s, self.l, self.a = math.random(0, 360), math.random(0, 100), math.random(0, 50), 255
+end
+
+function __CP__Color:ValidateHEX(hex)
+    hex = hex:upper()
+    if hex:find("#") then hex = hex:sub(2, 7) end
+    hex = hex:gsub("[^A-F0-9]", "0")
+    if hex:len() > 6 then hex = hex:sub(0, 6) elseif hex:len() < 6 then hex = hex:sub(1, 3) hex = hex:gsub(".", "%1%1") end
+    return hex
+end
+
+function __CP__Color:HEX2RGB(hex)
+    hex = self:ValidateHEX(hex)
+    local r, g, b = "00", "00", "00"
+    if hex:len() == 6 then
+        r, g, b = hex:sub(1, 2), hex:sub(3, 4), hex:sub(5, 6)
+    else
+        if hex:len() > 4 then r = hex:sub(4, hex:len()) hex = hex:sub(0, 4) end
+        if hex:len() > 2 then g = hex:sub(2, hex:len()) hex = hex:sub(0, 2) end
+        if hex:len() > 0 then b = hex:sub(0, hex:len()) end
+    end
+    return self:HEX2INT(r), self:HEX2INT(g), self:HEX2INT(b)
+end
+
+function __CP__Color:RGB2HEX(rgb)
+    local rgb = rgb or { self.r, self.g, self.b }
+    return self:INT2HEX(rgb[1]) .. self:INT2HEX(rgb[2]) .. self:INT2HEX(rgb[3])
+end
+
+function __CP__Color:INT2HEX(dec) -- is it ok?
+    local result = string.format("%X", dec)
+    if result:len() == 1 then result = "0" .. result end
+    return result
+end
+
+function __CP__Color:HEX2INT(hex)
+    return tonumber(hex, 16)
+end
+
+function __CP__Color:RGB2HSL(rgb)
+    local rgb = rgb or { self.r, self.g, self.b }
+    local r = rgb[1] / 255
+    local g = rgb[2] / 255
+    local b = rgb[3] / 255
+    local max = math.max(r, g, b)
+    local min = math.min(r, g, b)
+    local diff = max - min
+    local add = max + min
+    local hue = min == max and 0
+            or r == max and ((60 * (g - b) / diff) + 360) % 360
+            or g == max and (60 * (b - r) / diff) + 120
+            or (60 * (r - g) / diff) + 240
+    local lum = 0.5 * add
+    local sat = lum == 0 and 0
+            or lum == 1 and 1
+            or lum <= 0.5 and diff / add
+            or diff / (2 - add)
+    local h = math.round(hue)
+    local s = math.round(sat * 100)
+    local l = math.round(lum * 100)
+    return h, s, l
+end
+
+function __CP__Color:HSL2RGB(hsl)
+    local hsl = hsl or { self.h, self.s, self.l }
+    local h = hsl[1] / 360
+    local s = hsl[2] / 100
+    local l = hsl[3] / 100
+    local q = l <= .5 and l * (1 + s) or l + s - (l * s)
+    local p = 2 * l - q
+    local rt = h + 1 / 3
+    local gt = h
+    local bt = h - 1 / 3
+    local r = math.round(self:HUE2RGB(p, q, rt) * 255)
+    local g = math.round(self:HUE2RGB(p, q, gt) * 255)
+    local b = math.round(self:HUE2RGB(p, q, bt) * 255)
+    return r, g, b
+end
+
+function __CP__Color:HSL2HEX(hsl)
+    local hsl = hsl or { self.h, self.s, self.l }
+    local h = hsl[1] / 360
+    local s = hsl[2] / 100
+    local l = hsl[3] / 100
+    local r, g, b = self:HSL2RGB(hsl)
+    local hex = self:RGB2HEX({ r, g, b })
+    return hex
+end
+
+function __CP__Color:HUE2RGB(p, q, h)
+    h = (h < 0 and h + 1) or (h > 1 and h - 1) or h
+    if h * 6 < 1 then
+        return p + (q - p) * h * 6
+    elseif h * 2 < 1 then
+        return q
+    elseif h * 3 < 2 then
+        return p + (q - p) * ((2 / 3) - h) * 6
+    else
+        return p
     end
 end
 
