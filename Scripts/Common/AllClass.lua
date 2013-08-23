@@ -4221,7 +4221,7 @@ function __CP:__init(x, y, r, g, b, a, sConfigParam)
             sprite:DrawEx(Rect(sX, sY, sX + W, sY + H), --Rect
                 D3DXVECTOR3(0, 0, 0), --Center
                 D3DXVECTOR3(math.floor(x), math.floor(y), 0), --Pos
-                a --Alpha)
+                a) --Alpha
         end
     end
     if not __CP__OnTick then
