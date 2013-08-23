@@ -4502,10 +4502,10 @@ end
 
 function __CP:Return()
     self.c:Update()
-    self.sConfigParam[1] = self.c.r
-    self.sConfigParam[2] = self.c.g
-    self.sConfigParam[3] = self.c.b
-    self.sConfigParam[4] = self.c.a
+    self.sConfigParam[1] = self.c.a
+    self.sConfigParam[2] = self.c.r
+    self.sConfigParam[3] = self.c.g
+    self.sConfigParam[4] = self.c.b
     self:__finalize()
 end
 
