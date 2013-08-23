@@ -3712,7 +3712,7 @@ end
         myConfig:addParam("harass", "Harass mode", SCRIPT_PARAM_ONKEYTOGGLE, false, 78)
         myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
         myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
-        myConfig:addParam("circleColor", "Circle color", SCRIPT_PARAM_COLOR, {255,0,0,255}) --rgba
+        myConfig:addParam("circleColor", "Circle color", SCRIPT_PARAM_COLOR, {255,0,0,255}) --{A,R,G,B}
         myConfig:permaShow("harass")
         myConfig:permaShow("combo")
         ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
@@ -4024,7 +4024,7 @@ function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
         assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
     elseif pType == SCRIPT_PARAM_COLOR then
         assert(type(defaultValue) == "table", "addParam: wrong argument types (<table> expected)")
-        assert(#defaultValue == 4, "addParam: wrong argument ({r,g,b,a} expected)")
+        assert(#defaultValue == 4, "addParam: wrong argument ({a,r,g,b} expected)")
     elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
         assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
         newParam.key = a
@@ -4098,7 +4098,7 @@ function scriptConfig:_DrawParam(varIndex)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
-        DrawRectangle(_SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, 80, _SC.draw.cellSize, ARGB(self[pVar][4], self[pVar][1], self[pVar][2], self[pVar][3]))
+        DrawRectangle(_SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, 80, _SC.draw.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
     else
         if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
             DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
@@ -4193,12 +4193,12 @@ end
 -- HSLA ColorPicker
 -- written by Weee, design by Farissi, idea taken from: http://hslpicker.com/
 --[[
-    __CP([x, y], r, g, b, a, sConfigParam)                - Opens an instance of ColorPicker. Only one color picker can be used at the same time.
+    __CP([x, y], a, r, g, b, sConfigParam)                - Opens an instance of ColorPicker. Only one color picker can be used at the same time.
                 x, y:   Draw position                     - <number>, <number>, nil
+                   a:   Alpha                             - <number>: 0..255
                    r:   Red                               - <number>: 0..255
                    g:   Green                             - <number>: 0..255
                    b:   Blue                              - <number>: 0..255
-                   a:   Alpha                             - <number>: 0..255
         sConfigParam:   Script config parameter to change - <table> : ie self[param.var] from _SC
 ]]
 
@@ -4206,7 +4206,7 @@ local __ColorPickers, __ColorPickers_drag, __CP__OnTick, __CP__OnDraw, DrawUiObj
 
 class("__CP")
 
-function __CP:__init(x, y, r, g, b, a, sConfigParam)
+function __CP:__init(x, y, a, r, g, b, sConfigParam)
     if not __ColorPickers then __ColorPickers = {} end
     if not DrawUiObjFromSprite then
         function DrawUiObjFromSprite(sprite, obj, a)
