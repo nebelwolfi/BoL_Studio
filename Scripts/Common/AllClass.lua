@@ -4510,6 +4510,7 @@ function __CP:Return()
 end
 
 function __CP:__finalize()
+    __ColorPickers_drag = false
     for i, CP in pairs(__ColorPickers) do if CP.id == self.id then table.remove(__ColorPickers, i) end end
 end
 
