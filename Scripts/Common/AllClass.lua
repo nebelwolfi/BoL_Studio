@@ -1075,6 +1075,17 @@ function DrawLineBorder(x1, y1, x2, y2, size, color, width)
     DrawLines2(points, width or 1, color or 4294967295)
 end
 
+function DrawCircleMinimap(x, y, z, radius, width, color, quality)
+    radius = radius or 300
+    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
+    local points = {}
+    for theta = 0, 2 * math.pi + quality, quality do
+        local cx, cy = GetMinimapX(x + radius * math.cos(theta)), GetMinimapY(z - radius * math.sin(theta))
+        points[#points + 1] = D3DXVECTOR2(cx, cy)
+    end
+    DrawLines2(points, width or 1, color or 4294967295)
+end
+
 function DrawCircle2D(x, y, radius, width, color, quality)
     quality, radius = quality and 2 * math.pi / quality or 2 * math.pi / 20, radius or 50
     local points = {}
