@@ -598,8 +598,12 @@ end
 
 function GetItemDB(OnLoaded)
     local function ParseItems(RAF)
+        if _itemsLoaded then return end
+        _itemsLoaded = true
         local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH .. "Items\\items.json")
+        assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed.")
         itemsJSON = JSON:decode(itemsJSON)
+        assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed.")
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
             if not _items[tonumber(itemJSON.id)] then _items[tonumber(itemJSON.id)] = table.copy(basicItem) end
@@ -701,7 +705,6 @@ function GetItemDB(OnLoaded)
                 end
             end
         end
-        _itemsLoaded = true
         for i, f in pairs(_onItemsLoaded) do
             f(_items)
             _onItemsLoaded[i] = nil
@@ -1130,16 +1133,13 @@ function DrawLines3D(points, width, color)
     end
 end
 
-function DrawTextA(text, size, x, y, color, align)
+--DrawTextA(text, [size], x, y, [color, [halign, [valign]]])
+function DrawTextA(text, size, x, y, color, halign, valign)
     local textArea = GetTextArea(text or "", size or 12)
-    if not align or align:lower() == "left" then
-        DrawText(text or "", size or 12, x or 0, y or 0, color or 4294967295)
-    elseif align:lower() == "right" then
-        DrawText(text or "", size or 12, (x or 0) - textArea.x, (y or 0), color or 4294967295)
-    elseif align:lower() == "center" then
-        DrawText(text or "", size or 12, (x or 0) - textArea.x / 2, (y or 0), color or 4294967295)
-    else error("DrawTextA: Align " .. align .. " is not valid")
-    end
+    valign, halign = valign and valign:lower() or "left", halign and halign:lower() or "top"
+    x = (halign == "right"  and x - textArea.x) or (halign == "center" and x - textArea.x/2) or x or 0
+    y = (valign == "bottom" and y - textArea.y) or (valign == "center" and y - textArea.y/2) or y or 0
+    DrawText(text or "", size or 12, math.floor(x), math.floor(y), color or 4294967295)
 end
 
 function DrawText3D(text, x, y, z, size, color, center)
