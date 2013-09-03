@@ -598,7 +598,7 @@ end
 
 function GetItemDB(OnLoaded)
     local function ParseItems(RAF)
-        if _itemsLoaded then return end
+        if _itemsLoaded and not RAF then return end
         _itemsLoaded = true
         local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH .. "Items\\items.json")
         assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed.")
@@ -706,7 +706,7 @@ function GetItemDB(OnLoaded)
             end
         end
         for i, f in pairs(_onItemsLoaded) do
-            f(_items)
+            if type(f)=="function" then f(_items) end
             _onItemsLoaded[i] = nil
         end
     end
