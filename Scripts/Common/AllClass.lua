@@ -1136,7 +1136,7 @@ end
 --DrawTextA(text, [size], x, y, [color, [halign, [valign]]])
 function DrawTextA(text, size, x, y, color, halign, valign)
     local textArea = GetTextArea(text or "", size or 12)
-    valign, halign = valign and valign:lower() or "left", halign and halign:lower() or "top"
+    halign, valign = halign and halign:lower() or "left", valign and valign:lower() or "top"
     x = (halign == "right"  and x - textArea.x) or (halign == "center" and x - textArea.x/2) or x or 0
     y = (valign == "bottom" and y - textArea.y) or (valign == "center" and y - textArea.y/2) or y or 0
     DrawText(text or "", size or 12, math.floor(x), math.floor(y), color or 4294967295)
