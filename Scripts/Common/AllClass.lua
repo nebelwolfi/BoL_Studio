@@ -601,9 +601,9 @@ function GetItemDB(OnLoaded)
         if _itemsLoaded and not RAF then return end
         _itemsLoaded = true
         local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH .. "Items\\items.json")
-        assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed.")
+        assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
         itemsJSON = JSON:decode(itemsJSON)
-        assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed.")
+        assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed."..(RAF and "(Direct)" or "(Cached)"))
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
             if not _items[tonumber(itemJSON.id)] then _items[tonumber(itemJSON.id)] = table.copy(basicItem) end
