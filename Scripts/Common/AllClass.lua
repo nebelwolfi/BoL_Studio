@@ -617,7 +617,7 @@ function GetItemDB(OnLoaded)
                         item[j][k] = _items[tonumber(id)]
                     end
                 elseif j == "itemgroup" then
-                    local index, content = table.contains(itemsJSON.itemgroups, p, groupid)
+                    local index, content = table.contains(itemsJSON.itemgroups, p, "groupid")
                     item[j] = { [p] = content }
                 elseif j == "icon" and RAF then
                     if not FileExist(SPRITE_PATH .. "Items\\" .. p) then
@@ -664,10 +664,10 @@ function GetItemDB(OnLoaded)
                 return BuyItem(self.id)
             end
 
-            function v:GetCount()
+            function v:GetCount(object)
                 local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
                 for i = 1, 6, 1 do
-                    local item = player:getItem(ItemSlot[i])
+                    local item = (object or player):getItem(ItemSlot[i])
                     if item and item.id == self.id then
                         count = count + math.max(item.stacks or 1, 1)
                     end
@@ -675,9 +675,9 @@ function GetItemDB(OnLoaded)
                 return count
             end
 
-            function v:GetInventorySlot()
+            function v:GetInventorySlot(object)
                 local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
-                local item = player:getItem(ItemSlot[i])
+                local item = (object or player):getItem(ItemSlot[i])
                 for i = 1, 6, 1 do
                     if item and item.id == self.id then return ItemSlot[i] end
                 end
