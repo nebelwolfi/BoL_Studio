@@ -177,14 +177,7 @@ function string.split(str, delim, maxNb)
 end
 
 function string.join(arg, del)
-    local str, del = "", del or ""
-    if not arg or not arg[1] then return str end
-    for i, v in ipairs(arg) do
-        if i == #arg then str = str .. tostring(v)
-        else str = str .. tostring(v) .. del
-        end
-    end
-    return str
+    return table.concat(arg, del)
 end
 
 function string.trim(s)
@@ -751,8 +744,8 @@ function GetDictionaryString(key, localization)
         local function _onRafLoadedDic(RAF)
             local file = RAF:find("DATA\\Menu\\fontconfig_" .. localization .. ".txt")
             if file and file.name and file.name ~= "" then
-                _dictionaries[localization] = file.content
                 file:extract(LIB_PATH:gsub("/", "\\") .. "Saves\\" .. localization .. ".dic")
+                _dictionaries[localization] = ReadFile(LIB_PATH .. "Saves\\" .. localization .. ".dic")
             end
         end
 
@@ -760,16 +753,18 @@ function GetDictionaryString(key, localization)
     end
 
     if not _dictionaries[localization] then
-        UpdateLibrary(localization)
+        local content = ""
         if FileExist(LIB_PATH .. "Saves\\" .. localization .. ".dic") then
-            _dictionaries[localization] = ReadFile(LIB_PATH .. "Saves\\" .. localization .. ".dic")
+            content = ReadFile(LIB_PATH .. "Saves\\" .. localization .. ".dic")
         end
+        _dictionaries[localization] = content
+        UpdateLibrary(localization)
     end
     local s = _dictionaries[localization]
     if s then
         local A, B = s:find('\ntr "' .. key .. '" = "', 1, true)
         local C, D = s:find('"\n', B, true)
-        _result = s:sub(B + 1, C - 1)
+        _result = B and C and s:sub(B + 1, C - 1)
     end
     return _result, (s and true or false)
 end
@@ -1080,7 +1075,7 @@ end
 
 function DrawCircleMinimap(x, y, z, radius, width, color, quality)
     radius = radius or 300
-    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
+    quality = math.min(quality and 2 * math.pi / quality or 2 * math.pi / (radius / 100), 0.785)
     local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
         local cx, cy = GetMinimapX(x + radius * math.cos(theta)), GetMinimapY(z - radius * math.sin(theta))
