@@ -3713,6 +3713,7 @@ end
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_COLOR, defaultValue)
     myConfig:permaShow(pvar)    -- show this var in perma menu
     myConfig:addTS(ts)          -- add a ts instance
+    myConfig:addSubMenu("My Sub Menu Header", "subMenu")
     var are myConfig.var
     function OnLoad()
         myConfig = scriptConfig("My Script Config", "thisScript.cfg")
@@ -3726,6 +3727,10 @@ end
         ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
         ts.name = "Q" -- set a name if you want to recognize it, otherwize, will show "ts"
         myConfig:addTS(ts)
+
+        myConfig:addSubMenu("My Sub Menu Header", "subMenu")
+        myConfig.subMenu:addParam("testOnOff", "Testing param in sub-menu", SCRIPT_PARAM_ONOFF, defaultValue)
+        myConfig.subMenu:permaShow("testOnOff")
     end
     function OnTick()
         if myConfig.combo == true then
@@ -3741,7 +3746,7 @@ SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
 SCRIPT_PARAM_COLOR = 6
-local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _slice = false }
+local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false }
 class'scriptConfig'
 local function __SC__remove(name)
     if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
@@ -3872,6 +3877,12 @@ local function __SC__DrawInstance(header, selected)
     _SC.draw.y1 = _SC.draw.y1 + _SC.draw.cellSize
 end
 
+local function __SC__ResetSubIndexes()
+    for i, instance in ipairs(_SC.instances) do
+        instance:ResetSubIndexes()
+    end
+end
+
 local __SC__OnDraw, __SC__OnWndMsg
 local function __SC__OnLoad()
     if not __SC__OnDraw then
@@ -3912,7 +3923,8 @@ local function __SC__OnLoad()
                 end
             end
             local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
-            for _, instance in ipairs(_SC.instances) do
+            local function DrawPermaShows(instance)
+
                 if #instance._permaShow > 0 then
                     for _, varIndex in ipairs(instance._permaShow) do
                         local pVar = instance._param[varIndex].var
@@ -3928,6 +3940,12 @@ local function __SC__OnLoad()
                         y1 = y1 + _SC.pDraw.cellSize
                     end
                 end
+                for _, subInstance in ipairs(instance._subInstances) do
+                    DrawPermaShows(subInstance)
+                end
+            end
+            for _, instance in ipairs(_SC.instances) do
+                DrawPermaShows(instance)
             end
         end
 
@@ -3949,8 +3967,10 @@ local function __SC__OnLoad()
                         _SC.menuKey = key
                         if _SC.masterIndex == 1 then __SC__saveMenu() end
                     else
-                        _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].key = key
-                        _SC.instances[_SC.menuIndex]:save()
+                        _SC._changeKeyInstance._param[_SC._changeKeyVar].key = key
+                        _SC._changeKeyInstance:save()
+                        --_SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].key = key
+                        --_SC.instances[_SC.menuIndex]:save()
                     end
                     return
                 else
@@ -3960,6 +3980,7 @@ local function __SC__OnLoad()
             if msg == WM_LBUTTONDOWN and IsKeyDown(_SC.menuKey) then
                 if CursorIsUnder(_SC.draw.x, _SC.draw.y, _SC.draw.width, _SC.draw.height) then
                     _SC.menuIndex = -1
+                    __SC__ResetSubIndexes()
                     if CursorIsUnder(_SC.draw.x + _SC.draw.width - _SC.draw.fontSize * 1.5, _SC.draw.y, _SC.draw.fontSize, _SC.draw.cellSize) then
                         _SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, nil, true
                         return
@@ -3968,10 +3989,10 @@ local function __SC__OnLoad()
                         _SC.draw.move = true
                         return
                     else
-                        if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 end
+                        if _SC.useTS and CursorIsUnder(_SC.draw.x, _SC.draw.y + _SC.draw.cellSize, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = 0 __SC__ResetSubIndexes() end
                         local y1 = _SC.draw.y + _SC.draw.cellSize + (_SC.draw.cellSize * _SC.masterY)
                         for index, _ in ipairs(_SC.instances) do
-                            if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index end
+                            if CursorIsUnder(_SC.draw.x, y1, _SC.draw.width, _SC.draw.cellSize) then _SC.menuIndex = index __SC__ResetSubIndexes() end
                             y1 = y1 + _SC.draw.cellSize
                         end
                     end
@@ -3980,8 +4001,15 @@ local function __SC__OnLoad()
                     _SC.pDraw.move = true
                 elseif _SC.menuIndex == 0 then
                     TS_ClickMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
-                elseif _SC.menuIndex > 0 and CursorIsUnder(_SC._Idraw.x, _SC.draw.y, _SC.draw.width, _SC._Idraw.height) then
-                    _SC.instances[_SC.menuIndex]:OnWndMsg()
+                elseif _SC.menuIndex > 0 then
+                    local function CheckOnWndMsg(instance)
+                        if CursorIsUnder(instance._x, _SC.draw.y, _SC.draw.width, instance._height) then
+                            instance:OnWndMsg()
+                        elseif instance._subMenuIndex > 0 then
+                            CheckOnWndMsg(instance._subInstances[instance._subMenuIndex])
+                        end
+                    end
+                    CheckOnWndMsg(_SC.instances[_SC.menuIndex])
                 end
             elseif msg == WM_LBUTTONUP then
                 if _SC.draw.move or _SC.pDraw.move then
@@ -3989,13 +4017,18 @@ local function __SC__OnLoad()
                     _SC.pDraw.move = false
                     if _SC.masterIndex == 1 then __SC__saveMenu() end
                     return
-                elseif _SC._slice then
-                    _SC._slice = false
-                    _SC.instances[_SC.menuIndex]:save()
+                elseif _SC._sliceInstance then
+                    _SC._sliceInstance:save()
+                    _SC._sliceInstance._slice = false
+                    _SC._sliceInstance = false
+
+
+
                     return
                 end
             else
-                for _, instance in ipairs(_SC.instances) do
+                local function CheckOnWndMsg(instance)
+
                     for _, param in ipairs(instance._param) do
                         if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and key == param.key and msg == KEY_DOWN then
                             instance[param.var] = not instance[param.var]
@@ -4003,6 +4036,12 @@ local function __SC__OnLoad()
                             instance[param.var] = (msg == KEY_DOWN)
                         end
                     end
+                    for _, subInstance in ipairs(instance._subInstances) do
+                        CheckOnWndMsg(subInstance)
+                    end
+                end
+                for _, instance in ipairs(_SC.instances) do
+                    CheckOnWndMsg(instance)
                 end
             end
         end
@@ -4011,16 +4050,33 @@ local function __SC__OnLoad()
     end
 end
 
-function scriptConfig:__init(header, name)
+function scriptConfig:__init(header, name, parent)
     assert((type(header) == "string") and (type(name) == "string"), "scriptConfig: expected <string>, <string>)")
-    __SC__init(name)
-    __SC__OnLoad()
+    if not parent then
+        __SC__init(name)
+        __SC__OnLoad()
+    else
+        self._parent = parent
+    end
     self.header = header
     self.name = name
     self._tsInstances = {}
     self._param = {}
     self._permaShow = {}
-    table.insert(_SC.instances, self)
+    self._subInstances = {}
+    self._subMenuIndex = 0
+    self._x = parent and (parent._x + _SC.draw.width + _SC.draw.border*2) or _SC._Idraw.x
+    self._y = 0
+    self._height = 0
+    self._slice = false
+    table.insert(parent and parent._subInstances or _SC.instances, self)
+end
+
+function scriptConfig:addSubMenu(header, name)
+    assert((type(header) == "string") and (type(name) == "string"), "scriptConfig: expected <string>, <string>)")
+    local subName = self.name .. "_" .. name
+    local sub = scriptConfig(header, subName, self)
+    self[name] = sub
 end
 
 function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
@@ -4072,49 +4128,70 @@ function scriptConfig:_txtKey(key)
 end
 
 function scriptConfig:OnDraw()
-    if _SC._slice then
-        local cursorX = math.min(math.max(0, GetCursorPos().x - _SC._Idraw.x - _SC.draw.row3), _SC.draw.width - _SC.draw.row3)
-        self[self._param[_SC._slice].var] = math.round(self._param[_SC._slice].min + cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[_SC._slice].max - self._param[_SC._slice].min), self._param[_SC._slice].idc)
+    self._x = self._parent and (self._parent._x + _SC.draw.width + _SC.draw.border*2) or _SC._Idraw.x
+    if self._slice and _SC._sliceInstance then
+
+        local cursorX = math.min(math.max(0, GetCursorPos().x - self._x - _SC.draw.row3), _SC.draw.width - _SC.draw.row3)
+        self[self._param[self._slice].var] = math.round(self._param[self._slice].min + cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[self._slice].max - self._param[self._slice].min), self._param[self._slice].idc)
     end
-    _SC._Idraw.y = _SC.draw.y
-    DrawLine(_SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y, _SC._Idraw.x + _SC.draw.width / 2, _SC._Idraw.y + _SC._Idraw.height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
-    local menuText = _SC._changeKey and _SC._changeKeyVar and "press key for " .. _SC.instances[_SC.menuIndex]._param[_SC._changeKeyVar].var or self.header
-    DrawText(menuText, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, 4294967280) -- ivory
-    _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
+    self._y = _SC.draw.y
+    DrawLine(self._x + _SC.draw.width / 2, self._y, self._x + _SC.draw.width / 2, self._y + self._height, _SC.draw.width + _SC.draw.border * 2, 1414812756) -- grey
+    local menuText = _SC._changeKey and _SC._changeKeyVar and _SC._changeKeyInstance and _SC._changeKeyInstance.name == self.name and "press key for " .. self._param[_SC._changeKeyVar].var or self.header
+    DrawText(menuText, _SC.draw.fontSize, self._x, self._y, 4294967280) -- ivory
+    self._y = self._y + _SC.draw.cellSize
+    for index, _ in ipairs(self._subInstances) do
+        self:_DrawSubInstance(index)
+        if self._subMenuIndex == index then _:OnDraw() end
+    end
+
+
+
+
+
     if #self._tsInstances > 0 then
         --_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
         for _, tsInstance in ipairs(self._tsInstances) do
-            _SC._Idraw.y = tsInstance:DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
+            self._y = tsInstance:DrawMenu(self._x, self._y)
         end
     end
     for index, _ in ipairs(self._param) do
         self:_DrawParam(index)
     end
-    _SC._Idraw.height = _SC._Idraw.y - _SC.draw.y
+    self._height = self._y - _SC.draw.y
+end
+
+function scriptConfig:_DrawSubInstance(index)
+    local pVar = self._subInstances[index].name
+    local selected = self._subMenuIndex == index
+    DrawLine(self._x - _SC.draw.border, self._y + _SC.draw.midSize, self._x + _SC.draw.width + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, (selected and _SC.color.red or _SC.color.lgrey))
+    DrawText(self._subInstances[index].header, _SC.draw.fontSize, self._x, self._y, (selected and _SC.color.ivory or _SC.color.grey))
+    DrawText("        >>", _SC.draw.fontSize, self._x + _SC.draw.row3 + _SC.draw.border, self._y, (selected and _SC.color.ivory or _SC.color.grey))
+    --_SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
+    self._y = self._y + _SC.draw.cellSize
 end
 
 function scriptConfig:_DrawParam(varIndex)
     local pVar = self._param[varIndex].var
-    DrawLine(_SC._Idraw.x - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.row3 - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
-    DrawText(self._param[varIndex].text, _SC.draw.fontSize, _SC._Idraw.x, _SC._Idraw.y, _SC.color.grey)
+    DrawLine(self._x - _SC.draw.border, self._y + _SC.draw.midSize, self._x + _SC.draw.row3 - _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
+    DrawText(self._param[varIndex].text, _SC.draw.fontSize, self._x, self._y, _SC.color.grey)
     if self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
-        DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
-        DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
+        DrawText(tostring(self[pVar]), _SC.draw.fontSize, self._x + _SC.draw.row2, self._y, _SC.color.grey)
+        DrawLine(self._x + _SC.draw.row3, self._y + _SC.draw.midSize, self._x + _SC.draw.width + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
         -- cursor
         self._param[varIndex].cursor = (self[pVar] - self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
-        DrawLine(_SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
+        DrawLine(self._x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, self._y + _SC.draw.midSize, self._x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
-        DrawText(tostring(self[pVar]), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
+        DrawText(tostring(self[pVar]), _SC.draw.fontSize, self._x + _SC.draw.row3 + _SC.draw.border, self._y, _SC.color.grey)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
-        DrawRectangle(_SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, 80, _SC.draw.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
+        DrawRectangle(self._x + _SC.draw.row3 + _SC.draw.border, self._y, 80, _SC.draw.cellSize, ARGB(self[pVar][1], self[pVar][2], self[pVar][3], self[pVar][4]))
     else
         if (self._param[varIndex].pType == SCRIPT_PARAM_ONKEYDOWN or self._param[varIndex].pType == SCRIPT_PARAM_ONKEYTOGGLE) then
-            DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row2, _SC._Idraw.y, _SC.color.grey)
+            DrawText(self:_txtKey(self._param[varIndex].key), _SC.draw.fontSize, self._x + _SC.draw.row2, self._y, _SC.color.grey)
         end
-        DrawLine(_SC._Idraw.x + _SC.draw.row3, _SC._Idraw.y + _SC.draw.midSize, _SC._Idraw.x + _SC.draw.width + _SC.draw.border, _SC._Idraw.y + _SC.draw.midSize, _SC.draw.cellSize, (self[pVar] and _SC.color.green or _SC.color.lgrey))
-        DrawText((self[pVar] and "        ON" or "        OFF"), _SC.draw.fontSize, _SC._Idraw.x + _SC.draw.row3 + _SC.draw.border, _SC._Idraw.y, _SC.color.grey)
+        DrawLine(self._x + _SC.draw.row3, self._y + _SC.draw.midSize, self._x + _SC.draw.width + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, (self[pVar] and _SC.color.green or _SC.color.lgrey))
+        DrawText((self[pVar] and "        ON" or "        OFF"), _SC.draw.fontSize, self._x + _SC.draw.row3 + _SC.draw.border, self._y, _SC.color.grey)
     end
-    _SC._Idraw.y = _SC._Idraw.y + _SC.draw.cellSize
+    self._y = self._y + _SC.draw.cellSize
 end
 
 
@@ -4160,37 +4237,56 @@ function scriptConfig:save()
     __SC__save(self.name, content)
 end
 
+function scriptConfig:ResetSubIndexes()
+    if self._subMenuIndex > 0 then
+        self._subInstances[self._subMenuIndex]:ResetSubIndexes()
+        self._subMenuIndex = 0
+    end
+end
+
 function scriptConfig:OnWndMsg()
     local y1 = _SC.draw.y + _SC.draw.cellSize
+    if CursorIsUnder(self._x, _SC.draw.y, _SC.draw.width + _SC.draw.border, _SC.draw.cellSize) then self:ResetSubIndexes() end
+    for i, instance in ipairs(self._subInstances) do
+        if CursorIsUnder(self._x, y1, _SC.draw.width + _SC.draw.border, _SC.draw.cellSize) then self._subMenuIndex = i return end
+        y1 = y1 + _SC.draw.cellSize
+    end
     if #self._tsInstances > 0 then
         for _, tsInstance in ipairs(self._tsInstances) do
-            y1 = tsInstance:ClickMenu(_SC._Idraw.x, y1)
+            y1 = tsInstance:ClickMenu(self._x, y1)
         end
     end
     for i, param in ipairs(self._param) do
         if param.pType == SCRIPT_PARAM_ONKEYDOWN or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
-            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row2, y1, _SC.draw.fontSize, _SC.draw.fontSize) then
+            if CursorIsUnder(self._x + _SC.draw.row2, y1, _SC.draw.fontSize, _SC.draw.fontSize) then
                 _SC._changeKey, _SC._changeKeyVar, _SC._changeKeyMenu = true, i, true
+                _SC._changeKeyInstance = self
+                self:ResetSubIndexes()
                 return
             end
         end
         if param.pType == SCRIPT_PARAM_ONOFF or param.pType == SCRIPT_PARAM_ONKEYTOGGLE then
-            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3, y1, _SC.draw.width - _SC.draw.row3, _SC.draw.fontSize) then
+            if CursorIsUnder(self._x + _SC.draw.row3, y1, _SC.draw.width - _SC.draw.row3, _SC.draw.fontSize) then
                 self[param.var] = not self[param.var]
                 self:save()
+                self:ResetSubIndexes()
                 return
             end
         end
         if param.pType == SCRIPT_PARAM_COLOR then
-            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3, y1, _SC.draw.width - _SC.draw.row3, _SC.draw.fontSize) then
+            if CursorIsUnder(self._x + _SC.draw.row3, y1, _SC.draw.width - _SC.draw.row3, _SC.draw.fontSize) then
                 __CP(nil, nil, self[param.var][1], self[param.var][2], self[param.var][3], self[param.var][4], self[param.var])
                 self:save()
+                self:ResetSubIndexes()
                 return
             end
         end
         if param.pType == SCRIPT_PARAM_SLICE then
-            if CursorIsUnder(_SC._Idraw.x + _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
-                _SC._slice = i
+            if CursorIsUnder(self._x + _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
+                self._slice = i
+                _SC._sliceInstance = self
+                self:ResetSubIndexes()
+
                 return
             end
         end
