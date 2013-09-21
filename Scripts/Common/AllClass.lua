@@ -4294,6 +4294,129 @@ function scriptConfig:OnWndMsg()
     end
 end
 
+-- Alerter Class
+-- written by Weee
+--[[
+    PrintAlert(text, duration, r, g, b)                   - Pushes an alert message (notification) to the middle of the screen. Together with first message it also adds a configuration menu to the scriptConfig.
+                text:   Alert text                        - <string>
+            duration:   Alert duration (in seconds)       - <number>
+                   r:   Red                               - <number>: 0..255
+                   g:   Green                             - <number>: 0..255
+                   b:   Blue                              - <number>: 0..255
+]]
+
+local __mAlerter, __Alerter_OnTick, __Alerter_OnDraw = nil, nil, nil
+
+function PrintAlert(text, duration, r, g, b)
+    if not __mAlerter then __mAlerter = __Alerter() end
+    return __mAlerter:Push(text, duration, r, g, b)
+end
+
+class("__Alerter")
+function __Alerter:__init()
+    if not __Alerter_OnTick then
+        function __Alerter_OnTick() if __mAlerter then __mAlerter:OnTick() end end
+        AddTickCallback(__Alerter_OnTick)
+    end
+    if not __Alerter_OnDraw then
+        function __Alerter_OnDraw() if __mAlerter then __mAlerter:OnDraw() end end
+        AddDrawCallback(__Alerter_OnDraw)
+    end
+    
+    self.config = scriptConfig("Alerter", "alerterClass")
+    self.config:addParam("max", "Max Alerts", SCRIPT_PARAM_SLICE, 4, 2, 5, 0)
+    self.config:addParam("yOffset", "Y Offset", SCRIPT_PARAM_SLICE, 0.25, 0.1, 0.5, 2)
+    self.config:addParam("textSize", "Font Size", SCRIPT_PARAM_SLICE, 20, 12, 30, 0)
+    self.config:addParam("textOutline", "Font Outline (May cause FPS drops)", SCRIPT_PARAM_SLICE, 0, 0, 3, 0)
+    self.config:addParam("fadeDuration", "Fade In/Out Duration (Sec)", SCRIPT_PARAM_SLICE, 1, 0, 3, 1)
+    self.config:addParam("fadeOffset", "Fade In/Out X Offset", SCRIPT_PARAM_SLICE, 50, 20, 200, 0)
+    
+    self.yO = -WINDOW_H * self.config.yOffset
+    self.x = WINDOW_W/2
+    self.y = WINDOW_H/2 + self.yO
+    self._alerts = {}
+    return self
+end
+
+function __Alerter:OnTick()
+    self.yO = -WINDOW_H * self.config.yOffset
+    self.x = WINDOW_W/2
+    self.y = WINDOW_H/2 + self.yO
+    --if #self._alerts == 0 then self:__finalize() end
+end
+
+function __Alerter:OnDraw()
+    local gameTime = GetInGameTimer()
+    for i, alert in ipairs(self._alerts) do
+        self.activeCount = 0
+        for j = 1, i do
+            local cAlert = self._alerts[j]
+            if not cAlert.outro then self.activeCount = self.activeCount + 1 end
+        end
+        if self.activeCount <= self.config.max and (not alert.playT or alert.playT + self.config.fadeDuration*2 + alert.duration > gameTime) then
+            alert.playT = not alert.playT and self._alerts[i-1] and (self._alerts[i-1].playT + 0.5 >= gameTime and self._alerts[i-1].playT + 0.5 or gameTime) or alert.playT or gameTime
+            local intro = alert.playT + self.config.fadeDuration > gameTime
+            alert.outro = alert.playT + self.config.fadeDuration + alert.duration <= gameTime
+            alert.step = alert.outro and math.min(1, (gameTime - alert.playT - self.config.fadeDuration - alert.duration) / self.config.fadeDuration)
+                         or gameTime >= alert.playT and math.min(1, (gameTime - alert.playT) / self.config.fadeDuration)
+                         or 0
+            local xO = alert.outro and self:Easing(alert.step, 0, self.config.fadeOffset) or self:Easing(alert.step, -self.config.fadeOffset, self.config.fadeOffset)
+            local alpha = alert.outro and self:Easing(alert.step, 255, -255) or self:Easing(alert.step, 0, 255)
+            local yOffsetTar = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
+            alert.yOffset = intro and alert.step == 0 and yOffsetTar
+                            or #self._alerts > 1 and not alert.outro and (alert.yOffset < yOffsetTar and math.min(yOffsetTar, alert.yOffset + 0.5) or alert.yOffset > yOffsetTar and math.max(yOffsetTar, alert.yOffset - 0.5))
+                            or alert.yOffset
+            local x = self.x + xO
+            local y = self.y - alert.yOffset
+            -- outline:
+            local o = self.config.textOutline
+            if o > 0 then
+                for j = -o, o do
+                    for k = -o, o do
+                        DrawTextA(alert.text, self.config.textSize, math.floor(x+j), math.floor(y+k), ARGB(alpha, 0, 0, 0), "center", "center")
+                    end
+                end
+            end
+            -- text:
+            DrawTextA(alert.text, self.config.textSize, math.floor(x), math.floor(y), ARGB(alpha, alert.r, alert.g, alert.b), "center", "center")
+        elseif alert.playT and alert.playT + self.config.fadeDuration*2 + alert.duration <= gameTime then
+            table.remove(self._alerts, i)
+        end
+    end
+end
+
+function __Alerter:Push(text, duration, r, g, b, id)
+    local alert = {}
+    alert.text = text
+    alert.duration = duration
+    alert.r = r
+    alert.g = g
+    alert.b = b
+    
+    alert.parent = self
+    alert.yOffset = 0
+    
+    alert.reset = function(duration)
+        alert.playT = GetInGameTimer() - self.config.fadeDuration
+        alert.duration = duration
+        alert.yOffset = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
+    end
+    
+    self._alerts[#self._alerts+1] = alert
+    return alert
+end
+
+function __Alerter:Easing(step, sPos, tPos)
+    step = step - 1
+    return tPos * (step ^ 3 + 1) + sPos
+end
+
+function __Alerter:__finalize()
+    __Alerter_OnTick = nil
+    __Alerter_OnDraw = nil
+    __mAlerter = nil
+end
+
 -- HSLA ColorPicker
 -- written by Weee, design by Farissi, idea taken from: http://hslpicker.com/
 --[[
