@@ -1025,11 +1025,14 @@ function DrawArrows(posStart, posEnd, size, color, splitSize)
 end
 
 function OnScreen(x, y) --Accepts one point, two points (line) or two numbers
-    if type(x) == "number" then return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H end
-    if type(x) == "userdata" or type(x) == "table" then
-        if not y then return OnScreen(x.x, x.z or x.y) end
-        local P1, P2, P3, P4 = { x = 0, y = 0 }, { x = 0, y = WINDOW_H }, { x = WINDOW_W, y = 0 }, { x = WINDOW_W, y = WINDOW_H }
-        return OnScreen(VectorIntersection(x, y, P1, P2)) or OnScreen(VectorIntersection(x, y, P1, P3)) or OnScreen(VectorIntersection(x, y, P4, P2)) or OnScreen(VectorIntersection(x, y, P4, P3))
+    local typex = type(x)
+    if typex == "number" then 
+        return x <= WINDOW_W and x >= 0 and y >= 0 and y <= WINDOW_H
+    elseif typex == "userdata" or typex == "table" then
+        local p1, p2, p3, p4 = {x = 0,y = 0}, {x = WINDOW_W,y = 0}, {x = 0,y = WINDOW_H}, {x = WINDOW_W,y = WINDOW_H}
+        return OnScreen(x.x, x.z or x.y) or (y and OnScreen(y.x, y.z or y.y) or 
+            IsLineSegmentIntersection(x,y,p1,p2) or IsLineSegmentIntersection(x,y,p3,p4) or 
+            IsLineSegmentIntersection(x,y,p1,p3) or IsLineSegmentIntersection(x,y,p2,p4))
     end
 end
 
@@ -1078,8 +1081,7 @@ function DrawCircleMinimap(x, y, z, radius, width, color, quality)
     quality = math.min(quality and 2 * math.pi / quality or 2 * math.pi / (radius / 100), 0.785)
     local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
-        local cx, cy = GetMinimapX(x + radius * math.cos(theta)), GetMinimapY(z - radius * math.sin(theta))
-        points[#points + 1] = D3DXVECTOR2(cx, cy)
+        points[#points + 1] = D3DXVECTOR2(GetMinimapX(x + radius * math.cos(theta)), GetMinimapY(z - radius * math.sin(theta)))
     end
     DrawLines2(points, width or 1, color or 4294967295)
 end
@@ -1174,7 +1176,7 @@ end
         ---- functions ----
         VectorType(v)                           -- return if as vector
         VectorIntersection(a1,b1,a2,b2)         -- return the Intersection of 2 lines
-        IsLineSegmentIntersection               -- return if 2 linesegments intersect
+        IsLineSegmentIntersection(A,B,C,D)      -- return if 2 linesegments intersect
         LineSegmentIntersection(A,B,C,D)        -- return the Intersection of 2 linesegments
         VectorDirection(v1,v2,v)
         VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
