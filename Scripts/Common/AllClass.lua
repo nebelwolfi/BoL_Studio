@@ -1174,6 +1174,8 @@ end
         ---- functions ----
         VectorType(v)                           -- return if as vector
         VectorIntersection(a1,b1,a2,b2)         -- return the Intersection of 2 lines
+        IsLineSegmentIntersection               -- return if 2 linesegments intersect
+        LineSegmentIntersection(A,B,C,D)        -- return the Intersection of 2 linesegments
         VectorDirection(v1,v2,v)
         VectorPointProjectionOnLine(v1, v2, v)  -- return a vector on line v1-v2 closest to v
         Vector(a,b,c)                           -- return a vector from x,y,z pos or from another vector
@@ -1208,6 +1210,14 @@ function VectorType(v)
     return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and type(v.z) == "number"))
 end
 
+local function IsCounterClockWise(A,B,C)
+    return (C.y - (A.z or A.y)) * (B.x - A.x) > ((B.z or B.y) - (A.z or A.y)) * (C.x - A.x)
+end
+
+function IsLineSegmentIntersection(A,B,C,D)
+    return IsCounterClockWise(A, C, D) ~= IsCounterClockWise(B, C, D) and IsCounterClockWise(A, B, C) ~= IsCounterClockWise(A, B, D)
+end
+
 function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines intersect (assuming they have an infinite length)
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
     --http://thirdpartyninjas.com/blog/2008/10/07/line-segment-intersection/
@@ -1216,6 +1226,12 @@ function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines 
     local py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
     local divisor = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
     return divisor ~= 0 and Vector(px / divisor, py / divisor)
+end
+
+function LineSegmentIntersection(A,B,C,D)
+    if IsLineSegmentIntersection(A,B,C,D) then
+        return VectorIntersection(A,B,C,D)
+    end
 end
 
 function VectorDirection(v1, v2, v)
@@ -2809,12 +2825,6 @@ function TargetPredictionVIP:GetCollision(target)
     for index, minion in pairs(self.MinionManager.objects) do
         local wayPoints = self.WayPointManager:GetSimulatedWayPoints(minion, self.Spell.Delay + GetLatency() / 2000, self.Spell.Delay + GetLatency() / 2000 + hitTime + 1)
         if wayPoints and #wayPoints > 0 then
-            local function intersect(A, B, C, D)
-                local function ccw(A, B, C) return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x) end
-
-                return ccw(A, C, D) ~= ccw(B, C, D) and ccw(A, B, C) ~= ccw(A, B, D)
-            end
-
             local function getSpellHitTime(position)
                 local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(self.Spell.Source, prediction, position)
                 return isOnSegment and GetDistanceSqr(pointLine, position) < (self.Spell.Width / 2) ^ 2, GetDistance(self.Spell.Source, pointLine) / self.Spell.Speed
@@ -2831,8 +2841,8 @@ function TargetPredictionVIP:GetCollision(target)
                 end
                 for i = 1, #spellBorder - 1 do
                     local C, D = spellBorder[i], spellBorder[i + 1]
-                    if intersect(A, B, C, D) then
-                        local intersection = VectorIntersection(A, B, C, D)
+                    local intersection = LineSegmentIntersection(A, B, C, D)
+                    if intersection then
                         local cTimeTravelled = absTimeTravelled + GetDistance(A, intersection) / minion.ms
                         local isInRect, hitMinionT = getSpellHitTime(intersection)
                         minionIn, minionOut = math.min(minionIn, cTimeTravelled), math.max(minionOut, cTimeTravelled)
@@ -4322,7 +4332,7 @@ function __Alerter:__init()
         function __Alerter_OnDraw() if __mAlerter then __mAlerter:OnDraw() end end
         AddDrawCallback(__Alerter_OnDraw)
     end
-    
+
     self.config = scriptConfig("Alerter", "alerterClass")
     self.config:addParam("max", "Max Alerts", SCRIPT_PARAM_SLICE, 4, 2, 5, 0)
     self.config:addParam("yOffset", "Y Offset", SCRIPT_PARAM_SLICE, 0.25, 0.1, 0.5, 2)
@@ -4330,7 +4340,7 @@ function __Alerter:__init()
     self.config:addParam("textOutline", "Font Outline (May cause FPS drops)", SCRIPT_PARAM_SLICE, 0, 0, 3, 0)
     self.config:addParam("fadeDuration", "Fade In/Out Duration (Sec)", SCRIPT_PARAM_SLICE, 1, 0, 3, 1)
     self.config:addParam("fadeOffset", "Fade In/Out X Offset", SCRIPT_PARAM_SLICE, 50, 20, 200, 0)
-    
+
     self.yO = -WINDOW_H * self.config.yOffset
     self.x = WINDOW_W/2
     self.y = WINDOW_H/2 + self.yO
@@ -4359,14 +4369,14 @@ function __Alerter:OnDraw()
             local intro = alert.playT + self.config.fadeDuration > gameTime
             alert.outro = alert.playT + self.config.fadeDuration + alert.duration <= gameTime
             alert.step = alert.outro and math.min(1, (gameTime - alert.playT - self.config.fadeDuration - alert.duration) / self.config.fadeDuration)
-                         or gameTime >= alert.playT and math.min(1, (gameTime - alert.playT) / self.config.fadeDuration)
-                         or 0
+                    or gameTime >= alert.playT and math.min(1, (gameTime - alert.playT) / self.config.fadeDuration)
+                    or 0
             local xO = alert.outro and self:Easing(alert.step, 0, self.config.fadeOffset) or self:Easing(alert.step, -self.config.fadeOffset, self.config.fadeOffset)
             local alpha = alert.outro and self:Easing(alert.step, 255, -255) or self:Easing(alert.step, 0, 255)
             local yOffsetTar = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
             alert.yOffset = intro and alert.step == 0 and yOffsetTar
-                            or #self._alerts > 1 and not alert.outro and (alert.yOffset < yOffsetTar and math.min(yOffsetTar, alert.yOffset + 0.5) or alert.yOffset > yOffsetTar and math.max(yOffsetTar, alert.yOffset - 0.5))
-                            or alert.yOffset
+                    or #self._alerts > 1 and not alert.outro and (alert.yOffset < yOffsetTar and math.min(yOffsetTar, alert.yOffset + 0.5) or alert.yOffset > yOffsetTar and math.max(yOffsetTar, alert.yOffset - 0.5))
+                    or alert.yOffset
             local x = self.x + xO
             local y = self.y - alert.yOffset
             -- outline:
@@ -4393,16 +4403,16 @@ function __Alerter:Push(text, duration, r, g, b, id)
     alert.r = r
     alert.g = g
     alert.b = b
-    
+
     alert.parent = self
     alert.yOffset = 0
-    
+
     alert.reset = function(duration)
         alert.playT = GetInGameTimer() - self.config.fadeDuration
         alert.duration = duration
         alert.yOffset = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
     end
-    
+
     self._alerts[#self._alerts+1] = alert
     return alert
 end
