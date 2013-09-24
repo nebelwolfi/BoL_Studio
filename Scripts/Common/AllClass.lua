@@ -1134,7 +1134,7 @@ function DrawTextA(text, size, x, y, color, halign, valign)
     halign, valign = halign and halign:lower() or "left", valign and valign:lower() or "top"
     x = (halign == "right"  and x - textArea.x) or (halign == "center" and x - textArea.x/2) or x or 0
     y = (valign == "bottom" and y - textArea.y) or (valign == "center" and y - textArea.y/2) or y or 0
-    DrawText(text or "", size or 12, math.floor(x), math.floor(y), color or 4294967295)
+    DrawText(tostring(text) or "", size or 12, math.floor(x), math.floor(y), color or 4294967295)
 end
 
 function DrawText3D(text, x, y, z, size, color, center)
@@ -1222,9 +1222,8 @@ function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines 
     assert(VectorType(a1) and VectorType(b1) and VectorType(a2) and VectorType(b2), "VectorIntersection: wrong argument types (4 <Vector> expected)")
     --http://thirdpartyninjas.com/blog/2008/10/07/line-segment-intersection/
     local x1, y1, x2, y2, x3, y3, x4, y4 = a1.x, a1.z or a1.y, b1.x, b1.z or b1.y, a2.x, a2.z or a2.y, b2.x, b2.z or b2.y
-    local px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
-    local py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
-    local divisor = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    local r, s, u, v, k, l = x1 * y2 - y1 * x2, x3 * y4 - y3 * x4, x3 - x4, x1 - x2, y3 - y4, y1 - y2
+    local px, py, divisor = r * u - v * s, r * k - l * s, v * k - l * u
     return divisor ~= 0 and Vector(px / divisor, py / divisor)
 end
 
