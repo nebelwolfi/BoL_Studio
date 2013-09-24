@@ -1480,12 +1480,12 @@ end
 -- not yet full 3D functions
 function Vector:polar()
     if math.close(self.x, 0) then
-        if self.z > 0 then return 90
-        elseif self.z < 0 then return 270
+        if (self.z or self.y) > 0 then return 90
+        elseif (self.z or self.y) < 0 then return 270
         else return 0
         end
     else
-        local theta = math.deg(math.atan(self.z / self.x))
+        local theta = math.deg(math.atan((self.z or self.y) / self.x))
         if self.x < 0 then theta = theta + 180 end
         if theta < 0 then theta = theta + 360 end
         return theta
