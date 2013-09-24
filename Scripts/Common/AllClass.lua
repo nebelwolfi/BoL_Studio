@@ -4335,6 +4335,7 @@ function __Alerter:__init()
     self.x = WINDOW_W/2
     self.y = WINDOW_H/2 + self.yO
     self._alerts = {}
+    self.activeCount = 0
     return self
 end
 
