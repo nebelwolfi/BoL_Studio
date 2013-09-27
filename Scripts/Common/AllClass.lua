@@ -1128,7 +1128,7 @@ function DrawLines3D(points, width, color)
         if not p.z then p.z = p.y; p.y = nil end
         p.y = p.y or player.y
         local c = WorldToScreen(D3DXVECTOR3(p.x, p.y, p.z))
-        if l and OnScreen({ x = l.x, y = l.y }, { x = c.x, y = c.y })) then
+        if l and OnScreen({ x = l.x, y = l.y }, { x = c.x, y = c.y }) then
             DrawLine(l.x, l.y, c.x, c.y, width or 1, color or 4294967295)
         end
         l = c
@@ -1315,7 +1315,6 @@ function VectorMovementCollision(startPoint1, endPoint1, v1, startPoint2, v2, de
 	elseif dist==0 then
 		res[1] = 0
 	end
-	--print(delay)
     return res[1], GetCollisionPoint(res[1]), res[2], GetCollisionPoint(res[2]), dist
 end
 
