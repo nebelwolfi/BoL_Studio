@@ -24,17 +24,18 @@ function GetDistanceBBox(p1, p2)
 end
 
 function print(...)
-    local t = ""
-    for _, v in ipairs(table.pack(...)) do
+    local t = {}
+    for i=1, select("#",...) do
+        local v = select(i,...)
         local _type = type(v)
-        if _type == "string" then t = t .. v
-        elseif _type == "number" then t = t .. tostring(v)
-        elseif _type == "table" then t = t .. table.serialize(v)
-        elseif _type == "boolean" then t = t .. (v and "true" or "false")
-        else t = t .. _type
+        if _type == "string" then t[i] = v
+        elseif _type == "number" then t[i] = tostring(v)
+        elseif _type == "table" then t[i] = table.serialize(v)
+        elseif _type == "boolean" then t[i] = v and "true" or "false"
+        else t[i] = _type
         end
     end
-    if t ~= "" then PrintChat(t) end
+    if t[1] ~= nil then PrintChat(table.concat(t)) end
 end
 
 function ValidTarget(object, distance, enemyTeam)
@@ -120,23 +121,41 @@ end
 
 function table.serialize(t, tab, functions)
     assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
-    local s = "{\n"
+    local s, len = {"{\n"}, 1
     for i, v in pairs(t) do
-        local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
-        if iType == "number" then strKey = "[" .. i .. "]"
-        elseif iType == "string" then strKey = i
+        local iType, vType = type(i), type(v)
+        if vType~="userdata" and (functions or vType~="function") then
+            if tab then 
+                s[len+1] = tab 
+                len = len + 1
+            end
+            s[len+1] = "\t"
+            if iType == "number" then
+                s[len+2], s[len+3], s[len+4] = "[", i, "]"
+            elseif iType == "string" then
+                s[len+2], s[len+3], s[len+4] = '["', i, '"]'
+            end
+            s[len+5] = " = "
+            if vType == "number" then 
+                s[len+6], s[len+7], len = v, ",\n", len + 7
+            elseif vType == "string" then 
+                s[len+6], s[len+7], s[len+8], len = '"', v, '",\n', len + 8
+            elseif vType == "table" then 
+                s[len+6], s[len+7], len = table.serialize(v, (tab or "") .. "\t", functions), ",\n", len + 7
+            elseif vType == "boolean" then 
+                s[len+6], s[len+7], len = tostring(v), ",\n", len + 7
+            elseif vType == "function" and functions then
+                local dump = string.dump(v)
+                s[len+6], s[len+7], s[len+8], len = "load(Base64Decode(\"", Base64Encode(dump, #dump), "\")),\n", len + 8
+            end
         end
-        if vType == "number" then strVal = v
-        elseif vType == "string" then strVal = [["]] .. v .. [["]]
-        elseif vType == "table" then strVal = table.serialize(v, (tab or "") .. "\t")
-        elseif vType == "boolean" then strVal = tostring(v)
-        elseif vType == "function" and functions then
-            local dump = string.dump(v)
-            strVal = "load(Base64Decode(\"" .. Base64Encode(dump, #dump) .. "\"))"
-        end
-        s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
     end
-    return s .. (tab or "") .. "}"
+    if tab then 
+        s[len+1] = tab
+        len = len + 1
+    end
+    s[len+1] = "}"
+    return table.concat(s)
 end
 
 function table.merge(base, t, deepMerge)
@@ -265,28 +284,10 @@ function GetSave(name)
         save = _saves[name]
     end
     function save:Save()
-        local function ts(t, tab)
-            assert(type(t) == "table", "table.serialize: Wrong Argument, table expected")
-            local s = "{\n"
-            for i, v in pairs(t) do
-                local strKey, strVal, iType, vType = nil, nil, type(i), type(v)
-                if iType == "number" then strKey = "[" .. i .. "]"
-                elseif iType == "string" then strKey = '["' .. i .. '"]'
-                end
-                if vType == "number" then strVal = v
-                elseif vType == "string" then strVal = [["]] .. v .. [["]]
-                elseif vType == "table" then strVal = ts(v, (tab or "") .. "\t")
-                elseif vType == "boolean" then strVal = tostring(v)
-                elseif vType == "function" and (i ~= "Save" and i ~= "Reload" and i ~= "Clear" and i ~= "IsEmpty" and i ~= "Remove") then
-                    local dump = string.dump(v)
-                    strVal = "load(Base64Decode(\"" .. Base64Encode(dump, #dump) .. "\"))"
-                end
-                s = (strKey and strVal) and (s .. (tab or "") .. "\t" .. strKey .. " = " .. strVal .. ",\n") or s
-            end
-            return s .. (tab or "") .. "}"
-        end
-
-        WriteFile("return " .. ts(self), LIB_PATH .. "Saves\\" .. name .. ".save")
+        local _save, _reload, _clear, _isempty, _remove = self.Save, self.Reload, self.Clear, self.IsEmpty, self.Remove
+        self.Save, self.Reload, self.Clear, self.IsEmpty, self.Remove = nil, nil, nil, nil, nil
+        WriteFile(table.concat({"return ",table.serialize(self, nil, true)}), LIB_PATH .. "Saves\\" .. name .. ".save")
+        self.Save, self.Reload, self.Clear, self.IsEmpty, self.Remove = _save, _reload, _clear, _isempty, _remove
     end
 
     function save:Reload()
@@ -327,7 +328,11 @@ function GetSave(name)
         local function saveAll()
             for i, v in pairs(_saves) do
                 if v and v.Save then
-                    v:Save()
+                    if v:IsEmpty() then
+                        v:Remove()
+                    else 
+                        v:Save()
+                    end
                 end
             end
         end
@@ -1097,7 +1102,7 @@ end
 
 function DrawCircle3D(x, y, z, radius, width, color, quality)
     radius = radius or 300
-    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 15)
+    quality = quality and 2 * math.pi / quality or 2 * math.pi / (radius / 5)
     local points = {}
     for theta = 0, 2 * math.pi + quality, quality do
         local c = WorldToScreen(D3DXVECTOR3(x + radius * math.cos(theta), y, z - radius * math.sin(theta)))
@@ -1111,7 +1116,7 @@ function DrawLine3D(x1, y1, z1, x2, y2, z2, width, color)
     local px, py = p.x, p.y
     local c = WorldToScreen(D3DXVECTOR3(x2, y2, z2))
     local cx, cy = c.x, c.y
-    if OnScreen(cx, cy) or OnScreen(px, py) or OnScreen({ x = px, y = py }, { x = px, y = py }) then
+    if OnScreen({ x = px, y = py }, { x = px, y = py }) then
         DrawLine(cx, cy, px, py, width or 1, color or 4294967295)
     end
 end
@@ -1123,7 +1128,7 @@ function DrawLines3D(points, width, color)
         if not p.z then p.z = p.y; p.y = nil end
         p.y = p.y or player.y
         local c = WorldToScreen(D3DXVECTOR3(p.x, p.y, p.z))
-        if l and (OnScreen(l.x, l.y) or OnScreen(c.x, c.y) or OnScreen({ x = l.x, y = l.y }, { x = c.x, y = c.y })) then
+        if l and OnScreen({ x = l.x, y = l.y }, { x = c.x, y = c.y })) then
             DrawLine(l.x, l.y, c.x, c.y, width or 1, color or 4294967295)
         end
         l = c
@@ -1132,7 +1137,7 @@ end
 
 --DrawTextA(text, [size], x, y, [color, [halign, [valign]]])
 function DrawTextA(text, size, x, y, color, halign, valign)
-    local textArea = GetTextArea(text or "", size or 12)
+    local textArea = GetTextArea(tostring(text) or "", size or 12)
     halign, valign = halign and halign:lower() or "left", valign and valign:lower() or "top"
     x = (halign == "right"  and x - textArea.x) or (halign == "center" and x - textArea.x/2) or x or 0
     y = (valign == "bottom" and y - textArea.y) or (valign == "center" and y - textArea.y/2) or y or 0
@@ -1204,7 +1209,7 @@ end
         vector:polar()                          -- return the angle from axe
         vector:angleBetween(v1, v2)             -- return the angle formed from vector to v1,v2
         vector:compare(v)                       -- compare vector and v
-        vector:perpendicular()                  -- return new Vector rotated 90° rigth
+        vector:perpendicular()                  -- return new Vector rotated 90° right
         vector:perpendicular2()                 -- return new Vector rotated 90° left
 ]]
 -- STAND ALONE FUNCTIONS
@@ -1212,12 +1217,16 @@ function VectorType(v)
     return v and v.x and type(v.x) == "number" and ((v.y and type(v.y) == "number") or (v.z and type(v.z) == "number"))
 end
 
+local function IsClockWise(A,B,C)
+    return VectorDirection(A,B,C)<=0
+end
+
 local function IsCounterClockWise(A,B,C)
-    return (C.y - (A.z or A.y)) * (B.x - A.x) > ((B.z or B.y) - (A.z or A.y)) * (C.x - A.x)
+    return not IsClockWise(A,B,C)
 end
 
 function IsLineSegmentIntersection(A,B,C,D)
-    return IsCounterClockWise(A, C, D) ~= IsCounterClockWise(B, C, D) and IsCounterClockWise(A, B, C) ~= IsCounterClockWise(A, B, D)
+    return IsClockWise(A, C, D) ~= IsClockWise(B, C, D) and IsClockWise(A, B, C) ~= IsClockWise(A, B, D)
 end
 
 function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines intersect (assuming they have an infinite length)
@@ -1230,14 +1239,12 @@ function VectorIntersection(a1, b1, a2, b2) --returns a 2D point where to lines 
 end
 
 function LineSegmentIntersection(A,B,C,D)
-    if IsLineSegmentIntersection(A,B,C,D) then
-        return VectorIntersection(A,B,C,D)
-    end
+    return IsLineSegmentIntersection(A,B,C,D) and VectorIntersection(A,B,C,D)
 end
 
 function VectorDirection(v1, v2, v)
-    assert(VectorType(v1) and VectorType(v2) and VectorType(v), "VectorDirection: wrong argument types (3 <Vector> expected)")
-    return (v1.x - v2.x) * (v.z - v2.z) - (v.x - v2.x) * (v1.z - v2.z)
+    --assert(VectorType(v1) and VectorType(v2) and VectorType(v), "VectorDirection: wrong argument types (3 <Vector> expected)")
+    return ((v.z or v.y) - (v1.z or v1.y)) * (v2.x - v1.x) - ((v2.z or v2.y) - (v1.z or v1.y)) * (v.x - v1.x) 
 end
 
 function VectorPointProjectionOnLine(v1, v2, v)
@@ -1265,6 +1272,51 @@ function VectorPointProjectionOnLineSegment(v1, v2, v)
     local isOnSegment = rS == rL
     local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
     return pointSegment, pointLine, isOnSegment
+end
+
+function VectorMovementCollision(startPoint1, endPoint1, v1, startPoint2, v2, delay)
+	local sP1x, sP1y, eP1x, eP1y, sP2x, sP2y = startPoint1.x, startPoint1.z or startPoint1.y, endPoint1.x, endPoint1.z or endPoint1.y, startPoint2.x, startPoint2.z or startPoint2.y
+	--v2 * t = Distance(P, A + t * v1 * (B-A):Norm())
+	--(v2 * t)^2 = (r+S*t)^2+(j+K*t)^2 and v2 * t >= 0
+	--0 = (S*S+K*K-v2*v2)*t^2+(-r*S-j*K)*2*t+(r*r+j*j) and v2 * t >= 0
+	local d, e = eP1x-sP1x, eP1y-sP1y
+    local dist, res = math.sqrt(d*d+e*e), {}
+	local S, K = dist~=0 and v1*d/dist or 0, dist~=0 and v1*e/dist or 0
+	local function GetCollisionPoint(t) return S and K and t and {x = sP1x+S*t, y = sP1y+K*t} or nil end
+	if delay and delay~=0 then sP1x, sP1y = sP1x+S*delay, sP1y+K*delay end
+	local r, j = sP2x-sP1x, sP2y-sP1y
+	local c = r*r+j*j
+	if dist>0 then
+		if v1 == math.huge then
+			local t = dist/v1
+			res[1] = v2*t>=0 and t or nil
+		elseif v2 == math.huge then
+			res[1] = 0
+		else
+			local a, b = S*S+K*K-v2*v2, -r*S-j*K
+			if a==0 then 
+				if b==0 then --c=0->t variable
+					res[1] = c==0 and 0 or nil
+				else --2*b*t+c=0
+					local t = -c/(2*b)
+					res[1] = v2*t>=0 and t or nil
+				end
+			else --a*t*t+2*b*t+c=0
+				local sqr = b*b-a*c
+				if sqr>=0 then
+					local nom = math.sqrt(sqr)
+					local t = (nom-b)/a
+					res[1] = v2*t>=0 and t or nil
+					t = (-nom-b)/a
+					res[#res+1] = v2*t>=0 and t or nil --if you check nom==0 you can sort out 2same results
+				end
+			end
+		end
+	elseif dist==0 then
+		res[1] = 0
+	end
+	--print(delay)
+    return res[1], GetCollisionPoint(res[1]), res[2], GetCollisionPoint(res[2]), dist
 end
 
 class'Vector'
@@ -2705,7 +2757,7 @@ function TargetPredictionVIP:GetPrediction(target)
     else return self.Cache[target.networkID].HitPosition, self.Cache[target.networkID].HitTime, self.Cache[target.networkID].ShootPosition
     end
     local wayPoints, hitPosition, hitTime = self.WayPointManager:GetSimulatedWayPoints(target, self.Spell.Delay + ((GetLatency() / 2) / 1000)), nil, nil
-    assert(self.Spell.Speed > 0 and self.Spell.Delay >= 0, "TargetPredictionVIP:GetPrediction : SpellDelay must be >=0 and SpellSpeed must be >0")
+    --assert(self.Spell.Speed > 0 and self.Spell.Delay >= 0, "TargetPredictionVIP:GetPrediction : SpellDelay must be >=0 and SpellSpeed must be >0")
     local vec
     if #wayPoints == 1 or self.Spell.Speed == math.huge then --Target not moving
         hitPosition = { x = wayPoints[1].x, y = target.y, z = wayPoints[1].y };
@@ -2714,15 +2766,13 @@ function TargetPredictionVIP:GetPrediction(target)
     else --Target Moving
         local travelTimeA = 0
         for i = 1, #wayPoints - 1 do
-            local A, B = wayPoints[i], wayPoints[i + 1]
-            local wayPointDist = GetDistance(wayPoints[i], wayPoints[i + 1])
+			local A, B = wayPoints[i], wayPoints[i + 1]
+            local t1, p1, t2, p2, wayPointDist =  VectorMovementCollision(A, B, target.ms, self.Spell.Source, self.Spell.Speed)
             local travelTimeB = travelTimeA + wayPointDist / target.ms
-            local v1, v2 = target.ms, self.Spell.Speed
-            local r, S, j, K = self.Spell.Source.x - A.x, v1 * (B.x - A.x) / wayPointDist, self.Spell.Source.z - A.y, v1 * (B.y - A.y) / wayPointDist
-            local vv, jK, rS, SS, KK = v2 * v2, j * K, r * S, S * S, K * K
-            local t = (jK + rS - math.sqrt(j * j * (vv - 1) + SS + 2 * jK * rS + r * r * (vv - KK))) / (KK + SS - vv)
-            if travelTimeA <= t and t <= travelTimeB then
-                hitPosition = { x = A.x + t * S, y = target.y, z = A.y + t * K }
+            t1, t2 = (t1 and travelTimeA <= t1 and t1 <= travelTimeB) and t1 or nil, (t2 and travelTimeA <= t2 and t2 <= travelTimeB) and t2 or nil
+            local t = t1 and t2 and math.min(t1,t2) or t1 or t2
+            if t then
+                hitPosition = t==t1 and { x = p1.x, y = target.y, z = p1.y } or { x = p2.x, y = target.y, z = p2.y }
                 hitTime = t
                 if self.Spell.Width then
                     local function rotate2D(vec, vec2, phi)
@@ -2740,7 +2790,7 @@ function TargetPredictionVIP:GetPrediction(target)
             end
             --Logic In Case there is no prediction 'till the last wayPoint
             if i == #wayPoints - 1 then
-                hitPosition = { x = B.x, y = target.y, z = B.y };
+                hitPosition = { x = B.x, y = target.y, z = B.y }
                 hitTime = travelTimeB
                 vec = self.Spell.Width and hitPosition
             end
@@ -2892,7 +2942,7 @@ local function TargetPrediction__Onload()
     if not __TargetPrediction__OnTick then
         function __TargetPrediction__OnTick()
             local osTime = os.clock()
-            if osTime - _TargetPrediction__tick > 0.35 then
+            if osTime - _TargetPrediction__tick > 0 then
                 _TargetPrediction__tick = osTime
                 for _, _enemyHero in ipairs(_gameHeroes) do
                     local hero = _enemyHero.hero
@@ -2901,8 +2951,8 @@ local function TargetPrediction__Onload()
                     elseif hero.visible then
                         if _enemyHero.prediction then
                             local deltaTime = osTime - _enemyHero.prediction.lastUpdate
-                            _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
-                            _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
+							_enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
+							_enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
                             _enemyHero.prediction.health = hero.health
                             _enemyHero.prediction.position = Vector(hero)
                             _enemyHero.prediction.lastUpdate = osTime
@@ -2925,7 +2975,10 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
     TargetPrediction__Onload()
     self.range = range or 0
     self.proj_speed = proj_speed or math.huge
+	assert(type(proj_speed) == "number" and proj_speed > 0, "TargetPrediction: Projectile Speed must be a positive number, is "..(type(proj_speed)=="number" and tostring(proj_speed) or type(proj_speed)))
+	self.proj_speed = self.proj_speed > 100 and self.proj_speed or self.proj_speed * 1000
     self.delay = delay or 0
+	self.delay = self.delay >= 30 and self.delay / 1000 or self.delay
     self.width = widthCollision
     self.smoothness = smoothness
     if self.width then
@@ -2953,40 +3006,44 @@ function TargetPrediction:GetPrediction(target)
             self.target = index
         end
         local osTime = os.clock()
-        local delay = self.delay / 1000
-        local proj_speed = self.proj_speed and self.proj_speed * 1000
+        local delay = self.delay  + (GetLatency()or 0)/1000
         if GetDistanceSqr(selected) < (self.range + 300) ^ 2 then
             if osTime - (_gameHeroes[index].prediction.calculateTime or 0) > 0 then
-                local latency = (GetLatency() / 1000) or 0
-                local PositionPrediction
+                local delT, enemyPos, PositionPrediction
                 if selected.visible then
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency)) + selected
+                    enemyPos = Vector(selected)
+                    delT = delay
                 elseif osTime - _gameHeroes[index].prediction.lastUpdate < 3 then
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * (delay + latency + osTime - _gameHeroes[index].prediction.lastUpdate)) + _gameHeroes[index].prediction.position
-                else _gameHeroes[index].prediction = nil return
+                    enemyPos = _gameHeroes[index].prediction.position
+                    delT = delay + osTime - _gameHeroes[index].prediction.lastUpdate
+                else 
+                    _gameHeroes[index].prediction = nil 
+                    return
                 end
-                local t = 0
-                if proj_speed and proj_speed > 0 then
-                    local a, b, c = PositionPrediction, _gameHeroes[index].prediction.movement, Vector(player)
-                    local d, e, f, g, h, i, j, k, l = (-a.x + c.x), (-a.z + c.z), b.x * b.x, b.z * b.z, proj_speed * proj_speed, a.x * a.x, a.z * a.z, c.x * c.x, c.z * c.z
-                    local t = (-(math.sqrt(-f * (l - 2 * c.z * a.z + j) + 2 * b.x * b.z * d * e - g * (k - 2 * c.x * a.x + i) + (k - 2 * c.x * a.x + l - 2 * c.z * a.z + i + j) * h) - b.x * d - b.z * e)) / (f + g - h)
-                    PositionPrediction = (_gameHeroes[index].prediction.movement * t) + PositionPrediction
-                end
-                if self.smoothness and self.smoothness < 100 and self.nextPosition then
-                    self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
-                else
-                    self.nextPosition = PositionPrediction:clone()
-                end
-                if GetDistanceSqr(PositionPrediction) < (self.range) ^ 2 then
-                    --update next Health
-                    self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + self.delay + latency)
-                    --update minions collision
-                    self.minions = false
-                    if self.width and self.minionTable then
-                        self.minions = GetMinionCollision(player, PositionPrediction, self.width, self.minionTable.objects)
-                    end
-                else return
-                end
+                local t1, p1, t2, p2 =  VectorMovementCollision(enemyPos, enemyPos+_gameHeroes[index].prediction.movement, target.ms, player, self.proj_speed, delT)
+                t1, t2 = (t1 and 0 <= t1) and t1 or nil, (t2 and 0 <= t2) and t2 or nil
+				local t = t1 and t2 and math.min(t1,t2) or t1 or t2
+				if t then
+                    PositionPrediction = t==t1 and Vector(p1.x, enemyPos.y, p1.y) or Vector(p2.x, enemyPos.y, p2.y)
+					if self.smoothness and self.smoothness < 100 and self.nextPosition then
+						self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
+					else
+						self.nextPosition = PositionPrediction:clone()
+					end
+					if GetDistanceSqr(PositionPrediction) < (self.range) ^ 2 then
+						--update next Health
+						self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + delay)
+						--update minions collision
+						self.minions = false
+						if self.width and self.minionTable then
+							self.minions = GetMinionCollision(player, PositionPrediction, self.width, self.minionTable.objects)
+						end
+					else 
+						return
+					end 
+				else
+					return
+				end
             end
             return self.nextPosition, self.minions, self.nextHealth
         end
