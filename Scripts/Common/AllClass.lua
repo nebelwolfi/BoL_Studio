@@ -23,19 +23,62 @@ function GetDistanceBBox(p1, p2)
     return GetDistance(p1, p2) - (bbox1)
 end
 
+function ctype(t)
+	local _type = type(t)
+	if _type == "userdata" or _type == "table" then
+		local _getType = t.type or t.Type or t.__type
+		_type = _getType and _getType(t) or _type
+	end
+	return _type
+end
+
+function ctostring(t)
+	local _type = type(t)
+	if _type == "userdata" or _type == "table" then
+		local _tostring = t.tostring or t.toString or t.__tostring
+		local tstring = _tostring(t)
+		if tstring then
+			t = tstring
+		else
+			local _ctype = ctype(t)
+			if _ctype~="table" and _type~="table" then
+				t = _ctype
+			end
+		end
+	end
+	return tostring(t)
+end
+
 function print(...)
-    local t = {}
-    for i=1, select("#",...) do
+    local t, len = {}, select("#",...)
+    for i=1, len do
         local v = select(i,...)
         local _type = type(v)
         if _type == "string" then t[i] = v
         elseif _type == "number" then t[i] = tostring(v)
         elseif _type == "table" then t[i] = table.serialize(v)
         elseif _type == "boolean" then t[i] = v and "true" or "false"
-        else t[i] = _type
+        elseif _type == "userdata" then t[i] = ctostring(v)
+		else t[i] = _type
         end
     end
-    if t[1] ~= nil then PrintChat(table.concat(t)) end
+    if len>0 then PrintChat(table.concat(t)) end
+end
+
+function DumpPacket(p)
+    local packet = {}
+	local pos = p.pos
+    packet.time = GetInGameTimer()
+    packet.dwArg1 = p.dwArg1
+    packet.dwArg2 = p.dwArg2
+    packet.header = string.format("%02X",p.header)
+    packet.data = ""
+	p.pos = 1
+    for i=1,p.size-1,1 do
+        packet.data = packet.data .. string.format("%02X ",p:Decode1())
+    end
+	p.pos = pos
+    return packet
 end
 
 function ValidTarget(object, distance, enemyTeam)
@@ -601,7 +644,13 @@ function GetItemDB(OnLoaded)
         local itemsJSON = RAF and RAF:find("DATA\\Items\\items.json").content or ReadFile(SPRITE_PATH .. "Items\\items.json")
         assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
         itemsJSON = JSON:decode(itemsJSON)
-        assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed."..(RAF and "(Direct)" or "(Cached)"))
+        if not RAF and not itemsJSON then
+			print("GetItemDB: items.json not decoded. Items couldn't get parsed.")
+			print(DeleteFile(SPRITE_PATH:gsub("/", "\\") .. "Items\\items.json") and "Corrupted File Items\\items.json removed." or "Please remove the file 'items.json' in the folder 'Sprites\\Items\\'")
+			return
+		else
+			assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
+		end	
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
             if not _items[tonumber(itemJSON.id)] then _items[tonumber(itemJSON.id)] = table.copy(basicItem) end
@@ -1148,11 +1197,11 @@ function DrawText3D(text, x, y, z, size, color, center)
     local p = WorldToScreen(D3DXVECTOR3(x, y, z))
     local textArea = GetTextArea(text, size or 12)
     if center then
-        if OnScreen(p.x - textArea.x / 2, p.y - textArea.y / 2) or OnScreen(p.x + textArea.x / 2, p.y + textArea.y / 2) then
+        if OnScreen(p.x + textArea.x / 2, p.y + textArea.y / 2) then
             DrawText(text, size or 12, p.x - textArea.x / 2, p.y, color or 4294967295)
         end
     else
-        if OnScreen(p.x, p.y) or OnScreen(p.x + textArea.x, p.y + textArea.y) or OnScreen({ x = p.x, y = p.y }, { x = p.x + textArea.x, y = p.y + textArea.y }) then
+        if OnScreen({ x = p.x, y = p.y }, { x = p.x + textArea.x, y = p.y + textArea.y }) then
             DrawText(text, size or 12, p.x, p.y, color or 4294967295)
         end
     end
@@ -1280,42 +1329,42 @@ function VectorMovementCollision(startPoint1, endPoint1, v1, startPoint2, v2, de
 	--(v2 * t)^2 = (r+S*t)^2+(j+K*t)^2 and v2 * t >= 0
 	--0 = (S*S+K*K-v2*v2)*t^2+(-r*S-j*K)*2*t+(r*r+j*j) and v2 * t >= 0
 	local d, e = eP1x-sP1x, eP1y-sP1y
-    local dist, res = math.sqrt(d*d+e*e), {}
+    local dist, t1, t2 = math.sqrt(d*d+e*e), nil, nil
 	local S, K = dist~=0 and v1*d/dist or 0, dist~=0 and v1*e/dist or 0
-	local function GetCollisionPoint(t) return S and K and t and {x = sP1x+S*t, y = sP1y+K*t} or nil end
+	local function GetCollisionPoint(t) return t and {x = sP1x+S*t, y = sP1y+K*t} or nil end
 	if delay and delay~=0 then sP1x, sP1y = sP1x+S*delay, sP1y+K*delay end
 	local r, j = sP2x-sP1x, sP2y-sP1y
 	local c = r*r+j*j
 	if dist>0 then
 		if v1 == math.huge then
 			local t = dist/v1
-			res[1] = v2*t>=0 and t or nil
+			t1 = v2*t>=0 and t or nil
 		elseif v2 == math.huge then
-			res[1] = 0
+			t1 = 0
 		else
 			local a, b = S*S+K*K-v2*v2, -r*S-j*K
 			if a==0 then 
 				if b==0 then --c=0->t variable
-					res[1] = c==0 and 0 or nil
+					t1 = c==0 and 0 or nil
 				else --2*b*t+c=0
 					local t = -c/(2*b)
-					res[1] = v2*t>=0 and t or nil
+					t1 = v2*t>=0 and t or nil
 				end
 			else --a*t*t+2*b*t+c=0
 				local sqr = b*b-a*c
 				if sqr>=0 then
 					local nom = math.sqrt(sqr)
-					local t = (nom-b)/a
-					res[1] = v2*t>=0 and t or nil
-					t = (-nom-b)/a
-					res[#res+1] = v2*t>=0 and t or nil --if you check nom==0 you can sort out 2same results
+					local t = (-nom-b)/a
+					t1 = v2*t>=0 and t or nil
+					t = (nom-b)/a
+					t2 = v2*t>=0 and t or nil
 				end
 			end
 		end
 	elseif dist==0 then
 		res[1] = 0
 	end
-    return res[1], GetCollisionPoint(res[1]), res[2], GetCollisionPoint(res[2]), dist
+    return t1, GetCollisionPoint(t1), t2, GetCollisionPoint(t2), dist
 end
 
 class'Vector'
@@ -1896,7 +1945,7 @@ local function WayPointManager_OnRecvPacket(p)
         local networkID = packet:get("networkId")
         if (not networkID) or math.isNaN(networkID) then return end
         WayPoints[networkID] = packet:get("wayPoints")
-    elseif p.header == Packet.headers.R_WAYPOINTS then
+	elseif p.header == Packet.headers.R_WAYPOINTS then
         local packet = Packet(p)
         for networkID, wayPoints in pairs(packet:get("wayPoints")) do
             if WayPoints[networkID] then
@@ -1912,6 +1961,7 @@ local function WayPointManager_OnRecvPacket(p)
                 end
             end
             WayPoints[networkID] = wayPoints
+			
         end
     end
 end
