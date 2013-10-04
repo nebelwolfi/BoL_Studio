@@ -110,7 +110,11 @@ function GetEnemyHeroes()
             table.insert(_enemyHeroes, hero)
         end
     end
-    return _enemyHeroes
+    return setmetatable(_enemyHeroes,{
+		__newindex = function(self, key, value)
+			error("Adding to EnemyHeroes is not granted. Use table.copy.")
+		end,
+    })
 end
 
 local _allyHeroes
@@ -123,7 +127,11 @@ function GetAllyHeroes()
             table.insert(_allyHeroes, hero)
         end
     end
-    return _allyHeroes
+    return setmetatable(_allyHeroes,{
+		__newindex = function(self, key, value)
+			error("Adding to AllyHeroes is not granted. Use table.copy.")
+		end,
+    })
 end
 
 --[[
@@ -1961,7 +1969,6 @@ local function WayPointManager_OnRecvPacket(p)
                 end
             end
             WayPoints[networkID] = wayPoints
-			
         end
     end
 end
@@ -2006,7 +2013,7 @@ function WayPointManager:GetWayPoints(object)
             fPoint = p1
             lineSegment = i
             distanceSqr = distanceSegmentSqr
-            --else break
+        else break
         end
     end
     local result = { fPoint or { x = object.x, y = object.z } }
