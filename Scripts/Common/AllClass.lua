@@ -1370,7 +1370,7 @@ function VectorMovementCollision(startPoint1, endPoint1, v1, startPoint2, v2, de
 			end
 		end
 	elseif dist==0 then
-		res[1] = 0
+		t1 = 0
 	end
     return t1, GetCollisionPoint(t1), t2, GetCollisionPoint(t2), dist
 end
@@ -2013,7 +2013,7 @@ function WayPointManager:GetWayPoints(object)
             fPoint = p1
             lineSegment = i
             distanceSqr = distanceSegmentSqr
-        else break
+        else break --not necessary, but makes it faster
         end
     end
     local result = { fPoint or { x = object.x, y = object.z } }
