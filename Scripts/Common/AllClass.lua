@@ -4513,7 +4513,7 @@ end
 function __Alerter:Push(text, duration, r, g, b, id)
     local alert = {}
     alert.text = text
-    alert.duration = duration
+    alert.duration = duration or 1
     alert.r = r
     alert.g = g
     alert.b = b
@@ -4523,7 +4523,7 @@ function __Alerter:Push(text, duration, r, g, b, id)
 
     alert.reset = function(duration)
         alert.playT = GetInGameTimer() - self.config.fadeDuration
-        alert.duration = duration
+        alert.duration = duration or 0
         alert.yOffset = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
     end
 
