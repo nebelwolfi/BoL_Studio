@@ -4418,22 +4418,23 @@ function scriptConfig:OnWndMsg()
     end
 end
 
--- Alerter Class
+-- -- Alerter Class
 -- written by Weee
 --[[
-    PrintAlert(text, duration, r, g, b)                   - Pushes an alert message (notification) to the middle of the screen. Together with first message it also adds a configuration menu to the scriptConfig.
+    PrintAlert(text, duration, r, g, b, sprite)           - Pushes an alert message (notification) to the middle of the screen. Together with first message it also adds a configuration menu to the scriptConfig.
                 text:   Alert text                        - <string>
             duration:   Alert duration (in seconds)       - <number>
                    r:   Red                               - <number>: 0..255
                    g:   Green                             - <number>: 0..255
                    b:   Blue                              - <number>: 0..255
+              sprite:   Sprite                            - sprite!
 ]]
 
 local __mAlerter, __Alerter_OnTick, __Alerter_OnDraw = nil, nil, nil
 
-function PrintAlert(text, duration, r, g, b)
+function PrintAlert(text, duration, r, g, b, sprite)
     if not __mAlerter then __mAlerter = __Alerter() end
-    return __mAlerter:Push(text, duration, r, g, b)
+    return __mAlerter:Push(text, duration, r, g, b, sprite)
 end
 
 class("__Alerter")
@@ -4487,7 +4488,7 @@ function __Alerter:OnDraw()
                     or 0
             local xO = alert.outro and self:Easing(alert.step, 0, self.config.fadeOffset) or self:Easing(alert.step, -self.config.fadeOffset, self.config.fadeOffset)
             local alpha = alert.outro and self:Easing(alert.step, 255, -255) or self:Easing(alert.step, 0, 255)
-            local yOffsetTar = GetTextArea(alert.text, self.config.textSize).y * (self.activeCount-1)
+            local yOffsetTar = GetTextArea(alert.text, self.config.textSize).y * 1.2 * (self.activeCount-1)
             alert.yOffset = intro and alert.step == 0 and yOffsetTar
                     or #self._alerts > 1 and not alert.outro and (alert.yOffset < yOffsetTar and math.min(yOffsetTar, alert.yOffset + 0.5) or alert.yOffset > yOffsetTar and math.max(yOffsetTar, alert.yOffset - 0.5))
                     or alert.yOffset
@@ -4502,6 +4503,11 @@ function __Alerter:OnDraw()
                     end
                 end
             end
+            -- sprite:
+            if alert.sprite then
+                alert.sprite:SetScale(alert.spriteScale, alert.spriteScale)
+                alert.sprite:Draw(math.floor(x - GetTextArea(alert.text, self.config.textSize).x/2 - alert.sprite.width * alert.spriteScale * 1.5), math.floor(y - alert.sprite.width * alert.spriteScale / 2), alpha)
+            end
             -- text:
             DrawTextA(alert.text, self.config.textSize, math.floor(x), math.floor(y), ARGB(alpha, alert.r, alert.g, alert.b), "center", "center")
         elseif alert.playT and alert.playT + self.config.fadeDuration*2 + alert.duration <= gameTime then
@@ -4510,9 +4516,11 @@ function __Alerter:OnDraw()
     end
 end
 
-function __Alerter:Push(text, duration, r, g, b, id)
+function __Alerter:Push(text, duration, r, g, b, sprite)
     local alert = {}
     alert.text = text
+    alert.sprite = sprite
+    alert.spriteScale = sprite and self.config.textSize / sprite.height
     alert.duration = duration or 1
     alert.r = r
     alert.g = g
