@@ -24,29 +24,43 @@ function GetDistanceBBox(p1, p2)
 end
 
 function ctype(t)
-	local _type = type(t)
-	if _type == "userdata" or _type == "table" then
-		local _getType = t.type or t.Type or t.__type
-		_type = _getType and _getType(t) or _type
+    local _type = type(t)
+	if _type == "userdata" then
+		local metatable = getmetatable(t)
+		if not metatable or not metatable.__index then
+			t, _type = "userdata", "string"
+		end
 	end
-	return _type
+    if _type == "userdata" or _type == "table" then
+        local _getType = t.type or t.Type or t.__type
+		_type = type(_getType)=="function" and _getType(t) or type(_getType)=="string" and _getType or _type
+    end
+    return _type
 end
 
 function ctostring(t)
-	local _type = type(t)
-	if _type == "userdata" or _type == "table" then
-		local _tostring = t.tostring or t.toString or t.__tostring
-		local tstring = _tostring(t)
-		if tstring then
-			t = tstring
-		else
-			local _ctype = ctype(t)
-			if _ctype~="table" and _type~="table" then
+    local _type = type(t)
+	if _type == "userdata" then
+		local metatable = getmetatable(t)
+		if not metatable or not metatable.__index then
+			t, _type = "userdata", "string"
+		end
+	end
+    if _type == "userdata" or _type == "table" then
+        local _tostring = t.tostring or t.toString or t.__tostring
+        if type(_tostring)=="function" then
+			local tstring = _tostring(t)
+			t = _tostring(t)
+        else
+			local _ctype = ctype(t) or "Unknown"
+			if _type == "table" then
+				t = tostring(t):gsub(_type,_ctype) or tostring(t)
+			else
 				t = _ctype
 			end
 		end
-	end
-	return tostring(t)
+    end
+    return tostring(t)
 end
 
 function print(...)
@@ -59,25 +73,30 @@ function print(...)
         elseif _type == "table" then t[i] = table.serialize(v)
         elseif _type == "boolean" then t[i] = v and "true" or "false"
         elseif _type == "userdata" then t[i] = ctostring(v)
-		else t[i] = _type
+        else t[i] = _type
         end
     end
     if len>0 then PrintChat(table.concat(t)) end
 end
 
+function DumpPacketData(p,s,e)
+	s, e = math.max(1,s or 1), math.min(p.size-1,e and e-1 or p.size-1)
+	local pos, data = p.pos, ""
+    p.pos = s
+    for i=p.pos, e do
+        data = data .. string.format("%02X ",p:Decode1())
+    end
+    p.pos = pos
+	return data
+end
+
 function DumpPacket(p)
     local packet = {}
-	local pos = p.pos
     packet.time = GetInGameTimer()
     packet.dwArg1 = p.dwArg1
     packet.dwArg2 = p.dwArg2
     packet.header = string.format("%02X",p.header)
-    packet.data = ""
-	p.pos = 1
-    for i=1,p.size-1,1 do
-        packet.data = packet.data .. string.format("%02X ",p:Decode1())
-    end
-	p.pos = pos
+	packet.data = DumpPacketData(p)
     return packet
 end
 
@@ -111,9 +130,9 @@ function GetEnemyHeroes()
         end
     end
     return setmetatable(_enemyHeroes,{
-		__newindex = function(self, key, value)
-			error("Adding to EnemyHeroes is not granted. Use table.copy.")
-		end,
+        __newindex = function(self, key, value)
+            error("Adding to EnemyHeroes is not granted. Use table.copy.")
+        end,
     })
 end
 
@@ -128,9 +147,9 @@ function GetAllyHeroes()
         end
     end
     return setmetatable(_allyHeroes,{
-		__newindex = function(self, key, value)
-			error("Adding to AllyHeroes is not granted. Use table.copy.")
-		end,
+        __newindex = function(self, key, value)
+            error("Adding to AllyHeroes is not granted. Use table.copy.")
+        end,
     })
 end
 
@@ -653,12 +672,12 @@ function GetItemDB(OnLoaded)
         assert(itemsJSON, "GetItemDB: items.json not found. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
         itemsJSON = JSON:decode(itemsJSON)
         if not RAF and not itemsJSON then
-			print("GetItemDB: items.json not decoded. Items couldn't get parsed.")
-			print(DeleteFile(SPRITE_PATH:gsub("/", "\\") .. "Items\\items.json") and "Corrupted File Items\\items.json removed." or "Please remove the file 'items.json' in the folder 'Sprites\\Items\\'")
-			return
-		else
-			assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
-		end	
+            print("GetItemDB: items.json not decoded. Items couldn't get parsed.")
+            print(DeleteFile(SPRITE_PATH:gsub("/", "\\") .. "Items\\items.json") and "Corrupted File Items\\items.json removed." or "Please remove the file 'items.json' in the folder 'Sprites\\Items\\'")
+            return
+        else
+            assert(itemsJSON, "GetItemDB: items.json not decoded. Items couldn't get parsed. "..(RAF and "(Direct)" or "(Cached)"))
+        end    
         local basicItem = itemsJSON.basicitem
         for i, itemJSON in pairs(itemsJSON.items) do
             if not _items[tonumber(itemJSON.id)] then _items[tonumber(itemJSON.id)] = table.copy(basicItem) end
@@ -1321,7 +1340,7 @@ end
         isOnSegment = if the point closest to the line is on the segment
 ]]
 function VectorPointProjectionOnLineSegment(v1, v2, v)
-    assert(v1 and v2 and v, debug.traceback())
+    assert(v1 and v2 and v, "VectorPointProjectionOnLineSegment: wrong argument types (3 <Vector> expected)")
     local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
     local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
     local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
@@ -1332,46 +1351,46 @@ function VectorPointProjectionOnLineSegment(v1, v2, v)
 end
 
 function VectorMovementCollision(startPoint1, endPoint1, v1, startPoint2, v2, delay)
-	local sP1x, sP1y, eP1x, eP1y, sP2x, sP2y = startPoint1.x, startPoint1.z or startPoint1.y, endPoint1.x, endPoint1.z or endPoint1.y, startPoint2.x, startPoint2.z or startPoint2.y
-	--v2 * t = Distance(P, A + t * v1 * (B-A):Norm())
-	--(v2 * t)^2 = (r+S*t)^2+(j+K*t)^2 and v2 * t >= 0
-	--0 = (S*S+K*K-v2*v2)*t^2+(-r*S-j*K)*2*t+(r*r+j*j) and v2 * t >= 0
-	local d, e = eP1x-sP1x, eP1y-sP1y
+    local sP1x, sP1y, eP1x, eP1y, sP2x, sP2y = startPoint1.x, startPoint1.z or startPoint1.y, endPoint1.x, endPoint1.z or endPoint1.y, startPoint2.x, startPoint2.z or startPoint2.y
+    --v2 * t = Distance(P, A + t * v1 * (B-A):Norm())
+    --(v2 * t)^2 = (r+S*t)^2+(j+K*t)^2 and v2 * t >= 0
+    --0 = (S*S+K*K-v2*v2)*t^2+(-r*S-j*K)*2*t+(r*r+j*j) and v2 * t >= 0
+    local d, e = eP1x-sP1x, eP1y-sP1y
     local dist, t1, t2 = math.sqrt(d*d+e*e), nil, nil
-	local S, K = dist~=0 and v1*d/dist or 0, dist~=0 and v1*e/dist or 0
-	local function GetCollisionPoint(t) return t and {x = sP1x+S*t, y = sP1y+K*t} or nil end
-	if delay and delay~=0 then sP1x, sP1y = sP1x+S*delay, sP1y+K*delay end
-	local r, j = sP2x-sP1x, sP2y-sP1y
-	local c = r*r+j*j
-	if dist>0 then
-		if v1 == math.huge then
-			local t = dist/v1
-			t1 = v2*t>=0 and t or nil
-		elseif v2 == math.huge then
-			t1 = 0
-		else
-			local a, b = S*S+K*K-v2*v2, -r*S-j*K
-			if a==0 then 
-				if b==0 then --c=0->t variable
-					t1 = c==0 and 0 or nil
-				else --2*b*t+c=0
-					local t = -c/(2*b)
-					t1 = v2*t>=0 and t or nil
-				end
-			else --a*t*t+2*b*t+c=0
-				local sqr = b*b-a*c
-				if sqr>=0 then
-					local nom = math.sqrt(sqr)
-					local t = (-nom-b)/a
-					t1 = v2*t>=0 and t or nil
-					t = (nom-b)/a
-					t2 = v2*t>=0 and t or nil
-				end
-			end
-		end
-	elseif dist==0 then
-		t1 = 0
-	end
+    local S, K = dist~=0 and v1*d/dist or 0, dist~=0 and v1*e/dist or 0
+    local function GetCollisionPoint(t) return t and {x = sP1x+S*t, y = sP1y+K*t} or nil end
+    if delay and delay~=0 then sP1x, sP1y = sP1x+S*delay, sP1y+K*delay end
+    local r, j = sP2x-sP1x, sP2y-sP1y
+    local c = r*r+j*j
+    if dist>0 then
+        if v1 == math.huge then
+            local t = dist/v1
+            t1 = v2*t>=0 and t or nil
+        elseif v2 == math.huge then
+            t1 = 0
+        else
+            local a, b = S*S+K*K-v2*v2, -r*S-j*K
+            if a==0 then 
+                if b==0 then --c=0->t variable
+                    t1 = c==0 and 0 or nil
+                else --2*b*t+c=0
+                    local t = -c/(2*b)
+                    t1 = v2*t>=0 and t or nil
+                end
+            else --a*t*t+2*b*t+c=0
+                local sqr = b*b-a*c
+                if sqr>=0 then
+                    local nom = math.sqrt(sqr)
+                    local t = (-nom-b)/a
+                    t1 = v2*t>=0 and t or nil
+                    t = (nom-b)/a
+                    t2 = v2*t>=0 and t or nil
+                end
+            end
+        end
+    elseif dist==0 then
+        t1 = 0
+    end
     return t1, GetCollisionPoint(t1), t2, GetCollisionPoint(t2), dist
 end
 
@@ -1945,7 +1964,17 @@ end
     end
 ]]
 class'WayPointManager'
-local WayPoints, WayPointRate, WayPointVisibility
+local WayPoints, WayPointRate, WayPointVisibility, WayPointCallbacks
+
+local function WayPointManager_Callback(networkId)
+	if WayPointCallbacks then
+		for i, foo in pairs(WayPointCallbacks) do
+			if type(foo)=="function" then
+				foo(networkId)
+			end
+		end
+	end
+end
 
 local function WayPointManager_OnRecvPacket(p)
     if p.header == Packet.headers.R_WAYPOINT then
@@ -1953,7 +1982,8 @@ local function WayPointManager_OnRecvPacket(p)
         local networkID = packet:get("networkId")
         if (not networkID) or math.isNaN(networkID) then return end
         WayPoints[networkID] = packet:get("wayPoints")
-	elseif p.header == Packet.headers.R_WAYPOINTS then
+		WayPointManager_Callback(networkID)
+    elseif p.header == Packet.headers.R_WAYPOINTS then
         local packet = Packet(p)
         for networkID, wayPoints in pairs(packet:get("wayPoints")) do
             if WayPoints[networkID] then
@@ -1969,6 +1999,7 @@ local function WayPointManager_OnRecvPacket(p)
                 end
             end
             WayPoints[networkID] = wayPoints
+			WayPointManager_Callback(networkID)
         end
     end
 end
@@ -1996,7 +2027,13 @@ function WayPointManager:__init()
             AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPointVisibility[hero.networkID] = nil end end)
             AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team == TEAM_ENEMY and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPoints[hero.networkID] = { { x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z } } WayPointVisibility[hero.networkID] = nil end end)
         end
+		WayPointCallbacks = {}
     end
+end
+
+function WayPointManager.AddCallback(foo)
+	WayPointManager()
+	WayPointCallbacks[#WayPointCallbacks+1] = foo
 end
 
 function WayPointManager:GetRawWayPoints(object)
@@ -2822,7 +2859,7 @@ function TargetPredictionVIP:GetPrediction(target)
     else --Target Moving
         local travelTimeA = 0
         for i = 1, #wayPoints - 1 do
-			local A, B = wayPoints[i], wayPoints[i + 1]
+            local A, B = wayPoints[i], wayPoints[i + 1]
             local t1, p1, t2, p2, wayPointDist =  VectorMovementCollision(A, B, target.ms, self.Spell.Source, self.Spell.Speed)
             local travelTimeB = travelTimeA + wayPointDist / target.ms
             t1, t2 = (t1 and travelTimeA <= t1 and t1 <= travelTimeB) and t1 or nil, (t2 and travelTimeA <= t2 and t2 <= travelTimeB) and t2 or nil
@@ -3007,8 +3044,8 @@ local function TargetPrediction__Onload()
                     elseif hero.visible then
                         if _enemyHero.prediction then
                             local deltaTime = osTime - _enemyHero.prediction.lastUpdate
-							_enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
-							_enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
+                            _enemyHero.prediction.movement = (Vector(hero) - _enemyHero.prediction.position) / deltaTime
+                            _enemyHero.prediction.healthDifference = (hero.health - _enemyHero.prediction.health) / deltaTime
                             _enemyHero.prediction.health = hero.health
                             _enemyHero.prediction.position = Vector(hero)
                             _enemyHero.prediction.lastUpdate = osTime
@@ -3031,10 +3068,10 @@ function TargetPrediction:__init(range, proj_speed, delay, widthCollision, smoot
     TargetPrediction__Onload()
     self.range = range or 0
     self.proj_speed = proj_speed or math.huge
-	assert(type(proj_speed) == "number" and proj_speed > 0, "TargetPrediction: Projectile Speed must be a positive number, is "..(type(proj_speed)=="number" and tostring(proj_speed) or type(proj_speed)))
-	self.proj_speed = self.proj_speed > 100 and self.proj_speed or self.proj_speed * 1000
+    assert(type(proj_speed) == "number" and proj_speed > 0, "TargetPrediction: Projectile Speed must be a positive number, is "..(type(proj_speed)=="number" and tostring(proj_speed) or type(proj_speed)))
+    self.proj_speed = self.proj_speed > 100 and self.proj_speed or self.proj_speed * 1000
     self.delay = delay or 0
-	self.delay = self.delay >= 30 and self.delay / 1000 or self.delay
+    self.delay = self.delay >= 30 and self.delay / 1000 or self.delay
     self.width = widthCollision
     self.smoothness = smoothness
     if self.width then
@@ -3078,28 +3115,28 @@ function TargetPrediction:GetPrediction(target)
                 end
                 local t1, p1, t2, p2 =  VectorMovementCollision(enemyPos, enemyPos+_gameHeroes[index].prediction.movement, target.ms, player, self.proj_speed, delT)
                 t1, t2 = (t1 and 0 <= t1) and t1 or nil, (t2 and 0 <= t2) and t2 or nil
-				local t = t1 and t2 and math.min(t1,t2) or t1 or t2
-				if t then
+                local t = t1 and t2 and math.min(t1,t2) or t1 or t2
+                if t then
                     PositionPrediction = t==t1 and Vector(p1.x, enemyPos.y, p1.y) or Vector(p2.x, enemyPos.y, p2.y)
-					if self.smoothness and self.smoothness < 100 and self.nextPosition then
-						self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
-					else
-						self.nextPosition = PositionPrediction:clone()
-					end
-					if GetDistanceSqr(PositionPrediction) < (self.range) ^ 2 then
-						--update next Health
-						self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + delay)
-						--update minions collision
-						self.minions = false
-						if self.width and self.minionTable then
-							self.minions = GetMinionCollision(player, PositionPrediction, self.width, self.minionTable.objects)
-						end
-					else 
-						return
-					end 
-				else
-					return
-				end
+                    if self.smoothness and self.smoothness < 100 and self.nextPosition then
+                        self.nextPosition = (PositionPrediction * ((100 - self.smoothness) / 100)) + (self.nextPosition * (self.smoothness / 100))
+                    else
+                        self.nextPosition = PositionPrediction:clone()
+                    end
+                    if GetDistanceSqr(PositionPrediction) < (self.range) ^ 2 then
+                        --update next Health
+                        self.nextHealth = selected.health + (_gameHeroes[index].prediction.healthDifference or selected.health) * (t + delay)
+                        --update minions collision
+                        self.minions = false
+                        if self.width and self.minionTable then
+                            self.minions = GetMinionCollision(player, PositionPrediction, self.width, self.minionTable.objects)
+                        end
+                    else 
+                        return
+                    end 
+                else
+                    return
+                end
             end
             return self.nextPosition, self.minions, self.nextHealth
         end
@@ -4267,10 +4304,6 @@ function scriptConfig:OnDraw()
         self:_DrawSubInstance(index)
         if self._subMenuIndex == index then _:OnDraw() end
     end
-
-
-
-
 
     if #self._tsInstances > 0 then
         --_SC._Idraw.y = TS__DrawMenu(_SC._Idraw.x, _SC._Idraw.y)
