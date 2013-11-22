@@ -657,7 +657,7 @@ function GetItem(i)
             item = GetItemDB()[i]
         end
     elseif type(i) == "string" then
-        for i, v in pairs(GetItemDB()) do
+        for _, v in pairs(GetItemDB()) do
             if v:GetName():trim():lower() == i:trim():lower() then item = v break end
         end
     end
