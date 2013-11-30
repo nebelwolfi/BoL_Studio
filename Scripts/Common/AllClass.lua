@@ -25,40 +25,40 @@ end
 
 function ctype(t)
     local _type = type(t)
-	if _type == "userdata" then
-		local metatable = getmetatable(t)
-		if not metatable or not metatable.__index then
-			t, _type = "userdata", "string"
-		end
-	end
+    if _type == "userdata" then
+        local metatable = getmetatable(t)
+        if not metatable or not metatable.__index then
+            t, _type = "userdata", "string"
+        end
+    end
     if _type == "userdata" or _type == "table" then
         local _getType = t.type or t.Type or t.__type
-		_type = type(_getType)=="function" and _getType(t) or type(_getType)=="string" and _getType or _type
+        _type = type(_getType)=="function" and _getType(t) or type(_getType)=="string" and _getType or _type
     end
     return _type
 end
 
 function ctostring(t)
     local _type = type(t)
-	if _type == "userdata" then
-		local metatable = getmetatable(t)
-		if not metatable or not metatable.__index then
-			t, _type = "userdata", "string"
-		end
-	end
+    if _type == "userdata" then
+        local metatable = getmetatable(t)
+        if not metatable or not metatable.__index then
+            t, _type = "userdata", "string"
+        end
+    end
     if _type == "userdata" or _type == "table" then
         local _tostring = t.tostring or t.toString or t.__tostring
         if type(_tostring)=="function" then
-			local tstring = _tostring(t)
-			t = _tostring(t)
+            local tstring = _tostring(t)
+            t = _tostring(t)
         else
-			local _ctype = ctype(t) or "Unknown"
-			if _type == "table" then
-				t = tostring(t):gsub(_type,_ctype) or tostring(t)
-			else
-				t = _ctype
-			end
-		end
+            local _ctype = ctype(t) or "Unknown"
+            if _type == "table" then
+                t = tostring(t):gsub(_type,_ctype) or tostring(t)
+            else
+                t = _ctype
+            end
+        end
     end
     return tostring(t)
 end
@@ -80,14 +80,14 @@ function print(...)
 end
 
 function DumpPacketData(p,s,e)
-	s, e = math.max(1,s or 1), math.min(p.size-1,e and e-1 or p.size-1)
-	local pos, data = p.pos, ""
+    s, e = math.max(1,s or 1), math.min(p.size-1,e and e-1 or p.size-1)
+    local pos, data = p.pos, ""
     p.pos = s
     for i=p.pos, e do
         data = data .. string.format("%02X ",p:Decode1())
     end
     p.pos = pos
-	return data
+    return data
 end
 
 function DumpPacket(p)
@@ -96,7 +96,7 @@ function DumpPacket(p)
     packet.dwArg1 = p.dwArg1
     packet.dwArg2 = p.dwArg2
     packet.header = string.format("%02X",p.header)
-	packet.data = DumpPacketData(p)
+    packet.data = DumpPacketData(p)
     return packet
 end
 
@@ -209,7 +209,7 @@ function table.serialize(t, tab, functions)
             if vType == "number" then 
                 s[len+6], s[len+7], len = v, ",\n", len + 7
             elseif vType == "string" then 
-                s[len+6], s[len+7], s[len+8], len = '"', v, '",\n', len + 8
+                s[len+6], s[len+7], s[len+8], len = '"', v:unescape(), '",\n', len + 8
             elseif vType == "table" then 
                 s[len+6], s[len+7], len = table.serialize(v, (tab or "") .. "\t", functions), ",\n", len + 7
             elseif vType == "boolean" then 
@@ -271,6 +271,23 @@ end
 
 function string.trim(s)
     return s:match'^%s*(.*%S)' or ''
+end
+
+function string.unescape(s)
+    return s:gsub(".",{
+        ["\a"] = [[\a]],
+        ["\b"] = [[\b]],
+        ["\f"] = [[\f]],
+        ["\n"] = [[\n]],
+        ["\r"] = [[\r]],
+        ["\t"] = [[\t]],
+        ["\v"] = [[\v]],
+        ["\\"] = [[\\]],
+        ['"'] = [[\"]],
+        ["'"] = [[\']],
+        ["["] = "\\[",
+        ["]"] = "\\]",
+      })
 end
 
 function math.isNaN(num)
@@ -1967,13 +1984,13 @@ class'WayPointManager'
 local WayPoints, WayPointRate, WayPointVisibility, WayPointCallbacks
 
 local function WayPointManager_Callback(networkId)
-	if WayPointCallbacks then
-		for i, foo in pairs(WayPointCallbacks) do
-			if type(foo)=="function" then
-				foo(networkId)
-			end
-		end
-	end
+    if WayPointCallbacks then
+        for i, foo in pairs(WayPointCallbacks) do
+            if type(foo)=="function" then
+                foo(networkId)
+            end
+        end
+    end
 end
 
 local function WayPointManager_OnRecvPacket(p)
@@ -1982,7 +1999,7 @@ local function WayPointManager_OnRecvPacket(p)
         local networkID = packet:get("networkId")
         if (not networkID) or math.isNaN(networkID) then return end
         WayPoints[networkID] = packet:get("wayPoints")
-		WayPointManager_Callback(networkID)
+        WayPointManager_Callback(networkID)
     elseif p.header == Packet.headers.R_WAYPOINTS then
         local packet = Packet(p)
         for networkID, wayPoints in pairs(packet:get("wayPoints")) do
@@ -1999,7 +2016,7 @@ local function WayPointManager_OnRecvPacket(p)
                 end
             end
             WayPoints[networkID] = wayPoints
-			WayPointManager_Callback(networkID)
+            WayPointManager_Callback(networkID)
         end
     end
 end
@@ -2027,13 +2044,13 @@ function WayPointManager:__init()
             AdvancedCallback:bind('OnGainVision', function(hero) if hero.valid and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPointVisibility[hero.networkID] = nil end end)
             AdvancedCallback:bind('OnFinishRecall', function(hero) if hero.valid and hero.team == TEAM_ENEMY and hero.networkID == hero.networkID and hero.networkID ~= 0 then WayPoints[hero.networkID] = { { x = GetEnemySpawnPos().x, y = GetEnemySpawnPos().z } } WayPointVisibility[hero.networkID] = nil end end)
         end
-		WayPointCallbacks = {}
+        WayPointCallbacks = {}
     end
 end
 
 function WayPointManager.AddCallback(foo)
-	WayPointManager()
-	WayPointCallbacks[#WayPointCallbacks+1] = foo
+    WayPointManager()
+    WayPointCallbacks[#WayPointCallbacks+1] = foo
 end
 
 function WayPointManager:GetRawWayPoints(object)
