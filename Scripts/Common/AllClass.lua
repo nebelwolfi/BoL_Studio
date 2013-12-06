@@ -3488,10 +3488,11 @@ function GetFountain()
 end
 
 function NearFountain(distance)
-    assert(distance == nil or type(distance) == "number", "NearFontain: wrong argument types (<number> expected)")
-    assert(GetFountain() ~= nil, "GetFountain: Could not get Fontain Coordinates")
-    if distance == nil then distance = _fountainRadius end
-    return (GetDistanceSqr(_fountain) <= distance * distance), _fountain.x, _fountain.y, _fountain.z, distance
+    distance = distance or _fountainRadius or 0
+	if GetFountain() then
+		return (GetDistanceSqr(_fountain) <= distance * distance), _fountain.x, _fountain.y, _fountain.z, distance
+	end
+	return 0, 0, 0, 0, 0
 end
 
 function InFountain()
