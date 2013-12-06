@@ -3491,8 +3491,9 @@ function NearFountain(distance)
     distance = distance or _fountainRadius or 0
 	if GetFountain() then
 		return (GetDistanceSqr(_fountain) <= distance * distance), _fountain.x, _fountain.y, _fountain.z, distance
+	else
+		return false, 0, 0, 0, 0
 	end
-	return 0, 0, 0, 0, 0
 end
 
 function InFountain()
