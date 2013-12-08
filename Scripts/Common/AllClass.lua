@@ -667,7 +667,7 @@ local _items, _itemsLoaded, _onItemsLoaded, _onRafLoaded = {}, false, {}, nil
 function GetItem(i)
     local item
     if type(i) == "number" then
-        if i >= ITEM_1 and i <= ITEM_6 then
+        if i >= ITEM_1 and i <= ITEM_7 then
             local cItem = player:getItem(i)
             item = GetItem(cItem and cItem.id)
         else
@@ -756,8 +756,8 @@ function GetItemDB(OnLoaded)
             end
 
             function v:GetCount(object)
-                local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
-                for i = 1, 6, 1 do
+                local count, ItemSlot = 0, { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, ITEM_7 }
+                for i = 1, 7, 1 do
                     local item = (object or player):getItem(ItemSlot[i])
                     if item and item.id == self.id then
                         count = count + math.max(item.stacks or 1, 1)
@@ -767,9 +767,9 @@ function GetItemDB(OnLoaded)
             end
 
             function v:GetInventorySlot(object)
-                local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, }
+                local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, ITEM_7 }
                 local item = (object or player):getItem(ItemSlot[i])
-                for i = 1, 6, 1 do
+                for i = 1, 7, 1 do
                     if item and item.id == self.id then return ItemSlot[i] end
                 end
             end
@@ -3401,7 +3401,7 @@ end
 function GetInventorySlotItem(itemID, target)
     assert(type(itemID) == "number", "GetInventorySlotItem: wrong argument types (<number> expected)")
     local target = target or player
-    for _, j in pairs({ ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6 }) do
+    for _, j in pairs({ ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, ITEM_7 }) do
         if target:getInventorySlot(j) == itemID then return j end
     end
     return nil
