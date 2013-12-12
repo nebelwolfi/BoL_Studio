@@ -3664,7 +3664,7 @@ function ChampionLane:__init()
                     local update = { top = {}, mid = {}, bot = {}, jungle = {}, unknown = {} }
                     for _, champion in pairs(_championLane[team].champions) do
                         -- update champ pos
-                        if champion.hero.dead == false then
+                        if (champion.hero ~= nil and champion.hero.dead == false) then
                             if champion.hero.visible then
                                 if GetDistanceSqr(_championLane.top.point, champion.hero) < 4000000 then champion.top = champion.top + 10 end
                                 if _championLane.mid ~= nil and GetDistanceSqr(_championLane.mid.point, champion.hero) < 4000000 then champion.mid = champion.mid + 10 end
@@ -3682,7 +3682,7 @@ function ChampionLane:__init()
                         else lane = "unknown"
                         end
                         table.insert(update[lane], champion.hero)
-                        if champion.hero.networkID == player.networkID then
+                        if (champion.hero ~= nil and champion.hero.networkID == player.networkID) then
                             _championLane.myLane = lane
                         end
                     end
