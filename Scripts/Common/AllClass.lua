@@ -1089,11 +1089,13 @@ function TargetHaveBuff(buffName, target)
 end
 
 -- return number of enemy in range
-function CountEnemyHeroInRange(range)
+function CountEnemyHeroInRange(range, object)
+	object = object or myHero
+	range = range and range * range or myHero.range
     local enemyInRange = 0
     for i = 1, heroManager.iCount, 1 do
         local hero = heroManager:getHero(i)
-        if ValidTarget(hero, range) then
+        if ValidTarget(hero) and GetDistanceSqr(object, hero) <= range then
             enemyInRange = enemyInRange + 1
         end
     end
