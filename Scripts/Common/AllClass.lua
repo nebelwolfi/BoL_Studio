@@ -1090,8 +1090,8 @@ end
 
 -- return number of enemy in range
 function CountEnemyHeroInRange(range, object)
-	object = object or myHero
-	range = range and range * range or myHero.range
+    object = object or myHero
+    range = range and range * range or myHero.range * myHero.range
     local enemyInRange = 0
     for i = 1, heroManager.iCount, 1 do
         local hero = heroManager:getHero(i)
@@ -3892,6 +3892,7 @@ end
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYDOWN, defaultValue, key)
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_ONKEYTOGGLE, defaultValue, key)
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_SLICE, defaultValue, minValue, maxValue, decimalPlace)
+    myConfig:addParam(pVar, pText, SCRIPT_PARAM_LIST, defaultValue, listTable)
     myConfig:addParam(pVar, pText, SCRIPT_PARAM_COLOR, defaultValue)
     myConfig:permaShow(pvar)    -- show this var in perma menu
     myConfig:addTS(ts)          -- add a ts instance
@@ -3904,6 +3905,7 @@ end
         myConfig:addParam("harassMana", "Harass Min Mana", SCRIPT_PARAM_SLICE, 0.2, 0, 1, 2)
         myConfig:addParam("drawCircle", "Draw Circle", SCRIPT_PARAM_ONOFF, false)
         myConfig:addParam("circleColor", "Circle color", SCRIPT_PARAM_COLOR, {255,0,0,255}) --{A,R,G,B}
+        myConfig:addParam("multiOptions", "Multiple options", SCRIPT_PARAM_LIST, 2, { "First Option", "Default Option", "Third Option", "Just Another Option", "One More Option Baby" })
         myConfig:permaShow("harass")
         myConfig:permaShow("combo")
         ts = TargetSelector(TARGET_LOW_HP,500,DAMAGE_MAGIC,false)
@@ -3912,7 +3914,9 @@ end
 
         myConfig:addSubMenu("My Sub Menu Header", "subMenu")
         myConfig.subMenu:addParam("testOnOff", "Testing param in sub-menu", SCRIPT_PARAM_ONOFF, defaultValue)
+        myConfig.subMenu:addParam("multiOptions", "Multi-opts in sub-menu", SCRIPT_PARAM_LIST, 1, { "Default", "Its", "Disco", "Baby" })
         myConfig.subMenu:permaShow("testOnOff")
+        myConfig.subMenu:permaShow("multiOptions")
     end
     function OnTick()
         if myConfig.combo == true then
@@ -3928,7 +3932,8 @@ SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
 SCRIPT_PARAM_INFO = 5
 SCRIPT_PARAM_COLOR = 6
-local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false }
+SCRIPT_PARAM_LIST = 7
+local _SC = { init = true, initDraw = true, menuKey = 16, useTS = false, menuIndex = -1, instances = {}, _changeKey = false, _changeKeyInstance = false, _sliceInstance = false, _listInstance = false }
 class'scriptConfig'
 local function __SC__remove(name)
     if not GetSave("scriptConfig")[name] then GetSave("scriptConfig")[name] = {} end
@@ -4112,9 +4117,19 @@ local function __SC__OnLoad()
                         local pVar = instance._param[varIndex].var
                         DrawLine(_SC.pDraw.x - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.row - _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
                         DrawText(instance._param[varIndex].text, _SC.pDraw.fontSize, _SC.pDraw.x, y1, _SC.color.grey)
-                        if instance._param[varIndex].pType == SCRIPT_PARAM_SLICE or instance._param[varIndex].pType == SCRIPT_PARAM_INFO then
+                        if instance._param[varIndex].pType == SCRIPT_PARAM_SLICE or instance._param[varIndex].pType == SCRIPT_PARAM_LIST or instance._param[varIndex].pType == SCRIPT_PARAM_INFO then
                             DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, _SC.color.lgrey)
-                            DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
+                            if instance._param[varIndex].pType == SCRIPT_PARAM_LIST then
+                                local text = tostring(instance._param[varIndex].listTable[instance[pVar]])
+                                local maxWidth = (_SC.pDraw.width - _SC.pDraw.row) * 0.8
+                                local textWidth = GetTextArea(text, _SC.pDraw.fontSize).x
+                                if textWidth > maxWidth then
+                                    text = text:sub(1, math.floor(text:len() * maxWidth / textWidth)) .. ".."
+                                end
+                                DrawText(text, _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row, y1, _SC.color.grey)
+                            else
+                                DrawText(tostring(instance[pVar]), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
+                            end
                         else
                             DrawLine(_SC.pDraw.x + _SC.pDraw.row, y1 + _SC.pDraw.midSize, _SC.pDraw.x + _SC.pDraw.width + _SC.pDraw.border, y1 + _SC.pDraw.midSize, _SC.pDraw.cellSize, (instance[pVar] and _SC.color.green or _SC.color.lgrey))
                             DrawText((instance[pVar] and "      ON" or "      OFF"), _SC.pDraw.fontSize, _SC.pDraw.x + _SC.pDraw.row + _SC.pDraw.border, y1, _SC.color.grey)
@@ -4204,9 +4219,11 @@ local function __SC__OnLoad()
                     _SC._sliceInstance._slice = false
                     _SC._sliceInstance = false
 
-
-
                     return
+                elseif _SC._listInstance then
+                    _SC._listInstance:save()
+                    _SC._listInstance._list = false
+                    _SC._listInstance = false
                 end
             else
                 local function CheckOnWndMsg(instance)
@@ -4280,6 +4297,12 @@ function scriptConfig:addParam(pVar, pText, pType, defaultValue, a, b, c)
         newParam.max = b
         newParam.idc = c or 0
         newParam.cursor = 0
+    elseif pType == SCRIPT_PARAM_LIST then
+        assert(type(defaultValue) == "number" and type(a) == "table", "addParam: wrong argument types (pVar, pText, pType, defaultValue, listTable) expected")
+        newParam.listTable = a
+        newParam.min = 1
+        newParam.max = #a
+        newParam.cursor = 0
     end
     self[pVar] = defaultValue
     table.insert(self._param, newParam)
@@ -4312,7 +4335,6 @@ end
 function scriptConfig:OnDraw()
     self._x = self._parent and (self._parent._x + _SC.draw.width + _SC.draw.border*2) or _SC._Idraw.x
     if self._slice and _SC._sliceInstance then
-
         local cursorX = math.min(math.max(0, GetCursorPos().x - self._x - _SC.draw.row3), _SC.draw.width - _SC.draw.row3)
         self[self._param[self._slice].var] = math.round(self._param[self._slice].min + cursorX / (_SC.draw.width - _SC.draw.row3) * (self._param[self._slice].max - self._param[self._slice].min), self._param[self._slice].idc)
     end
@@ -4336,6 +4358,23 @@ function scriptConfig:OnDraw()
         self:_DrawParam(index)
     end
     self._height = self._y - _SC.draw.y
+    if self._list and _SC._listInstance and self._listY then
+        local cursorY = math.min(GetCursorPos().y - self._listY, _SC.draw.cellSize * (self._param[self._list].max))
+        if cursorY >= 0 then
+            self[self._param[self._list].var] = math.round(self._param[self._list].min + cursorY / (_SC.draw.cellSize * (self._param[self._list].max)) * (self._param[self._list].max - self._param[self._list].min))
+        end
+        local maxWidth = 0
+        for i, el in pairs(self._param[self._list].listTable) do
+            maxWidth = math.max(maxWidth, GetTextArea(el, _SC.draw.fontSize).x)
+        end
+        -- BG:
+        DrawRectangle(self._x + _SC.draw.row3, self._listY, maxWidth, self._param[self._list].max * _SC.draw.cellSize, ARGB(230,50,50,50))
+        -- SELECTED:
+        DrawRectangle(self._x + _SC.draw.row3, self._listY + (self[self._param[self._list].var]-1) * _SC.draw.cellSize, maxWidth, _SC.draw.cellSize, _SC.color.green)
+        for i, el in pairs(self._param[self._list].listTable) do
+            DrawText(el, _SC.draw.fontSize, self._x + _SC.draw.row3, self._listY + (i-1) * _SC.draw.cellSize, 4294967280)
+        end
+    end
 end
 
 function scriptConfig:_DrawSubInstance(index)
@@ -4358,6 +4397,15 @@ function scriptConfig:_DrawParam(varIndex)
         -- cursor
         self._param[varIndex].cursor = (self[pVar] - self._param[varIndex].min) / (self._param[varIndex].max - self._param[varIndex].min) * (_SC.draw.width - _SC.draw.row3)
         DrawLine(self._x + _SC.draw.row3 + self._param[varIndex].cursor - _SC.draw.border, self._y + _SC.draw.midSize, self._x + _SC.draw.row3 + self._param[varIndex].cursor + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, 4292598640)
+    elseif self._param[varIndex].pType == SCRIPT_PARAM_LIST then
+        local text = tostring(self._param[varIndex].listTable[self[pVar]])
+        local maxWidth = (_SC.draw.width - _SC.draw.row3) * 0.8
+        local textWidth = GetTextArea(text, _SC.draw.fontSize).x
+        if textWidth > maxWidth then
+            text = text:sub(1, math.floor(text:len() * maxWidth / textWidth)) .. ".."
+        end
+        DrawText(text, _SC.draw.fontSize, self._x + _SC.draw.row3, self._y, _SC.color.grey)
+        if self._list and _SC._listInstance then self._listY = self._y + _SC.draw.cellSize end
     elseif self._param[varIndex].pType == SCRIPT_PARAM_INFO then
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, self._x + _SC.draw.row3 + _SC.draw.border, self._y, _SC.color.grey)
     elseif self._param[varIndex].pType == SCRIPT_PARAM_COLOR then
@@ -4463,6 +4511,15 @@ function scriptConfig:OnWndMsg()
             if CursorIsUnder(self._x + _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
                 self._slice = i
                 _SC._sliceInstance = self
+                self:ResetSubIndexes()
+
+                return
+            end
+        end
+        if param.pType == SCRIPT_PARAM_LIST then
+            if CursorIsUnder(self._x + _SC.draw.row3 - _SC.draw.border, y1, WINDOW_W, _SC.draw.fontSize) then
+                self._list = i
+                _SC._listInstance = self
                 self:ResetSubIndexes()
 
                 return
