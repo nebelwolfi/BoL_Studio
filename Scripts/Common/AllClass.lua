@@ -768,8 +768,8 @@ function GetItemDB(OnLoaded)
 
             function v:GetInventorySlot(object)
                 local ItemSlot = { ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, ITEM_7 }
-                local item = (object or player):getItem(ItemSlot[i])
                 for i = 1, 7, 1 do
+                    local item = (object or player):getItem(ItemSlot[i])
                     if item and item.id == self.id then return ItemSlot[i] end
                 end
             end
