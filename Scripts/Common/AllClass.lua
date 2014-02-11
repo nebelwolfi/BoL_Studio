@@ -7,6 +7,7 @@ VIP_USER = CLoLPacket and true or false
 
 --Faster for comparison of distances, returns the distance^2
 function GetDistanceSqr(p1, p2)
+    assert(p1, "GetDistance: invalid argument: cannot calculate distance to "..type(p1))
     p2 = p2 or player
     return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
 end
