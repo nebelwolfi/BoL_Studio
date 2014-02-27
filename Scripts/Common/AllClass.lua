@@ -3557,15 +3557,18 @@ function GetTurrets()
     return _turrets
 end
 
-function UnderTurret(pos, enemyTurret)
+function GetUnderTurret(pos, enemyTurret)
     __Turrets__init()
     local enemyTurret = (enemyTurret ~= false)
     for _, turret in pairs(_turrets) do
         if turret ~= nil and (turret.team ~= player.team) == enemyTurret and GetDistanceSqr(turret, pos) <= (turret.range) ^ 2 then
-            return true
+            return turret
         end
     end
-    return false
+end
+
+function UnderTurret(pos, enemyTurret)
+    return (GetUnderTurret(pos, enemyTurret) ~= nil)
 end
 
 --Spawn
@@ -5343,6 +5346,10 @@ end
 ]]
 local _wards = {
     WriggleLantern = { id = 3154, nextUse = GetTickCount() + 180000 },
+	WardingTotem = { id = 3340 },
+	GreaterTotem = { id = 3350 },
+	GreaterStealthTotem = { id = 3361 },
+	GreaterVisionTotem = { id = 3362 },
     Sightstone = { id = 2049 },
     RSightstone = { id = 2045 },
     ItemMiniWard = { id = 2050 },
@@ -5360,6 +5367,10 @@ local function _wardsUse()
             if _wards.SlotUpdateTick < GetTickCount() then
                 _wards.SlotUpdateTick = GetTickCount() + 500
                 _wards.WriggleLantern.slot = GetInventorySlotItem(_wards.WriggleLantern.id)
+				_wards.WardingTotem.slot = GetInventorySlotItem(_wards.WardingTotem.id)
+				_wards.GreaterTotem.slot = GetInventorySlotItem(_wards.GreaterTotem.id)
+				_wards.GreaterStealthTotem.slot = GetInventorySlotItem(_wards.GreaterStealthTotem.id)
+				_wards.GreaterVisionTotem.slot = GetInventorySlotItem(_wards.GreaterVisionTotem.id)
                 _wards.Sightstone.slot = GetInventorySlotItem(_wards.Sightstone.id)
                 _wards.RSightstone.slot = GetInventorySlotItem(_wards.RSightstone.id)
                 _wards.ItemMiniWard.slot = GetInventorySlotItem(_wards.ItemMiniWard.id)
@@ -5367,7 +5378,11 @@ local function _wardsUse()
                 _wards.VisionWard.slot = GetInventorySlotItem(_wards.VisionWard.id)
             end
             _wards.WriggleLantern.r_slot = ((_wards.WriggleLantern.slot and player:CanUseSpell(_wards.WriggleLantern.slot) and _wards.WriggleLantern.nextUse < GetTickCount()) and _wards.WriggleLantern.slot or nil) -- Wriggle lantern
-            _wards.Sightstone.r_slot = ((_wards.Sightstone.slot and _wards.Sightstone_Used < 4 and player:CanUseSpell(_wards.Sightstone.slot)) and _wards.Sightstone.slot or nil) -- Sightstone
+            _wards.WardingTotem.r_slot = ((_wards.WardingTotem.slot and player:CanUseSpell(_wards.WardingTotem.slot)) and _wards.WardingTotem.slot or nil)
+			_wards.GreaterTotem.r_slot = ((_wards.GreaterTotem.slot and player:CanUseSpell(_wards.GreaterTotem.slot)) and _wards.GreaterTotem.slot or nil)
+			_wards.GreaterStealthTotem.r_slot = ((_wards.GreaterStealthTotem.slot and player:CanUseSpell(_wards.GreaterStealthTotem.slot)) and _wards.GreaterStealthTotem.slot or nil)
+			_wards.GreaterVisionTotem.r_slot = ((_wards.GreaterVisionTotem.slot and player:CanUseSpell(_wards.GreaterVisionTotem.slot)) and _wards.GreaterVisionTotem.slot or nil)
+			_wards.Sightstone.r_slot = ((_wards.Sightstone.slot and _wards.Sightstone_Used < 4 and player:CanUseSpell(_wards.Sightstone.slot)) and _wards.Sightstone.slot or nil) -- Sightstone
             _wards.RSightstone.r_slot = ((_wards.RSightstone.slot and _wards.Sightstone_Used < 5 and player:CanUseSpell(_wards.RSightstone.slot)) and _wards.RSightstone.slot or nil)
             _wards.ItemMiniWard.r_slot = ((_wards.ItemMiniWard.slot and player:CanUseSpell(_wards.ItemMiniWard.slot)) and _wards.ItemMiniWard.slot or nil)
             _wards.SightWard.r_slot = ((_wards.SightWard.slot and player:CanUseSpell(_wards.SightWard.slot)) and _wards.SightWard.slot or nil)
@@ -5396,22 +5411,28 @@ end
 function GetWardSlot()
     _wardsUse()
     if _wards.WriggleLantern.r_slot then return _wards.WriggleLantern.r_slot
+	elseif _wards.WardingTotem.r_slot then return _wards.WardingTotem.r_slot
+	elseif _wards.GreaterTotem.r_slot then return _wards.GreaterTotem.r_slot
+	elseif _wards.GreaterStealthTotem.r_slot then return _wards.GreaterStealthTotem.r_slot
     elseif _wards.Sightstone.r_slot then return _wards.Sightstone.r_slot
     elseif _wards.RSightstone.r_slot then return _wards.RSightstone.r_slot
     elseif _wards.ItemMiniWard.r_slot then return _wards.ItemMiniWard.r_slot
     elseif _wards.SightWard.r_slot then return _wards.SightWard.r_slot
+	elseif _wards.GreaterVisionTotem.r_slot then return _wards.GreaterVisionTotem.r_slot
     elseif _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot
     end
 end
 
 function GetPinkWardSlot()
     _wardsUse()
-    if _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot end
+	if _wards.GreaterVisionTotem.r_slot then return _wards.GreaterVisionTotem.r_slot
+	elseif _wards.VisionWard.r_slot then return _wards.VisionWard.r_slot
+    end
 end
 
 function GetWardsSlots()
     _wardsUse()
-    return _wards.WriggleLantern.r_slot, _wards.Sightstone.r_slot, _wards.RSightstone.r_slot, _wards.ItemMiniWard.r_slot, _wards.SightWard.r_slot, _wards.VisionWard.r_slot
+    return _wards.WriggleLantern.r_slot, _wards.WardingTotem.r_slot, _wards.GreaterTotem.r_slot, _wards.GreaterStealthTotem.r_slot, _wards.Sightstone.r_slot, _wards.RSightstone.r_slot, _wards.ItemMiniWard.r_slot, _wards.SightWard.r_slot, _wards.GreaterVisionTotem.r_slot, _wards.VisionWard.r_slot
 end
 
 --  Text and circles draws
