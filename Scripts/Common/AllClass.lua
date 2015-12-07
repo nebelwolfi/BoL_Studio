@@ -5527,6 +5527,23 @@ function TCDrawSetHero(hero, level)
     _tcDraws.heroes[hero.networkID].state = level
 end
 
+--AntiAFK by Aroc
+local lastPos, lastMove = Vector(myHero), GetSave('AntiAFK').lastMove or 0
+if lastMove > os.clock() then
+    lastMove = 0
+    GetSave('AntiAFK').lastMove = lastMove
+end
+
+AddTickCallback(function()
+    if os.clock() > lastMove + 120 then
+        if myHero.x == lastPos.x and myHero.z == lastPos.z then
+            myHero:HoldPosition()
+        end
+        lastPos = Vector(myHero)
+        lastMove = os.clock()
+        GetSave('AntiAFK').lastMove = lastMove
+    end
+end)
 
 -------------------- WARNING FOR FUNCTIONS NOT USED ANYMORE ------------------------
 -------------------- OLD FUNCTIONS KEPT FOR BACKWARD COMPATIBILITY -----------------
