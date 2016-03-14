@@ -3242,34 +3242,51 @@ function GetGame()
                     elseif math.floor(object.x) == 497 and math.floor(object.y) == -40 and math.floor(object.z) == 1932 then
                         _game.map = { index = 12, name = "Howling Abyss", shortName = "howlingAbyss", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 13120 / 2, height = 12618 / 2 } }
                         break
+					elseif math.floor(object.x) == 497 and math.floor(object.y) == -180 and math.floor(object.z) == 1932 then
+						_game.map = { index = 14, name = "Butcher's Bridge", shortName = "butchersBridge", min = { x = -56, y = -38 }, max = { x = 12820, y = 12839 }, x = 12876, y = 12877, grid = { width = 13120 / 2, height = 12618 / 2 } }
+						break
+                    elseif math.floor(object.x) == 232 and math.floor(object.y) == 163 and math.floor(object.z) == 1277 then    
+                        _game.map = { index = 15, name = "S5 Summoner's Rift", shortName = "summonerRift", min = { x = 0, y = 0 }, max = { x = 14716, y = 14824 }, x = 14716, y = 14824, grid = { width = 14716 / 2, height = 14824 / 2 } }
+                        break
                     else
                         PrintChat("New map : x = " .. math.floor(object.x) .. " - y = " .. math.floor(object.y) .. " - z = " .. math.floor(object.z))
                     end
                 end
             end
         end
+        for i = 1, objManager.maxObjects do
+            local object = objManager:getObject(i)
+            if object ~= nil and object.valid then
+                if object.type == "obj_HQ" then
+					_game[player.team == object.team and "myNexus" or "theirNexus"] = object
+                    if _game.myNexus and _game.theirNexus then
+                        break
+                    end
+                end
+            end
+        end
         --update game state
-        function __game__GameOver(team)
+        function __game__GameOver(didWin)
             _game.isOver = true
-            _game.loser = team
-            _game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-            _game.win = (player.team == _game.winner)
+            _game.loser = didWin and 300-player.team or player.team
+            _game.winner = 300-_game.loser
+            _game.win = didWin
             for _, func in ipairs(_onGameOver) do
                 if func then func(_game.winner) end
             end
         end
 
-        function __game__OnCreateObj(object)
-            if object then
-                if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-                    __game__GameOver(TEAM_RED)
-                elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-                    __game__GameOver(TEAM_BLUE)
+        function __game__OnDeleteObj(object)
+            if object and object.valid and not _game.isOver and object.name == "SRU_Order_nexus_swirlies.troy" then
+				if GetDistanceSqr(object,_game.myNexus)>GetDistanceSqr(object,_game.theirNexus) then
+                    __game__GameOver(true)
+                else
+                    __game__GameOver(false)
                 end
             end
         end
 
-        AddCreateObjCallback(__game__OnCreateObj)
+        AddDeleteObjCallback(__game__OnDeleteObj)
         --clean
         _game.lastCmd = nil
     end
