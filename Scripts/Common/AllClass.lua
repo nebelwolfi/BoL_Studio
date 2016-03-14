@@ -3247,29 +3247,40 @@ function GetGame()
                     end
                 end
             end
+        end 
+        for i = 1, objManager.maxObjects do
+            local object = objManager:getObject(i)
+            if object ~= nil and object.valid then
+                if object.type == "obj_HQ" then
+                    _game[player.team == object.team and "myNexus" or "theirNexus"] = object
+                    if _game.myNexus and _game.theirNexus then
+                        break
+                    end
+                end
+            end
         end
         --update game state
-        function __game__GameOver(team)
+        function __game__GameOver(didWin)
             _game.isOver = true
-            _game.loser = team
-            _game.winner = (team == TEAM_BLUE and TEAM_RED or TEAM_BLUE)
-            _game.win = (player.team == _game.winner)
+            _game.loser = didWin and TEAM_ENEMY or player.team
+            _game.winner = (_game.loser == TEAM_BLUE) and TEAM_RED or TEAM_BLUE
+            _game.win = didWin
             for _, func in ipairs(_onGameOver) do
                 if func then func(_game.winner) end
             end
         end
 
-        function __game__OnCreateObj(object)
-            if object then
-                if object.name == "NexusDestroyedExplosionFinal_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos.troy" or object.name == "NexusDestroyedExplosion_Chaos2.troy" or object.name == "Odin_CrystalExplosion_Purple.troy" then
-                    __game__GameOver(TEAM_RED)
-                elseif object.name == "NexusDestroyedExplosionFinal_Order.troy" or object.name == "NexusDestroyedExplosion_Order.troy" or object.name == "NexusDestroyedExplosion_Order2.troy" or object.name == "Odin_CrystalExplosion_Blue.troy" then
-                    __game__GameOver(TEAM_BLUE)
+        function __game__OnDeleteObj(object)
+            if object and object.valid and not _game.isOver and o.name == "SRU_Order_nexus_swirlies.troy" then
+                if GetDistanceSqr(o,_game.myNexus)>GetDistanceSqr(o,_game.theirNexus) then
+                    __game__GameOver(true)
+                else
+                    __game__GameOver(false)
                 end
             end
         end
 
-        AddCreateObjCallback(__game__OnCreateObj)
+        AddDeleteObjCallback(__game__OnDeleteObj)
         --clean
         _game.lastCmd = nil
     end
