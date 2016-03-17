@@ -3271,7 +3271,7 @@ function GetGame()
         end
 
         function __game__OnDeleteObj(object)
-            if object and object.valid and not _game.isOver and o.name == "SRU_Order_nexus_swirlies.troy" then
+            if object and object.valid and not _game.isOver and (o.name == "SRU_Order_nexus_swirlies.troy" or o.name == "SRU_Chaos_nexus_swirlies.troy") then
                 if GetDistanceSqr(o,_game.myNexus)>GetDistanceSqr(o,_game.theirNexus) then
                     __game__GameOver(true)
                 else
