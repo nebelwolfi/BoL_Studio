@@ -120,38 +120,100 @@ function GetDistanceFromMouse(object)
     return math.huge
 end
 
-local _enemyHeroes
+local _enemyHeroCount, _enemyHeroes
 function GetEnemyHeroes()
     if _enemyHeroes then return _enemyHeroes end
-    _enemyHeroes = {}
+    _enemyHeroCount, _enemyHeroes = 0, {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
-        if hero.team ~= player.team then
-            table.insert(_enemyHeroes, hero)
+        if hero.team ~= player.team and hero.charName ~= "PracticeTool_TargetDummy" then
+            _enemyHeroCount = _enemyHeroCount + 1
+            _enemyHeroes[_enemyHeroCount] = hero
         end
     end
-    return setmetatable(_enemyHeroes,{
-        __newindex = function(self, key, value)
-            error("Adding to EnemyHeroes is not granted. Use table.copy.")
-        end,
-    })
+    if _enemyHeroCount == 0 then
+        _enemyHeroCount, _enemyHeroes = 0, {}
+        for i = 1, heroManager.iCount do
+            local hero = heroManager:GetHero(i)
+            if hero.team ~= player.team then
+                _enemyHeroCount = _enemyHeroCount + 1
+                _enemyHeroes[_enemyHeroCount] = hero
+            end
+        end
+        AddCreateObjCallback(function(o)
+            if o and o.valid and o.type == "AIHeroClient" and o.team ~= player.team then
+                _enemyHeroCount = _enemyHeroCount + 1
+                _enemyHeroes[_enemyHeroCount] = o
+            end
+        end)
+        AddDeleteObjCallback(function(o)
+            if o and o.valid and o.type == "AIHeroClient" then
+                for i = 1, _enemyHeroCount do
+                    local hero = _enemyHeroes[i]
+                    if hero and hero.networkID == networkID then
+                        table.remove(_enemyHeroes, i)
+                        _enemyHeroCount = _enemyHeroCount - 1
+                        break;
+                    end
+                end
+            end
+        end)
+        return _enemyHeroes
+    else
+        return setmetatable(_enemyHeroes,{
+            __newindex = function(self, key, value)
+                error("Adding to Eneplayeres is not granted. Use table.copy.")
+            end,
+        })
+    end
 end
 
-local _allyHeroes
+local _allyHeroCount, _allyHeroes
 function GetAllyHeroes()
     if _allyHeroes then return _allyHeroes end
-    _allyHeroes = {}
+    _allyHeroCount, _allyHeroes = 0, {}
     for i = 1, heroManager.iCount do
         local hero = heroManager:GetHero(i)
-        if hero.team == player.team and hero.networkID ~= player.networkID then
-            table.insert(_allyHeroes, hero)
+        if hero.team == player.team and hero.networkID ~= player.networkID and hero.charName ~= "PracticeTool_TargetDummy" then
+            _allyHeroCount = _allyHeroCount + 1
+            _allyHeroes[_allyHeroCount] = hero
         end
     end
-    return setmetatable(_allyHeroes,{
-        __newindex = function(self, key, value)
-            error("Adding to AllyHeroes is not granted. Use table.copy.")
-        end,
-    })
+    if _allyHeroCount == 0 then
+        _allyHeroCount, _allyHeroes = 0, {}
+        for i = 1, heroManager.iCount do
+            local hero = heroManager:GetHero(i)
+            if hero.team == player.team and hero.networkID ~= player.networkID then
+                _allyHeroCount = _allyHeroCount + 1
+                _allyHeroes[_allyHeroCount] = hero
+            end
+        end
+        AddCreateObjCallback(function(o)
+            if o and o.valid and o.type == "AIHeroClient" and o.team == player.team then
+                _allyHeroCount = _allyHeroCount + 1
+                _allyHeroes[_allyHeroCount] = o
+            end
+        end)
+        AddDeleteObjCallback(function(o)
+            if o and o.valid and o.type == "AIHeroClient" then
+                for i = 1, _allyHeroCount do
+                    local hero = _allyHeroes[i]
+                    if hero and hero.networkID == networkID then
+                        table.remove(_allyHeroes, i)
+                        _allyHeroCount = _allyHeroCount - 1
+                        break;
+                    end
+                end
+            end
+        end)
+        return _allyHeroes
+    else
+        return setmetatable(_allyHeroes,{
+            __newindex = function(self, key, value)
+                error("Adding to Eneplayeres is not granted. Use table.copy.")
+            end,
+        })
+    end
 end
 
 --[[
