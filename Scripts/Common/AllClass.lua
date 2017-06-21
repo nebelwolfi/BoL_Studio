@@ -162,7 +162,7 @@ function GetEnemyHeroes()
     else
         return setmetatable(_enemyHeroes,{
             __newindex = function(self, key, value)
-                error("Adding to Eneplayeres is not granted. Use table.copy.")
+                error("Adding to EnemyHeroes is not granted. Use table.copy.")
             end,
         })
     end
@@ -210,7 +210,7 @@ function GetAllyHeroes()
     else
         return setmetatable(_allyHeroes,{
             __newindex = function(self, key, value)
-                error("Adding to Eneplayeres is not granted. Use table.copy.")
+                error("Adding to AllyHeroes is not granted. Use table.copy.")
             end,
         })
     end
